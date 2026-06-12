@@ -412,3 +412,167 @@ The platform audits its own compliance program:
    customers?
 4. Should evidence bundles be exportable in any standard format
    (e.g., OSCAL)? (Strongly recommended by US federal customers.)
+
+---
+
+# 18. Auto-mapping CVEs to controls (Sprint 2)
+
+This section extends the methodology above with the **automated
+mapping pipeline** that translates every incoming vulnerability finding
+into a set of implicated compliance controls, and the **POA&M
+auto-creation** that follows.
+
+## 18.1 Architecture
+
+```
+[vulnerability feed]
+        │
+        ▼
+[VulnerabilityIntelligenceAgent] (S2.2)
+        │   emits scan.completed / vulnerability.detected
+        ▼
+[EvidenceAttacher in compliance-service]
+        │
+        ├─→ [MappingEngine]              ← pure, data-driven rules
+        │       │
+        │       └─→ (controlId, vulnId) tuples, deduped
+        │
+        ├─→ [PoamService.createFromTuple]  ← dedup at (tenant, control, vuln)
+        │       │
+        │       └─→ emits compliance.poam.created
+        │
+        └─→ [BlobStore + EvidenceRepo]
+                │
+                └─→ emits compliance.evidence.attached
+```
+
+The pipeline is **idempotent**: replaying the same `scan.completed`
+event results in the same (controlId, vulnId) tuples, the same POA&M
+items (deduplicated at the service), and additional append-only
+evidence records (acceptable — evidence is append-only).
+
+## 18.2 Rule set
+
+The rule set is **data, not code**: `mapping-rules.json` is a
+versioned JSON file that the engine reads at startup. Operators can
+tune mappings without redeploying by editing the file and rolling the
+service.
+
+Six rules ship in v1:
+
+| Rule | Framework | Control | Predicate | SLA |
+|---|---|---|---|---|
+| `cis-7-continuous-vuln-management` | cis_v8 | 7 | `severity_gte(medium)` | 30 d |
+| `cis-16-application-software-security` | cis_v8 | 16 | `kind_eq(sca)` | 30 d |
+| `nist-si-2-flaw-remediation` | nist_800_53 | SI-2 | `always` | 30 d |
+| `nist-ra-5-vuln-monitoring` | nist_800_53 | RA-5 | `always` | 30 d |
+| `nist-si-7-software-firmware-integrity` | nist_800_53 | SI-7 | `kev(true)` | 7 d |
+| `nist-sa-11-developer-testing` | nist_800_53 | SA-11 | `introduced_within_days(30)` | 14 d |
+
+The rule DSL supports: `always`, `severity_gte`, `severity_eq`,
+`kind_eq`, `kev`, `introduced_within_days`, `cve_pattern`,
+`asset_pattern`, `component_pattern`, `and`, `or`, `not`. New
+predicates can be added by extending the `Predicate` union and adding
+an evaluator in `predicates.ts`.
+
+## 18.3 POA&M lifecycle
+
+A POA&M item moves through this state machine:
+
+```
+            ┌──────────┐
+            │   open   │ ◄────────── manual reopen
+            └────┬─────┘
+                 │ start / await-evidence
+                 ▼
+        ┌────────────────┐
+        │  in_progress   │──┐
+        │       or       │  │ overdue (auto, hourly)
+        │awaiting_evidence│ ◄┘
+        └────────┬───────┘
+                 │ close (with evidence)
+                 ▼
+            ┌──────────┐
+            │  closed  │
+            └──────────┘
+
+   (parallel branch) risk_accepted (CompOfficer only, expires)
+```
+
+### Example POA&M lifecycle
+
+1. **2026-06-12 00:00 UTC** — `scan.completed` event arrives.
+   Mapping engine returns tuples:
+   - `(SI-2, v-123, severity=high, sla=30d)`
+   - `(RA-5, v-123, severity=high, sla=30d)`
+   - `(7, v-123, severity=high, sla=30d)`
+2. **00:00:01** — `PoamService.createFromTuple` creates three POA&M
+   items (no prior open ones) and emits three
+   `compliance.poam.created` events.
+3. **2026-07-05** — Engineer uploads a patched build that resolves
+   v-123.
+4. **2026-07-06** — `scan.completed` event arrives; v-123 is no longer
+   present. No new POA&M is created; existing POA&M remain `open`.
+5. **2026-07-08** — Engineer attaches the patched SBOM and re-scan
+   report as evidence; calls `POST /v1/poam/:id/close` with
+   `evidenceRefs=[…]`. Status transitions to `closed`; a
+   `compliance.poam.closed` event is emitted.
+6. **2026-07-09** — If step 5 had not happened by the `dueAt` of
+   2026-07-12, the hourly scanner would have flipped status to
+   `overdue` on 2026-07-12 00:00 UTC and emitted
+   `compliance.poam.overdue`.
+
+### SLA table
+
+| Severity | Calendar days | Rationale |
+|---|---|---|
+| Critical | 7 | Active exploitation likely; per CIS 7 IG2 |
+| High | 30 | Standard remediation window |
+| Medium | 90 | Routine |
+| Low | 180 | Backlog |
+
+(Sprint 3 enhancement: business-day SLAs, customer-configurable per
+control.)
+
+## 18.4 Evidence auto-attach
+
+When a `scan.completed` event arrives:
+
+1. SBOM and scan report are persisted to the blob store at
+   `tenants/{tenant}/assets/{asset}/scans/{scanId}/{sbom|report}.json`.
+2. For each control implicated by the mapping:
+   - One `EvidenceRecord` (`kind: 'config'`) is created pointing to
+     the SBOM.
+   - One `EvidenceRecord` (`kind: 'log'`) is created pointing to the
+     scan report.
+3. Each creation emits `compliance.evidence.attached` with the
+   `controlIds`, `assetId`, `objectStorePath`, and content hash.
+
+The S2.2 SBOM pipeline and S2.5 security API are the upstream
+producers; S2.10 GitOps automation consumes the events to commit
+artifacts back to the repo.
+
+## 18.5 Event taxonomy (compliance service)
+
+| Event | When | Severity | Consumers |
+|---|---|---|---|
+| `compliance.control.violated` | A control transitions to `fail` | inherits vuln severity | SRE SIEM, customer notifications |
+| `compliance.evidence.attached` | An evidence record is created | `info` | Audit log, GRC tool, customer dashboard |
+| `compliance.poam.created` | A POA&M is created (manual or auto) | inherits severity | SRE SIEM, customer notifications, GitOps automation |
+| `compliance.poam.closed` | A POA&M is closed with evidence | `notice` | SRE SIEM, customer dashboard |
+| `compliance.poam.overdue` | Hourly scanner marks a POA&M overdue | inherits severity | SRE SIEM, customer notifications, escalation |
+
+## 18.6 Open questions (Sprint 3+)
+
+1. **Cross-tenant control inheritance** — when a parent organization
+   has multiple tenants, should a control violation in one tenant
+   affect the parent's compliance score? (Affects `control_summary`
+   aggregation.)
+2. **Rule versioning** — when a rule is changed, what happens to
+   POA&M items already created under the old rule? (Options: keep
+   old SLA, recompute on next evaluation, two-version support.)
+3. **Overdue escalation** — should `overdue` POA&M items be
+   auto-escalated to a different team after N days? (Sprint 3.)
+4. **Customer-overridable SLAs** — should enterprise customers be
+   able to set their own SLA per severity? (Sprint 3.)
+

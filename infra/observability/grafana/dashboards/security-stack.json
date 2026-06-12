@@ -1,0 +1,299 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Security stack runtime overview — sbom-pipeline, vuln-intel, dependency-intel. Provisioned from infra/observability/grafana/dashboards/.",
+  "editable": false,
+  "graphTooltip": 1,
+  "title": "Security Stack — Runtime Observability",
+  "tags": ["observability", "security", "sprint-2"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(devsecops_sbom_generation_duration_seconds_count, service)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": false, "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "source_type",
+        "label": "Source Type",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(devsecops_sbom_generation_duration_seconds_count, source_type)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "source",
+        "label": "Vuln Feed",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(devsecops_vulnerability_ingestion_total, source)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Overview",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "SBOM generations (1h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(increase(devsecops_sbom_generation_duration_seconds_count{service=~\"$service\",source_type=~\"$source_type\"}[1h]))",
+          "legendFormat": "total"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Vuln ingest rate (1h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(increase(devsecops_vulnerability_ingestion_total{service=~\"$service\",source=~\"$source\"}[1h]))",
+          "legendFormat": "total"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Active scans",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (scanner_type) (devsecops_active_scans{service=~\"$service\"})",
+          "legendFormat": "{{scanner_type}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Total queue depth",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (queue_name) (devsecops_queue_depth{service=~\"$service\"})",
+          "legendFormat": "{{queue_name}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "SBOM Generation",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "SBOM generation throughput (per minute)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum by (source_type, result) (rate(devsecops_sbom_generation_duration_seconds_count{service=~\"$service\",source_type=~\"$source_type\"}[5m])) * 60",
+          "legendFormat": "{{source_type}} — {{result}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "SBOM generation duration (p50 / p95 / p99)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, source_type) (rate(devsecops_sbom_generation_duration_seconds_bucket{service=~\"$service\",source_type=~\"$source_type\"}[5m])))",
+          "legendFormat": "p50 — {{source_type}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, source_type) (rate(devsecops_sbom_generation_duration_seconds_bucket{service=~\"$service\",source_type=~\"$source_type\"}[5m])))",
+          "legendFormat": "p95 — {{source_type}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, source_type) (rate(devsecops_sbom_generation_duration_seconds_bucket{service=~\"$service\",source_type=~\"$source_type\"}[5m])))",
+          "legendFormat": "p99 — {{source_type}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Vulnerability Ingestion",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Vuln ingest rate by severity (per minute)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "targets": [
+        {
+          "expr": "sum by (severity) (rate(devsecops_vulnerability_ingestion_total{service=~\"$service\",source=~\"$source\"}[5m])) * 60",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Vuln ingest rate by source (per minute)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "targets": [
+        {
+          "expr": "sum by (source) (rate(devsecops_vulnerability_ingestion_total{service=~\"$service\",source=~\"$source\"}[5m])) * 60",
+          "legendFormat": "{{source}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Risk Calculation",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "collapsed": false
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Risk calc duration (p50 / p95 / p99) by SBOM size",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, sbom_size_bucket) (rate(devsecops_risk_calculation_duration_seconds_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p50 — {{sbom_size_bucket}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, sbom_size_bucket) (rate(devsecops_risk_calculation_duration_seconds_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p95 — {{sbom_size_bucket}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, sbom_size_bucket) (rate(devsecops_risk_calculation_duration_seconds_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p99 — {{sbom_size_bucket}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Risk calc calls (1h) by SBOM size",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum by (sbom_size_bucket) (increase(devsecops_risk_calculation_duration_seconds_count{service=~\"$service\"}[1h]))",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Queues & Event Bus",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "collapsed": false
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Queue depth by name",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "targets": [
+        {
+          "expr": "devsecops_queue_depth{service=~\"$service\"}",
+          "legendFormat": "{{service}} — {{queue_name}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Event bus lag (p99) — consumed by platform SLI",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, service) (rate(devsecops_eventbus_lag_seconds_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "p99 — {{service}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "Top Risky Components",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "collapsed": false
+    },
+    {
+      "id": 19,
+      "type": "table",
+      "title": "Top 10 components by open criticals (last 24h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (component) (increase(devsecops_vulnerability_ingestion_total{severity=\"critical\"}[24h])))",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    }
+  ]
+}

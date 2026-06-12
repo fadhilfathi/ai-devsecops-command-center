@@ -402,4 +402,89 @@ receivers:
 
 ---
 
-*End of Alerting Rules & Runbooks v1.0*
+## 9. Security Stack Runbooks (Sprint 2)
+
+These four runbooks are appended for the S2.7 deliverable and apply to the
+three Python services (`sbom-pipeline`, `vuln-intel`, `dependency-intel`).
+
+### 9.1 `SbvomPipelineDown`
+
+- **Severity:** page
+- **Owner:** on-call SRE + security team
+- **Trigger:** `up{service="sbom-pipeline"} == 0` for 5m
+- **Triage (5 min):**
+  1. `kubectl get pods -l service=sbom-pipeline` for OOMKilled / pending / crash loop.
+  2. `kubectl logs -l service=sbom-pipeline --previous --tail=200` for the last exception.
+  3. Check `/readyz` payload via Grafana Explore (JSON datasource) for dependency health (SQLite writable, NATS connected, config loaded).
+  4. Tail `event="sbom.scan.fail"` log lines to see the most recent failure mode.
+- **Mitigate (15 min):**
+  - If OOMKilled: raise memory limit or fix the leak; restart.
+  - If crash loop: roll back to the last good image; engage SBOMPipelineAgent.
+  - If `/readyz` reports a downstream dep: jump to the dep runbook.
+  - Last resort: scale the deployment to zero, then back to one (forces re-init).
+- **Communicate:** notify security team; if user-impacting for >5 min, post a status page update.
+- **Review:** within 5 business days if recovery > 30 min.
+
+### 9.2 `VulnIngestionLag`
+
+- **Severity:** page
+- **Owner:** security team on-call
+- **Trigger:** `time() - max by (source)(vuln_feed_last_refresh_timestamp_seconds) > 86400` for 10m
+- **Triage (10 min):**
+  1. Identify the stale source (`nvd` / `ghsa` / `osv`) from the alert label.
+  2. `kubectl logs -l service=vuln-intel --tail=200` filter for the source name and `event="vuln.feed.refreshed"`.
+  3. Check upstream rate limits (NVD has a public rate limit; GHSA and OSV are less strict).
+  4. If the source is NVD, verify the API key in `vuln-intel`'s config map.
+  5. Check `devsecops_queue_depth{queue_name="cve_processing"}` — if the queue is also stalled, the consumer is the problem, not the poller.
+- **Mitigate (30 min):**
+  - Rate limit hit: back off, then resume with reduced concurrency.
+  - API key issue: rotate via vault and restart `vuln-intel`.
+  - Consumer stalled: restart the consumer; check NATS connection.
+  - Persistent failure: open a Sev2 with the feed provider.
+- **Communicate:** security team in `#security-ops`; mark the dashboard red.
+- **Review:** a stale feed is a security incident — full review in 5 business days.
+
+### 9.3 `ScanQueueBacklog`
+
+- **Severity:** ticket (escalates to page at depth > 500)
+- **Owner:** security team on-call
+- **Trigger:** `devsecops_queue_depth{queue_name=~"sbom_jobs|risk_calc_jobs"} > 100` for 15m
+- **Triage (10 min):**
+  1. Identify the queue and the producing service from the alert labels.
+  2. Check `devsecops_active_scans` — if active scans are at the cap, the bottleneck is capacity.
+  3. If `devsecops_eventbus_lag_seconds` is also rising, the bus is the bottleneck.
+  4. Look for stuck jobs in the queue (age > 1h) — these are usually poison messages.
+- **Mitigate (30 min):**
+  - Capacity: scale `sbom-pipeline` or `dependency-intel` workers (HPA on `devsecops_queue_depth` or CPU).
+  - Bus: jump to the `EventBusLag` runbook.
+  - Stuck jobs: drain the queue; identify and quarantine the poison message; restart consumers.
+- **Communicate:** security team in `#security-ops`; if backlog > 500, page primary.
+- **Review:** recurring backlog means a capacity-planning issue; security team writes a scale plan.
+
+### 9.4 `RiskCalcHighLatency` (and per-bucket variants)
+
+- **Severity:** ticket (escalates to page at p99 > 30s for 15m)
+- **Owner:** dependency-intel on-call
+- **Trigger (global):** p95 of `devsecops_risk_calculation_duration_seconds{service="dependency-intel"}` > 10s for 5m
+- **Triggers (per-bucket — preferred actionable signal):**
+  - `RiskCalcHighLatencySmall` — p95 of `sbom_size_bucket="small"` > 1 s for 5m
+  - `RiskCalcHighLatencyMedium` — p95 of `sbom_size_bucket="medium"` > 5 s for 5m
+  - `RiskCalcHighLatencyLarge` — p95 of `sbom_size_bucket="large"` > 15 s for 5m
+  - `RiskCalcHighLatencyXlarge` — p95 of `sbom_size_bucket="xlarge"` > 60 s for 5m
+  - `RiskCalcHighLatencyXxlarge` — p95 of `sbom_size_bucket="xxlarge"` > 300 s for 10m
+- **SLO targets** live in `docs/observability/slos-security-stack.md` §3.
+- **Triage (10 min):**
+  1. Open the security-stack dashboard; identify which `sbom_size_bucket` and `algorithm` is slow.
+  2. Check the graph database (Neo4j) connection health: it is the most common cause of risk-calc slowdowns.
+  3. Look for unusually large SBOMs (`sbom_size_bucket="xxlarge"`) — these are expected to be slow but should be rate-limited.
+  4. Check `devsecops_eventbus_lag_seconds` for `dependency-intel` — slow upstream data can cascade.
+- **Mitigate (30 min):**
+  - Graph DB slow: check `db.client.duration` for the neo4j spans; consider index rebuild.
+  - Large SBOMs: enforce a soft cap; reject SBOMs > 50k components with a `413 Payload Too Large`.
+  - Slow upstream: open the `VulnIngestionLag` or `EventBusLag` runbook.
+- **Communicate:** dependency-intel team; if user-impacting, post status.
+- **Review:** if p99 > 30s for > 1h, the team must add a per-SBOM-size SLO (already done in `slos-security-stack.md` for S2.7).
+
+---
+
+*End of Alerting Rules & Runbooks v1.1 (Sprint 2 additions in §9)*

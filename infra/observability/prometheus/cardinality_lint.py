@@ -34,10 +34,19 @@ except ImportError:
 # Budget table — must mirror docs/observability/monitoring-architecture.md §4.3
 # ---------------------------------------------------------------------------
 BUDGETS: dict[str, int] = {
+    # Sprint 1 family names
     "http_server_requests":      50_000,
     "agent_task":                10_000,
     "security_findings":          1_000,
     "llm_tokens":                 5_000,
+    # Sprint 1 recording-rule family names (the `service:<x>:<y>` records
+    # emitted at platform scope aggregate high-cardinality SLIs).
+    "service:http_requests":    250_000,   # sum by (service, route, method, status_class)
+    "service:http_request_errors": 50_000, # sum by (service, route, method)
+    "service:http_request_duration": 50_000, # histogram_quantile by (le, service, route)
+    "service:agent:task_success":  5_000,  # sum by (agent, task_type)
+    "service:agent:task_duration": 50_000, # histogram_quantile by (le, agent, task_type)
+    # Generic catch-all
     "_default":                   1_000,
 }
 
@@ -108,15 +117,22 @@ def estimate_cardinality(metric_name: str, group_by: list[str]) -> int:
 
 
 def extract_group_by(expr: str) -> list[str]:
-    """Extract `by (label1, label2, ...)` arguments from a PromQL expression."""
+    """
+    Extract `by (label1, label2, ...)` arguments from a PromQL expression.
+
+    - Matches ALL `by (...)` clauses in the expression.
+    - Deduplicates labels (a label that appears in nested `by` clauses is
+      counted once).
+    - Sorts for stable output.
+    """
     matches = re.findall(r"\bby\s*\(([^)]*)\)", expr, flags=re.IGNORECASE)
-    labels: list[str] = []
+    seen: set[str] = set()
     for match in matches:
         for raw in match.split(","):
             label = raw.strip()
             if label:
-                labels.append(label)
-    return labels
+                seen.add(label)
+    return sorted(seen)
 
 
 def metric_family(metric_name: str) -> str:

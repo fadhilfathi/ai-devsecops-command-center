@@ -3,6 +3,9 @@
 ## Decisions
 - [decision-pnpm-turborepo.md](./decision-pnpm-turborepo.md) — Sprint 2 toolchain: pnpm + Turborepo (no npm migration)
 
+## Sprint 2 — Security Intelligence Core (IN PROGRESS)
+- [sprint-2-task-board.md](./sprint-2-task-board.md) — 11 tasks, agent assignments, tech stack, dependencies
+
 ## Sprint 1 — COMPLETE ✅
 - [sprint-1-status.md](./sprint-1-status.md) — Sprint 1 final status (232 files, 16,889 insertions, all 10 success criteria met)
 - [sprint-1-retrospective.md](./sprint-1-retrospective.md) — PlatformArchitect retrospective: contributions, conventions locked, Sprint 2 hot list
@@ -11,6 +14,10 @@
 ## Per-agent work
 - [system-architecture-definition.md](./system-architecture-definition.md) — PlatformArchitect: system architecture
 - [event-bus-design.md](./event-bus-design.md) — PlatformArchitect: event bus design
+- [s2-runtime-observability.md](./s2-runtime-observability.md) — SREEngineer: S2.7 Python OTel, metrics, alerts, dashboard
+- [s2-security-service-metrics.md](./s2-security-service-metrics.md) — FullstackEngineer: 6 proposed metrics for security-service :4003 proxy layer (S2.7 scope)
+- [s2-vuln-schema-handoff.md](./s2-vuln-schema-handoff.md) — FullstackEngineer → ComplianceOfficer: CloudEvents envelope + vulnerability shape + `kind`/`introducedAt` proposal (S2.9)
+- [s2-gitops-wire-format-alignment.md](./s2-gitops-wire-format-alignment.md) — FullstackEngineer ↔ GitOpsManager: 3 gaps between security-service :4003 emit code and S2.10 NDJSON contract; holding code changes pending sign-off
 - [monitoring-architecture.md](./monitoring-architecture.md) — SREEngineer: monitoring, logging, metrics architecture
 - [gitops-manager-sprint-1.md](./gitops-manager-sprint-1.md) — GitOpsManager: repo, CI/CD, contributor docs, ADRs 0005-0007
 
@@ -18,10 +25,15 @@
 
 | ID  | Item                                                                | Owner             | Status         | Waiting on                                          |
 | --- | ------------------------------------------------------------------- | ----------------- | -------------- | --------------------------------------------------- |
-| O-1 | **Sprint 2 kickoff** (Trivy + DepTrack, agent runtime v1, WebSocket) | Lead              | awaiting kickoff | Lead                                               |
-| O-2 | **FullstackEngineer code PR** (6-package split + Turborepo + Prisma + RS256 + port renumber) | FullstackEngineer | in flight       | FullstackEngineer "docs PR is unblocked" marker     |
-| O-3 | **Docs PR (mine, gated on O-2)** within 24h of unblock marker        | GitOpsManager     | queued          | O-2 marker                                          |
-| O-4 | **SRE Jinja macro cleanup** (small docs-only follow-up; not in Sprint 2 backend reshape) | SREEngineer | optional        | SREEngineer                                         |
+| O-1 | **Sprint 2 kickoff** (Security Intelligence Core — Trivy/Syft, CVE ingestion, risk engine, security dashboard) | Lead              | ✅ KICKED OFF 2026-06-12 | —                                                  |
+| O-2 | ~~FullstackEngineer 6-package split + Turborepo + Prisma + RS256 + port renumber~~ | — | SUPERSEDED by Sprint 2 mission (separate scope; revisit at end of Sprint 2) | — |
+| O-3 | ~~GitOpsManager docs PR (gated on O-2)~~ | — | SUPERSEDED by Sprint 2 GitOps scope (auto-commit SBOM, vuln reports, SECURITY.md) | — |
+| O-4 | SRE Jinja macro cleanup (small docs-only follow-up; not in Sprint 2 backend reshape) | SREEngineer | optional | SREEngineer |
+| O-5 | **GitHub repo creation + push** | Lead | ✅ DONE 2026-06-12 — `fadhilfathi/ai-devsecops-command-center` live, 12 commits pushed | — |
+
+## Sprint 2 — Security Intelligence Core (IN PROGRESS)
+- [sprint-2-task-board.md](./sprint-2-task-board.md) — 11 tasks, agent assignments, tech stack, dependencies
+- Repo: https://github.com/fadhilfathi/ai-devsecops-command-center
 
 All Sprint 1 follow-up items (Loki config, runbook templating, stale paths, dev/prod split) are resolved — see `observability-layout.md` "Closed items (historical)" section.
 

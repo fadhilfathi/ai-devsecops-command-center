@@ -65,6 +65,129 @@ services:
   #     - "5672:5672"
   #     - "15672:15672"
 
+  # ---------------------------------------------------------------------------
+  # Sprint 2 — Security stack (Python services)
+  # Owner: SREEngineer (S2.7)
+  # ---------------------------------------------------------------------------
+  sbom-pipeline:
+    build:
+      context: ../../backend/services/sbom-pipeline
+      dockerfile: Dockerfile
+    image: aicc/sbom-pipeline:dev
+    container_name: aicc-sbom-pipeline
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: sbom-pipeline
+      SERVICE_VERSION: 0.1.0
+      ENV: dev
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: sbom-pipeline
+      TENANT_ID: default
+      LOG_HASH_KEY: dev-only-rotate-me
+      NATS_URL: nats://nats:4222
+      SYFT_BIN: /usr/local/bin/syft
+    ports:
+      - "4007:4007"   # API
+      - "9407:9090"   # management (/healthz, /readyz, /startz, /metrics)
+    volumes:
+      - sbom_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      nats:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - aicc-net
+    labels:
+      ai-devsecops.io/service: sbom-pipeline
+      ai-devsecops.io/readyz: "http://sbom-pipeline:9090/readyz"
+
+  vuln-intel:
+    build:
+      context: ../../backend/services/vuln-intel
+      dockerfile: Dockerfile
+    image: aicc/vuln-intel:dev
+    container_name: aicc-vuln-intel
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: vuln-intel
+      SERVICE_VERSION: 0.1.0
+      ENV: dev
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: vuln-intel
+      TENANT_ID: default
+      LOG_HASH_KEY: dev-only-rotate-me
+      NATS_URL: nats://nats:4222
+      NVD_API_KEY: ${NVD_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      OSV_API_URL: https://api.osv.dev
+    ports:
+      - "4008:4008"
+      - "9408:9090"
+    volumes:
+      - vuln_intel_cache:/cache
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      nats:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - aicc-net
+    labels:
+      ai-devsecops.io/service: vuln-intel
+      ai-devsecops.io/readyz: "http://vuln-intel:9090/readyz"
+
+  dependency-intel:
+    build:
+      context: ../../backend/services/dependency-intel
+      dockerfile: Dockerfile
+    image: aicc/dependency-intel:dev
+    container_name: aicc-dependency-intel
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: dependency-intel
+      SERVICE_VERSION: 0.1.0
+      ENV: dev
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: dependency-intel
+      TENANT_ID: default
+      LOG_HASH_KEY: dev-only-rotate-me
+      NATS_URL: nats://nats:4222
+      NEO4J_URL: bolt://neo4j:7687
+    ports:
+      - "4009:4009"
+      - "9409:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      nats:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - aicc-net
+    labels:
+      ai-devsecops.io/service: dependency-intel
+      ai-devsecops.io/readyz: "http://dependency-intel:9090/readyz"
+
 volumes:
   aicc_pgdata:
   aicc_redisdata:
+  sbom_data:
+  vuln_intel_cache:

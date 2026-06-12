@@ -202,3 +202,140 @@ groups:
           summary: "Agent {{ $labels.agent }} decision override rate > 20%"
           description: "Likely model drift. Engage AI team; consider downgrading to 'suggest' mode."
           runbook: "{{ $labels.runbook_base_url }}/AgentDecisionOverride"
+
+  # ---------------------------------------------------------------------------
+  # Sprint 2 — Security stack alerts
+  #
+  # TODO(burn-rate): F1 from PlatformArchitect SLO sign-off (2026-06-12).
+  # The SLOs in docs/observability/slos-security-stack.md v1.0 (Locked) all
+  # have a 30d error budget. The alerts below are threshold-based (e.g.
+  # "p95 > X for 5m"); they catch per-request regressions but not slow
+  # budget consumption. For Sprint 3, add Google SRE Workbook multi-window
+  # burn-rate alerts:
+  #   - Fast burn (page): 2% of 30d budget consumed in 1h
+  #   - Slow burn (ticket): 5% of 30d budget consumed in 6h
+  # Examples already exist in the slo.burn.auth.availability group above
+  # (SLO_Auth_Availability_FastBurn / _SlowBurn). Mirror that pattern for
+  # each SLO in §2-§4 of slos-security-stack.md. Hold off until we have
+  # ~14d of telemetry so burn-rate windows are meaningful.
+  # ---------------------------------------------------------------------------
+  - name: security_stack.runtime
+    interval: 30s
+    rules:
+      - alert: SbvomPipelineDown
+        expr: up{service="sbom-pipeline"} == 0
+        for: 5m
+        labels:
+          severity: page
+          service: sbom-pipeline
+        annotations:
+          summary: "sbom-pipeline is down for 5m"
+          description: "Prometheus has not been able to scrape sbom-pipeline for 5 minutes. SBOM generation is stalled."
+          runbook: "{{ $labels.runbook_base_url }}/SbvomPipelineDown"
+
+      - alert: VulnIngestionLag
+        expr: (time() - max by (source) (vuln_feed_last_refresh_timestamp_seconds{source=~"nvd|ghsa|osv"})) > 86400
+        for: 10m
+        labels:
+          severity: page
+          service: vuln-intel
+        annotations:
+          summary: "{{ $labels.source }} feed not refreshed in 24h"
+          description: "Vulnerability feed {{ $labels.source }} is stale. Check the feed poller and rate limits."
+          runbook: "{{ $labels.runbook_base_url }}/VulnIngestionLag"
+
+      - alert: ScanQueueBacklog
+        expr: devsecops_queue_depth{service=~"sbom-pipeline|dependency-intel",queue_name=~"sbom_jobs|risk_calc_jobs"} > 100
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Scan queue backlog > 100 for 15m on {{ $labels.service }}/{{ $labels.queue_name }}"
+          description: "Pending items: {{ $value }}. Consider scaling the worker pool or check for stuck jobs."
+          runbook: "{{ $labels.runbook_base_url }}/ScanQueueBacklog"
+
+      - alert: RiskCalcHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, service) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel"}[5m]))
+          ) > 10
+        for: 5m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "dependency-intel p95 risk calc > 10s for 5m"
+          description: "p95 risk calc duration is {{ $value | humanizeDuration }}. Could be large SBOMs, slow graph traversal, or upstream lag. See the per-bucket alerts for actionable detail."
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+
+      # Per-bucket risk-calc alerts (locked by SLO targets in
+      # docs/observability/slos-security-stack.md §3).
+      - alert: RiskCalcHighLatencySmall
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="small"}[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "risk calc p95 > 1s for small SBOMs"
+          description: "p95 = {{ $value | humanizeDuration }}. Small SBOMs should be sub-second. Likely graph-DB issue or memory pressure."
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+
+      - alert: RiskCalcHighLatencyMedium
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="medium"}[5m]))
+          ) > 5
+        for: 5m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "risk calc p95 > 5s for medium SBOMs"
+          description: "p95 = {{ $value | humanizeDuration }}. Cold cache or GC?"
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+
+      - alert: RiskCalcHighLatencyLarge
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="large"}[5m]))
+          ) > 15
+        for: 5m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "risk calc p95 > 15s for large SBOMs"
+          description: "p95 = {{ $value | humanizeDuration }}. Check graph DB indices."
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+
+      - alert: RiskCalcHighLatencyXlarge
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="xlarge"}[5m]))
+          ) > 60
+        for: 5m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "risk calc p95 > 60s for xlarge SBOMs"
+          description: "p95 = {{ $value | humanizeDuration }}. Likely deep transitive chains or N+1 graph queries."
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+
+      - alert: RiskCalcHighLatencyXxlarge
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="xxlarge"}[5m]))
+          ) > 300
+        for: 10m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "risk calc p95 > 300s for xxlarge SBOMs"
+          description: "p95 = {{ $value | humanizeDuration }}. OS image / monorepo. Check for runaway jobs."
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
