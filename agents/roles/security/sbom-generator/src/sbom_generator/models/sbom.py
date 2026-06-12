@@ -97,6 +97,11 @@ class SBOMMetadata(BaseModel):
     source_type: Optional[str] = None
     tenant_id: Optional[str] = None
     request_id: Optional[str] = None
+    # Free-form key/value pairs that ride along in the metadata block
+    # — used to surface the sbom_id, the source fingerprint, and any
+    # tenant-specific tags without growing the schema. CycloneDX
+    # 1.5's ``properties`` array is the wire-format target.
+    properties: Dict[str, str] = Field(default_factory=dict)
 
 
 class SBOM(BaseModel):
@@ -207,7 +212,7 @@ def normalize_syft_output(raw: Dict[str, Any]) -> SBOM:
 
     source = raw.get("source", {}) or {}
     metadata = SBOMMetadata(
-        tools=[Tool(vendor="Anchore", name="Syft", version=raw.get("version", ""))],
+        tools=[Tool(vendor="Anchore", name="syft", version=raw.get("version", ""))],
         source_type=source.get("type"),
         source_uri=source.get("target"),
     )

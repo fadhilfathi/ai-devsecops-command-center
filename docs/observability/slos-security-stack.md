@@ -44,15 +44,24 @@ regressions that may not surface as a backlog for several hours.
 
 ## 3. `devsecops_risk_calculation_duration_seconds` SLO targets
 
-**Per-`sbom_size_bucket` SLOs (95% of calculations complete within the target; p99 is the 99th-percentile latency budget, ~2× of the 95% target):**
+**Per-`sbom_size_bucket` SLOs (95% of calculations complete within the target; p99 is the 99th-percentile latency budget, ~2× of the 95% target).**
+
+> **Round 6 (2026-06-12) — D7 5-bucket scheme LOCKED.** SecurityArchitect's D7 amendment replaces the round-5 5-bucket scheme with a cap-driven version. The `xxlarge` bucket is **dropped** (former ≥50k workloads now flow into `xlarge`), and a new `xs` bucket is **added** (sub-10-component SBOMs should be sub-100ms in steady state). Bucket thresholds:
+> - **xs:** < 10 components
+> - **small:** 10 – 99
+> - **medium:** 100 – 999
+> - **large:** 1,000 – 4,999
+> - **xlarge:** ≥ 5,000 (absorbs former xxlarge overshoots)
+>
+> **Why the change (SecurityArchitect, S2.8 cap-driven):** the S2.8 cap on transitive-closure passes for the `full` algorithm makes ≥5k-component SBOMs the practical upper bound of the supported workload. A separate ≥50k bucket is operationally redundant (those SBOMs are now blocked upstream by the S2.8 cap) and would have created a dead alert path. The new `xs` bucket gives actionable signal on trivially-small SBOMs that should never exceed 100ms.
 
 | `sbom_size_bucket` | Component range        | 95% SLO target | p99 latency budget | Rationale |
 |---|---|---:|---:|---|
-| `small`            | < 100                  | 1 s   | **2 s**    | Trivial graph traversal. |
-| `medium`           | 100 – 999              | 5 s   | **10 s**   | Sub-second in practice; budget is for cold cache / GC. |
-| `large`            | 1,000 – 9,999          | 15 s  | **30 s**   | Graph build + transitive risk propagation. |
-| `xlarge`           | 10,000 – 49,999        | 60 s  | **120 s**  | Risk propagation O(V+E); p99 dominated by deep transitive chains. |
-| `xxlarge`          | ≥ 50,000               | 300 s | **600 s**  | Full OS images and monorepos; 5–10× slower than `xlarge` per PlatformArchitect. |
+| `xs`               | < 10                   | 0.5 s | **1 s**     | Trivial; sub-100ms steady state. Cold-start budget: 0.5s. |
+| `small`            | 10 – 99                | 1 s   | **2 s**     | Trivial graph traversal. |
+| `medium`           | 100 – 999              | 5 s   | **10 s**    | Sub-second in practice; budget is for cold cache / GC. |
+| `large`            | 1,000 – 4,999          | 15 s  | **30 s**    | Graph build + transitive risk propagation. |
+| `xlarge`           | ≥ 5,000                | 60 s  | **120 s**   | Risk propagation O(V+E); p99 dominated by deep transitive chains. Absorbs former xxlarge overshoots; SLO overshoot is acceptable. |
 
 > **Callout — `full` algorithm budget:** the SLOs above are calibrated
 > against the `cvss_epss` algorithm. Teams running `full` for
@@ -67,12 +76,13 @@ regressions that may not surface as a backlog for several hours.
 - `cvss_epss` adds a Redis lookup; expect +50–200 ms over `cvss_only`.
 - `cvss_epss_kev` adds a CISA KEV catalog lookup; expect +100–500 ms over `cvss_only`.
 
-**Per-bucket burn alerts (new this turn):**
+**Per-bucket burn alerts (round 6, D7 5-bucket scheme):**
+- `RiskCalcHighLatencyXs` — p95 of `xs` bucket > 0.5 s for 5 min (NEW; sub-10-component SBOMs)
 - `RiskCalcHighLatencySmall` — p95 of `small` bucket > 1 s for 5 min
 - `RiskCalcHighLatencyMedium` — p95 of `medium` bucket > 5 s for 5 min
 - `RiskCalcHighLatencyLarge` — p95 of `large` bucket > 15 s for 5 min
-- `RiskCalcHighLatencyXlarge` — p95 of `xlarge` bucket > 60 s for 5 min
-- `RiskCalcHighLatencyXxlarge` — p95 of `xxlarge` bucket > 300 s for 10 min
+- `RiskCalcHighLatencyXlarge` — p95 of `xlarge` bucket > 60 s for 5 min (absorbs former xxlarge)
+- ~~`RiskCalcHighLatencyXxlarge`~~ — **RETIRED in round 6**; former xxlarge workloads now flow into `RiskCalcHighLatencyXlarge`. Runbook stub `docs/runbooks/RiskCalcHighLatencyXxlarge.md` is kept for reference but the alert is no longer emitted (the metric label `sbom_size_bucket="xxlarge"` is also dropped from emissions).
 
 These are added in `infra/observability/prometheus/alert-rules.yml` under
 a new `security_stack.risk_calc_per_bucket` group. The existing
@@ -128,11 +138,12 @@ deliberately tighter than the SLO contract to give 2–5× headroom:
 | `devsecops_sbom_generation_duration_seconds` (image) | 60 s            | 30d     | 14.4× burn, 1h & 6h |
 | `devsecops_sbom_generation_duration_seconds` (repo)  | 120 s           | 30d     | 14.4× burn, 1h & 6h |
 | `devsecops_sbom_generation_duration_seconds` (all)   | 60 s            | 30d     | 14.4× burn, 1h & 6h |
-| `devsecops_risk_calculation_duration_seconds` (small) | 1 s           | 30d     | p95 > 1 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (medium) | 5 s          | 30d     | p95 > 5 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (large) | 15 s           | 30d     | p95 > 15 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (xlarge) | 60 s          | 30d     | p95 > 60 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (xxlarge) | 300 s        | 30d     | p95 > 300 s, 10m |
+| `devsecops_risk_calculation_duration_seconds` (xs)     | 0.5 s          | 30d     | p95 > 0.5 s, 5m |
+| `devsecops_risk_calculation_duration_seconds` (small)  | 1 s            | 30d     | p95 > 1 s, 5m |
+| `devsecops_risk_calculation_duration_seconds` (medium) | 5 s            | 30d     | p95 > 5 s, 5m |
+| `devsecops_risk_calculation_duration_seconds` (large)  | 15 s           | 30d     | p95 > 15 s, 5m |
+| `devsecops_risk_calculation_duration_seconds` (xlarge) | 60 s           | 30d     | p95 > 60 s, 5m |
+| ~~`devsecops_risk_calculation_duration_seconds` (xxlarge)~~ | ~~300 s~~   | ~~30d~~ | ~~p95 > 300 s, 10m~~ RETIRED round 6 |
 | `devsecops_eventbus_lag_seconds`                    | 5 s             | 30d     | p99 > 5 s, 10m |
 | `devsecops_eventbus_lag_seconds` (critical)         | 30 s            | 30d     | p99 > 30 s, 5m |
 | `devsecops_vulnerability_ingestion_lag_seconds` (nvd)  | 7,200 s (2h)  | 30d     | p95 > 2h, 5m |
@@ -145,26 +156,45 @@ deliberately tighter than the SLO contract to give 2–5× headroom:
 > **Status:** targets locked provisionally on 2026-06-12 per
 > PlatformArchitect sign-off; will be **re-confirmed at end of S2.11
 > E2E validation** with the actual NVD/GHSA/OSV polling cadence and
-> the first 30d of lag telemetry. The VulnerabilityIntelligenceAgent
-> has not yet confirmed the polling cadence; the targets below assume
-> ~30min NVD/OSV polling and GHSA webhook delivery (PlatformArchitect's
-> assumption). If polling is materially different, the targets move
-> together.
+> the first 30d of lag telemetry. **Polling cadence confirmed by
+> VulnerabilityIntelligenceAgent on 2026-06-12 (round 6):** NVD=60min,
+> GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h. The targets below
+> are now anchored to a real cadence — GHSA has 60× headroom over
+> polling (15min SLO vs 15min cadence), NVD has 2× headroom (2h SLO
+> vs 60min cadence), and OSV has 2× headroom (1h SLO vs 30min cadence).
+> If polling cadence changes in production, the SLOs move together.
 
-**Per-source 95% lag SLOs:**
+**Per-source 95% lag SLOs (headroom-anchored):**
 
-| Source  | 95% SLO target | p99 expected (informational) | Rationale |
-|---------|---------------:|----------------------------:|-----------|
-| `nvd`   | **2 h** (7,200 s)   | ~4 h                | NVD updates roughly every 2h; 95% of CVEs should land within one cycle. If polling is faster, the SLO can be tightened in S2.11. |
-| `ghsa`  | **15 min** (900 s)  | ~30 min             | GitHub Security Advisories are webhook-driven; near real-time. |
-| `osv`   | **1 h** (3,600 s)   | ~2 h                | OSV.dev API polling; depends on cadence. |
-| **Aggregate** | **1 h** (3,600 s) | ~2 h             | 95% of all CVEs ingested within 1h of upstream publication. |
+| Source  | Polling cadence | 95% SLO target | Headroom | p99 expected (informational) | Rationale |
+|---------|----------------:|---------------:|---------:|----------------------------:|-----------|
+| `nvd`   | 60 min          | **2 h** (7,200 s)   | 2×  | ~4 h                | NVD updates roughly every 2h; 95% of CVEs should land within one cycle. |
+| `ghsa`  | 15 min (webhook)| **15 min** (900 s)  | 1×  | ~30 min             | GitHub Security Advisories are webhook-driven; near real-time. |
+| `osv`   | 30 min          | **1 h** (3,600 s)   | 2×  | ~2 h                | OSV.dev API polling; depends on cadence. |
+| `epss`  | 6 h             | (informational)     | —    | —                    | EPSS scores shift slowly; lag is not security-critical. |
+| `kev`   | 6 h             | (informational)     | —    | —                    | CISA KEV catalog; lag is not security-critical. |
+| **Aggregate** | —         | **1 h** (3,600 s) | —     | ~2 h                | 95% of all CVEs ingested within 1h of upstream publication. |
+
+> **GHSA-headroom note (round 6):** GHSA's 15min SLO has 1× headroom
+> over the 15min polling cadence, which is **tighter than NVD/OSV**.
+> This is intentional: GHSA is the primary source for actively-exploited
+> vulnerabilities (matches the S2.8 T-02 CVE feed integrity goal), and
+> a delay is a security regression, not just a telemetry gap. If GHSA
+> lag exceeds 15min consistently, **escalate immediately** — either
+> the webhook is broken or the ingestion service is degraded.
 
 **Why a histogram (not a gauge) for lag:** a gauge is point-in-time and
 can be missed by scrapes; a histogram captures the *distribution* over
 the scrape window and is the right primitive for `histogram_quantile()`
 p95 math. Implementation: vuln-intel records one observation per CVE on
 successful ingestion, with lag = `now - source.published_at`.
+
+**Alternative staleness source (round 6):** the `VulnIngestionLag` alert
+should use the new `devsecops_vuln_feed_last_refresh_timestamp_seconds`
+gauge (`metrics-spec.md` §3.11) as the **primary staleness signal**, with
+the histogram reserved for p95 distribution math. The gauge survives a
+full vuln-intel restart; the histogram does not. Both metrics emitted
+by `vulnerability-service` (port 4008).
 
 **Action item for S2.11 E2E validation owner:** add the alert rule
 (`VulnIngestionLagNVD` / `VulnIngestionLagGHSA` / `VulnIngestionLagOSV`
@@ -260,6 +290,43 @@ final lock when those resolve.
 - **C3 — Sign-off checklist rows** ✅ added (S2.11 E2E validation +
   VulnerabilityIntelligenceAgent cadence + alert add).
 
+**Round 6 sign-off (D6/D7/§3.8.4, SREEngineer 2026-06-12, full closure):**
+
+- **D6 — `target_type` final values + `tenant_tier` addition** 🔒 LOCKED
+  (partial). `target_type` final values: `image|filesystem|repo|archive|
+  directory|sbom` (SecurityArchitect-confirmed). `tenant_tier` (free/pro/
+  enterprise) added to `devsecops_sbom_generation_duration_seconds`,
+  **pending PlatformArchitect final verdict on the ~230k per-service
+  cardinality cost** (3× of D2's ~78k). Conditional acceptance from
+  SecurityArchitect: Sprint 3 recording-rule pre-aggregation on
+  `(target_type, result, ecosystem)` is acceptable mitigation if approved.
+- **D7 — `sbom_size_bucket` 5-bucket scheme** 🔒 LOCKED. Replaces the
+  round-5 scheme (small/medium/large/xlarge/xxlarge at 100/1k/10k/50k
+  thresholds). New scheme: xs (<10) / small (10–99) / medium (100–999) /
+  large (1k–4,999) / xlarge (≥5k). `xxlarge` dropped (former ≥50k workloads
+  flow into `xlarge`; S2.8 cap blocks upstream SBOMs at ~10k so the ≥50k
+  bucket would be dead). `xs` added for sub-10-component SBOMs that should
+  be sub-100ms. SLO targets in §3 re-calibrated; per-bucket alerts in
+  `alert-rules.yml` renamed (5 per-bucket alerts: Xs, Small, Medium,
+  Large, Xlarge; Xxlarge alert retired). Runbook stubs updated; new
+  `RiskCalcHighLatencyXs.md` stub created.
+- **§3.8.4 merge** 🔒 LOCKED. The S2.8 §3.10.7
+  `devsecops_rate_limit_rejections_total` metric (with `route` + `bucket`
+  labels) is merged into §3.8.4 with the same name. §3.10.7 deleted.
+  Per-route label retained (per SecurityArchitect amendment) for security
+  forensics; cardinality impact negligible.
+- **§3.8 cardinality over-cap** ✅ RESOLVED (2026-06-12, round 6).
+  FullstackEngineer's `metrics.ts` helper LANDED, **with `tenant_id_hash`
+  label DROPPED from all 6 proxy metrics**. Security-service :4003
+  per-service total drops from ~109,400 to ~560 series (1,950× reduction,
+  well under the 50k soft cap). Sprint 3 recording-rule pre-aggregation
+  for §3.8 is **NO LONGER NEEDED** — removed from the Sprint 3 queue.
+- **§3.11 `vuln_feed_last_refresh_timestamp_seconds`** 🔒 LOCKED. New
+  gauge spec added to `metrics-spec.md` §3.11 (5 sources, trivial
+  cardinality, owned by VulnerabilityIntelligenceAgent). Pending emission
+  from `vulnerability-service` (port 4008). Will become the primary
+  staleness signal for `VulnIngestionLag` alerts (S2.11 E2E validation).
+
 **Round 3 sign-off (D1–D5 + §3.7 + §5.1.1), PlatformArchitect 2026-06-12:**
 
 - **D1 — `sbom_size_bucket` 5-bucket scheme** 🔒 LOCKED. Pushed back on
@@ -324,19 +391,32 @@ don't regress it.
   added to metrics-spec.md; §5.6 VulnIngestionLag SLO targets added
   (provisional, S2.11 re-validation queued); §5.1.1 Node.js helper
   footnote added; `repo_shape` label added to spec §3.1.
-- [ ] **FullstackEngineer** — surface the SLO targets in `/readyz` payload
-  (optional, nice-to-have; not blocking). **Add `metrics.ts` helper**
-  at `backend/common/observability/metrics.ts` (sets `service` label
-  from `OTEL_SERVICE_NAME`); flag routed in this turn.
-- [ ] **SecurityArchitect** (S2.8 owner) — review per-bucket risk-calc SLOs
-  against threat model; `xxlarge` may need a stricter target for security-
-  critical SBOMs.
-- [ ] **VulnerabilityIntelligenceAgent** — confirm polling cadence (NVD/GHSA/OSV)
-  so the `devsecops_vulnerability_ingestion_lag_seconds` SLO targets can be
-  re-validated against real telemetry. Currently NVD=2h, GHSA=15min, OSV=1h
-  **provisional** (assumes ~30min polling); targets move together when
-  cadence is confirmed. **Also emit `vuln_feed_last_refresh_timestamp_seconds`
-  gauge** (Lead-forwarded, non-blocking for S2.7).
+- [x] **FullstackEngineer** — `metrics.ts` helper LANDED at
+  `backend/common/observability/metrics.ts` (sets `service` label from
+  `OTEL_SERVICE_NAME`). **Round 6:** `tenant_id_hash` label DROPPED from
+  all 6 proxy metrics — this **resolves the §3.8 cardinality over-cap
+  automatically** (security-service :4003 drops from ~109,400 to ~560
+  series per-service, well under the 50k soft cap). **Sprint 3
+  recording-rule pre-aggregation for §3.8 is NO LONGER NEEDED.** §3.8.4
+  metric renamed to `devsecops_rate_limit_rejections_total` with `route` +
+  `bucket` labels (D7 5-bucket scheme). 4 other Node services pending
+  adoption. /readyz SLO payload is still optional (nice-to-have).
+- [x] **SecurityArchitect** (S2.8 owner) — D6/D7/§3.8.4 verdicts confirmed
+  2026-06-12 (round 6): D6 `target_type` final values LOCKED
+  (`image|filesystem|repo|archive|directory|sbom`), D7 5-bucket
+  `sbom_size_bucket` scheme LOCKED (xs/small/medium/large/xlarge, drop
+  xxlarge, xs added), §3.8.4 merge LOCKED with `route` label retained.
+  Per-bucket risk-calc SLOs in §3 are calibrated against the new scheme.
+  **Conditional acceptance on D6 `tenant_tier` addition** — pending
+  PlatformArchitect final verdict on the cost-benefit (~230k per-service
+  vs current ~78k).
+- [x] **VulnerabilityIntelligenceAgent** — polling cadence confirmed 2026-06-12
+  (round 6): NVD=60min, GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h.
+  SLO targets in §5.6 are now **anchored to the real cadence** (NVD/OSV
+  have 2× headroom; GHSA has 1× headroom — intentional, security-driven).
+  `vuln_feed_last_refresh_timestamp_seconds` gauge spec added to
+  `metrics-spec.md` §3.11 — pending emission from `vulnerability-service`
+  (port 4008). GHSA-headroom note added in §5.6.
 - [ ] **ComplianceOfficer (S2.9 owner) + SREEngineer (Sprint 2.5/2.11)** —
   ComplianceOfficer to emit `audit_log_emission_total{service=
   "compliance-service", result}` from `poam.service.ts` and
@@ -353,26 +433,24 @@ don't regress it.
   Add the alert for `devsecops_vulnerability_ingestion_lag_seconds` to
   `alert-rules.yml` once the cadence is confirmed. **Add 4 alerts**
   (one per source + aggregate) to `security_stack.runtime` group.
-- [ ] **SREEngineer (Sprint 3)** — implement **recording-rule pre-aggregation**
-  for `devsecops_sbom_generation_duration_seconds` to address the
-  cardinality over-cap from D2 (per-service total ~78,000, over the
-  50,000 soft cap). Per PlatformArchitect 2026-06-12 ACK: default option
-  1, pre-aggregate on `(target_type, result)` for the alert path while
-  keeping raw series for dashboards. Expected drop: 78k → ~25k active
-  series per service. Switch the 9 S2.7 alerts to use the recording
-  rule. Tracked in `infra/observability/prometheus/recording-rules.yml`
-  (new file) and `docs/observability/metrics-spec.md` §3.1 callout.
-- [ ] **SREEngineer (Sprint 3, second pass)** — implement **recording-rule
-  pre-aggregation** for `devsecops_proxy_request_duration_seconds` to
-  address the cardinality over-cap from §3.8 (security-service :4003
-  per-service total ~109,400 at N=50 × 4 replicas, over the 50k soft
-  cap). Same fix pattern as D2: pre-aggregate on `(route, target_service,
-  result)` for the alert path while keeping raw series with
-  `tenant_id_hash` for dashboards. Expected drop: 109k → ~25k per-service.
-  Same `infra/observability/prometheus/recording-rules.yml` file, second
-  rule group. Tracked in `docs/observability/metrics-spec.md` §3.8
-  callout. **Both recording rules can be implemented in a single Sprint
-  3 PR (~1-2 days of work).**
+- [ ] **SREEngineer (Sprint 3, D2 only)** — implement **recording-rule
+  pre-aggregation** for `devsecops_sbom_generation_duration_seconds` to
+  address the cardinality over-cap from D2 (per-service total ~78,000,
+  over the 50,000 soft cap). Per PlatformArchitect 2026-06-12 ACK: default
+  option 1, pre-aggregate on `(target_type, result)` for the alert path
+  while keeping raw series for dashboards. Expected drop: 78k → ~25k
+  active series per service. Switch the 9 S2.7 alerts to use the
+  recording rule. Tracked in `infra/observability/prometheus/
+  recording-rules.yml` (new file) and `docs/observability/metrics-spec.md`
+  §3.1 callout.
+- [ ] **SREEngineer (Sprint 3, §3.8) — NO LONGER NEEDED (round 6).**
+  Recording-rule pre-aggregation for `devsecops_proxy_request_duration_seconds`
+  was queued to address the §3.8 cardinality over-cap (security-service
+  :4003 per-service total ~109,400 at N=50 × 4 replicas). **Resolved
+  2026-06-12** by FullstackEngineer dropping `tenant_id_hash` from all
+  6 proxy metrics in the LANDED `metrics.ts` helper. Per-service total
+  is now ~560, **well under the 50k soft cap**. **REMOVED from Sprint 3
+  queue** — replaced by the (much smaller) D2 work.
 
 ---
 

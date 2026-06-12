@@ -112,10 +112,20 @@ class GenerateRequest(BaseModel):
                 )
         elif kind == SourceType.GIT_REPOSITORY:
             parsed = urlparse(target)
-            if parsed.scheme not in {"https", "git", "ssh", "file"}:
+            # Accept three SSH-like forms:
+            # 1. ``ssh://[user@]host[:port]/path``  (explicit scheme)
+            # 2. ``[user@]host:path``              (scp-style, GitHub's default)
+            # 3. ``git://host/path``               (the git protocol)
+            if parsed.scheme in {"https", "git", "ssh", "file"}:
+                pass  # explicit URL scheme is fine
+            elif re.match(r"^[\w-]+@[\w.-]+:.+$", target):
+                # SCP-style: ``git@github.com:owner/repo.git``
+                pass
+            else:
                 raise ValidationError(
-                    "git-repository source requires https/git/ssh/file scheme",
-                    details={"value": target, "scheme": parsed.scheme},
+                    "git-repository source requires https/git/ssh/file scheme "
+                    "or scp-style [user@]host:path form",
+                    details={"value": target, "scheme": parsed.scheme or None},
                 )
         elif kind == SourceType.REGISTRY:
             parsed = urlparse(target)

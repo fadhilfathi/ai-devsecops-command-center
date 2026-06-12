@@ -207,11 +207,32 @@ class SyftRunner:
         # inspection without a live Syft binary).
         return self._binary or self._explicit_binary
 
+    @binary_path.setter
+    def binary_path(self, value: str) -> None:
+        # Test hook — lets unit tests override the resolved binary
+        # path without going through the full ``resolve_syft`` lookup.
+        # Production code should never use this.
+        self._binary = value
+        self._version = None  # force re-warmup if a test needs it
+
     async def warmup(self) -> Optional[str]:
-        """Cache the version string so /healthz can report it cheaply."""
-        if self._version is None:
+        """Cache the version string so /healthz can report it cheaply.
+
+        Returns ``None`` (and leaves ``binary_path`` as the configured
+        value) if the binary cannot be exec'd — typical for unit
+        tests and dev environments where Syft is not yet on $PATH.
+        The /healthz endpoint treats ``version == None`` as a soft
+        "binary not yet located" signal and reports the path
+        anyway, so the rest of the service stays useful.
+        """
+        if self._version is not None:
+            return self._version
+        try:
             self._binary = self._ensure_resolved()
             self._version = await get_syft_version(self._binary)
+        except (FileNotFoundError, OSError) as exc:
+            logger.warning("syft warmup failed: %s", exc)
+            self._version = None
         return self._version
 
     async def run(

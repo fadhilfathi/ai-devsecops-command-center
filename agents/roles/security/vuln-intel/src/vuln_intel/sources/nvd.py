@@ -29,7 +29,8 @@ from ..scoring import (
     parse_cvss3_vector,
     parse_cvss4_vector,
 )
-from .base import VulnerabilitySource
+from .base import VulnerabilitySource, make_validator
+from ..validators import get_validator as _get_item_validator
 
 logger = logging.getLogger(__name__)
 
@@ -252,6 +253,8 @@ class NvdSource(VulnerabilitySource):
     def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
         self.settings = settings
         self._client = client
+        # S2.8: per-source JSON-Schema validator
+        self.validator = make_validator("nvd")
 
     def _headers(self) -> dict[str, str]:
         h = {"User-Agent": "ai-devsecops/vuln-intel/0.1 (security)"}
@@ -300,6 +303,19 @@ class NvdSource(VulnerabilitySource):
             data = resp.json()
             total = int(data.get("totalResults", 0))
             for item in data.get("vulnerabilities", []) or []:
+                # S2.8: per-record JSON-Schema validation
+                if self.validator is not None:
+                    vres = self.validator.validate_record(item)
+                    if not vres.valid:
+                        from ..telemetry import vuln_intel_validation_rejected_total
+                        vuln_intel_validation_rejected_total.labels(
+                            source="nvd", reason=vres.rejected_reason or "schema_violation"
+                        ).inc()
+                        logger.warning(
+                            "validation_rejected source=nvd record_id=%s reason=%s",
+                            vres.record_id, vres.rejected_reason,
+                        )
+                        continue
                 rec = normalize_nvd(item)
                 if rec is None:
                     continue

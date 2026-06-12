@@ -148,6 +148,7 @@ export const RecentActivityEntrySchema = z.object({
     'vulnerability.detected',
     'vulnerability.ingested',
     'risk.calculated',
+    'scan.completed',
     'incident.created',
   ]),
   /** When the event happened */

@@ -280,7 +280,7 @@ class SBOMGeneratorAgent:
                 "components_per_scan", len(syft_result.sbom.components)
             )
             record.success = True
-            return _build_response(request, syft_result, self._bus, self._settings)
+            return await _build_response(request, syft_result, self._bus, self._settings)
         finally:
             record.finished_at = 0.0  # timestamp set in response builder
 

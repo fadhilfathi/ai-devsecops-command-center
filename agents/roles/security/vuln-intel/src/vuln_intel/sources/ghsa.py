@@ -29,7 +29,7 @@ from ..scoring import (
     parse_cvss3_vector,
     parse_cvss4_vector,
 )
-from .base import VulnerabilitySource
+from .base import VulnerabilitySource, make_validator
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +222,8 @@ class GhsaSource(VulnerabilitySource):
     def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
         self.settings = settings
         self._client = client
+        # S2.8: per-source JSON-Schema validator
+        self.validator = make_validator("ghsa")
 
     def _headers(self) -> dict[str, str]:
         h = {"Accept": "application/vnd.github+json", "User-Agent": "ai-devsecops/vuln-intel/0.1"}
@@ -263,6 +265,19 @@ class GhsaSource(VulnerabilitySource):
             if not batch:
                 break
             for item in batch:
+                # S2.8: per-record JSON-Schema validation
+                if self.validator is not None:
+                    vres = self.validator.validate_record(item)
+                    if not vres.valid:
+                        from ..telemetry import vuln_intel_validation_rejected_total
+                        vuln_intel_validation_rejected_total.labels(
+                            source="ghsa", reason=vres.rejected_reason or "schema_violation"
+                        ).inc()
+                        logger.warning(
+                            "validation_rejected source=ghsa record_id=%s reason=%s",
+                            vres.record_id, vres.rejected_reason,
+                        )
+                        continue
                 rec = normalize_ghsa(item)
                 if rec is None:
                     continue

@@ -54,7 +54,7 @@ import {
   serviceName,
   withService,
   metricsRegistry,
-  rateLimitTriggeredTotal,
+  rateLimitRejectionsTotal,
 } from './services/metrics.js';
 
 const SERVICE_NAME = 'security-service';
@@ -93,7 +93,10 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   await server.register(sensible);
 
   // Global rate limit (10 req/s) — overridden per route where needed.
-  // onExceeded hook increments devsecops_rate_limit_triggered_total{route, tenant_id_hash}.
+  // onExceeded hook increments devsecops_rate_limit_rejections_total{route, bucket}.
+  // The `bucket` label is 'global' for Sprint 2 (one global rate limit);
+  // Sprint 3 can widen to 3 (D1) or 5 (D7) values if per-route rate limits
+  // are introduced. See services/metrics.ts:4 for the cardinality rationale.
   await server.register(rateLimit, {
     global: true,
     max: env.RATE_LIMIT_MAX,
@@ -104,7 +107,8 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     onExceeded: (req) => {
       const route = req.routeOptions?.url ?? req.url ?? 'unknown';
       // tenantId deliberately NOT a metric label per metrics-spec.md §5.1.
-      rateLimitTriggeredTotal.inc(withService({ route }));
+      // bucket='global' because the rate limit is registered as `global: true` above.
+      rateLimitRejectionsTotal.inc(withService({ route, bucket: 'global' }));
     },
   });
 

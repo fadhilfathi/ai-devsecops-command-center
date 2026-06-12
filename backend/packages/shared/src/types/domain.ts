@@ -45,6 +45,40 @@ export interface SecurityScan extends BaseEntity, TenantScoped {
 
 export type FindingSeverity = Severity;
 
+/**
+ * Shared `VulnSeverity` re-export. The canonical source is `Severity` in
+ * `./common.ts`; this alias exists so consumer code (Python agents,
+ * compliance-service mapping engine) can write
+ * `import type { VulnSeverity } from '@aicc/shared/types'` and read
+ * semantically clear code at the call site.
+ *
+ * Part of the F-1 build-breaking bug fix (ComplianceOfficer turn-3).
+ */
+export type VulnSeverity = Severity;
+
+/**
+ * Shared `VulnKind` enum — the **finding-class** taxonomy, distinct from
+ * the SCAN_TOPIC `scanner` enum (trivy/grype/etc.) and from the
+ * `VulnerabilityKindSchema` Zod enum in
+ * `backend/models/security/vulnerability.model.ts` (which is the wire
+ * format's 5-value subset used for GitOps routing).
+ *
+ * **Sprint 2 wire format** uses `VulnerabilityKindSchema` with values
+ * `'sca' | 'sast' | 'runtime' | 'container' | 'iac'`.
+ * **Shared domain type** uses this broader 6-value enum to accommodate
+ * future extension (`dast`, `manual`). Python agents and the compliance
+ * mapping engine import `VulnKind` from `@aicc/shared/types`.
+ *
+ * Part of the F-1 build-breaking bug fix (ComplianceOfficer turn-3).
+ */
+export type VulnKind =
+  | 'sca'
+  | 'sast'
+  | 'dast'
+  | 'runtime'
+  | 'manual'
+  | 'unknown';
+
 export interface VulnerabilityFinding extends BaseEntity, TenantScoped {
   scanId: UUID;
   cveId?: string;

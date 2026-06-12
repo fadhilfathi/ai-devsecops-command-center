@@ -86,6 +86,11 @@ class ScoreRequest(BaseModel):
     cve_ids: list[str] | None = Field(default=None, max_length=1_000)
     refresh_epss: bool = True
     refresh_kev: bool = True
+    # S2.8: opt-in LLM exploit scoring. Requires the service to be
+    # started with VULN_INTEL_LLM_ENABLED=1; otherwise it is a no-op
+    # and EPSS continues to be the only exploit-likelihood signal.
+    use_llm: bool = False
+    tenant_id: str = "default"
 
 
 class ScoreResponse(BaseModel):

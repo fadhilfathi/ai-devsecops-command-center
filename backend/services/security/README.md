@@ -60,7 +60,7 @@ per-service budget for the expected Sprint 2 scale (≤50 tenants).
 | `devsecops_proxy_request_duration_seconds` | Histogram | `service`, `route`, `target_service`, `result` | security-service → Python service proxy hop latency |
 | `devsecops_proxy_request_total` | Counter | `service`, `route`, `target_service`, `status_code` | All proxy requests (success + 4xx + 5xx + timeout) |
 | `devsecops_eventbus_publish_total` | Counter | `service`, `topic`, `result` | Event-bus publish attempts (`success` \| `error`) |
-| `devsecops_rate_limit_triggered_total` | Counter | `service`, `route` | 429 responses from per-route/global rate limiting |
+| `devsecops_rate_limit_rejections_total` | Counter | `service`, `route`, `bucket` | 429 responses from per-route/global rate limiting (renamed from `rate_limit_triggered_total` per SRE §3.8.4 coordination, 2026-06-12). Sprint 2 ships with `bucket='global'`; Sprint 3 can widen to 3 (D1) or 5 (D7) values. |
 | `devsecops_auth_failure_total` | Counter | `service`, `route`, `reason` | Auth/authz failures (`reason` = `missing_token` \| `invalid_signature` \| `expired` \| `forbidden_role` \| `tenant_mismatch`) |
 | `devsecops_dashboard_query_duration_seconds` | Histogram | `service`, `endpoint` | GET /security/dashboard aggregation latency |
 
@@ -113,7 +113,7 @@ sum by (reason) (rate(devsecops_auth_failure_total[5m]))
 # is forbidden on metrics, so aggregate from logs instead, e.g. Loki/Grafana
 # on the `tenant_id` field, or use a recording rule over the auth_failure
 # series if you need rate-limit correlation).
-# topk(10, sum by (tenant_id) (rate({kind="rate_limit_triggered"} | json | __error__="" [5m])))
+# topk(10, sum by (tenant_id) (rate({kind="rate_limit_rejections"} | json | __error__="" [5m])))
 ```
 
 ## Endpoints (S2.5)
@@ -451,16 +451,129 @@ See `.env.example`. Critical vars for S2.5:
 | `JWT_SECRET`           | dev-only                           | HS256 dev secret (Sprint 2 stub) |
 | `JWT_PUBLIC_KEY`       | unset                              | RS256 public key (Sprint 2.1) |
 
-## Events emitted (S2.5)
+## Events emitted (S2.5 + S2.10)
 
-- `security.sbom.generated` — per successful `/sbom/generate`
-- `security.vulnerability.detected` — per ingested vuln (severity → bus severity)
-- `security.risk.calculated` — per top-5 riskiest component of a `/risk/calculate`
+The service publishes four CloudEvents-style envelopes on the in-process
+event bus (Sprint 2) and, in Sprint 2.1, on the Redis Streams subjects
+shown in the **wire** column:
 
-Topic constants live in `@aicc/shared/security`:
+| Internal topic const    | Wire (Redis Stream subject)              | Triggered by                              |
+|-------------------------|------------------------------------------|-------------------------------------------|
+| `SBOM_TOPIC`            | `security.sbom.generated.v1`             | `POST /sbom/generate` success             |
+| `VULN_TOPIC`            | `security.vulnerability.detected.v1`     | `POST /vulnerabilities` ingest            |
+| `RISK_TOPIC`            | `security.risk.calculated.v1`            | `POST /risk/calculate` top-5 emit         |
+| `SCAN_TOPIC` (S2.9+)    | `security.scan.completed.v1`             | Posted by external scanners (Sprint 2.1)  |
+
+Topic constants live in `@aicc/shared/security`. The `.v1` suffix is the
+**Redis Stream subject version**, not the GitHub `repository_dispatch`
+event type — those are two separate namespaces.
+
 ```ts
-import { SBOM_TOPIC, VULN_TOPIC, RISK_TOPIC } from '@aicc/shared/security';
+import {
+  SBOM_TOPIC,
+  VULN_TOPIC,
+  RISK_TOPIC,
+  SCAN_TOPIC,
+} from '@aicc/shared/security';
 ```
+
+### Payload shape — GitOps wire format (S2.10)
+
+All four events are published in the **snake_case GitOps wire format**,
+not the internal camelCase Zod schema. The projection happens at the
+security-service `:4003` boundary, inside the route handler, before the
+event is published on the bus. Subscribers (the GitOps agent,
+the in-process event log, downstream consumers) always see the wire shape.
+
+For vulnerability events, the projection explodes a single `Vulnerability`
+record into one wire record **per `(CVE, package)` pair**, so a
+vulnerability that affects three packages produces three independent
+events on `security.vulnerability.detected.v1`. See
+[`src/services/vuln-projection.ts`](src/services/vuln-projection.ts) and
+the field-mapping table below.
+
+---
+
+## GitOps Wire Format (S2.10)
+
+Sprint 2.10 locked the wire format that the GitOps agent consumes. The
+contract is owned by `GitOpsManager` and reviewed in
+`backend/models/security/vulnerability.model.ts` (`VulnerabilityGitOpsRecordSchema`).
+
+### Field mapping (camelCase internal → snake_case wire)
+
+| Internal (`VulnerabilitySchema`) | Wire (`VulnerabilityGitOpsRecordSchema`) | Notes |
+|----------------------------------|------------------------------------------|-------|
+| `id`                            | `id`                                     | UUID v4 |
+| `source` (e.g. `'ghsa'`)        | `source` (e.g. `'github-advisory'`)      | `ghsa` → `github-advisory`; other values pass through |
+| `severity`                      | `severity`                               | enum unchanged |
+| `cvssV3.baseScore`              | `cvss_v3`                                | **flat number** (not nested object) |
+| `affected[].package.name`       | `package`                                | string (no version suffix) |
+| `affected[].package.ecosystem`  | `ecosystem`                              | enum unchanged |
+| `affected[].introducedIn`       | `introduced_in`                          | per-affected-entry; first version affected |
+| `affected[].fixedIn`            | `fixed_in`                               | array of versions |
+| `affected[].vulnerableRange`    | `vulnerable_range`                       | semver range string |
+| `summary`                       | `summary`                                | human-readable one-liner |
+| `references[].url`              | `references`                             | flattened to `string[]` of URLs |
+| `detectedAt`                    | `detected_at`                            | ISO-8601 with offset |
+| `gitSha`                        | `git_sha`                                | commit SHA the scan ran against |
+| `kind`                          | `kind`                                   | `'sca' \| 'sast' \| 'runtime' \| 'secret'` |
+| `autoActionable` (computed)     | `auto_actionable`                        | **3-condition gate** (see below) |
+| `tenantId` (from JWT)           | `tenant_id`                              | stamped at the boundary; not from upstream feeds |
+| `kev`                           | (omitted)                                | consumed by the `auto_actionable` gate only |
+
+### `auto_actionable` — 3-condition gate
+
+A vulnerability record is flagged `auto_actionable: true` on the wire
+**only if all three** of these are true:
+
+1. **`kev === true`** — listed in CISA's Known Exploited Vulnerabilities catalog
+2. **`affected.fixedIn.length > 0`** — a fix version exists
+3. **`inGraph === true`** — the affected package is reachable in the
+   tenant's resolved dependency graph (looked up from
+   `dependency-intel-service` `:4009` in Sprint 2.1; **currently a
+   placeholder `false`** in the route handler)
+
+If any of the three is missing, `auto_actionable` is `false` and the
+GitOps agent treats the record as a notification, not a trigger for
+automated PR / remediation workflow.
+
+### Per-(CVE, package) explosion
+
+A single internal `Vulnerability` with `affected: [pkgA, pkgB, pkgC]`
+produces **three** wire records, each with `affected: [pkgA]` /
+`affected: [pkgB]` / `affected: [pkgC]`. This lets the GitOps agent
+open one PR per (CVE, package) pair and avoids the ambiguity of
+"which package did you mean?".
+
+### Source enum translation
+
+The internal `source` enum is the **feed identifier** (e.g. `'ghsa'`,
+`'osv'`, `'nvd'`). The wire `source` field is the **GitOps
+classification**:
+
+| Internal | Wire              |
+|----------|-------------------|
+| `ghsa`   | `github-advisory` |
+| `osv`    | `osv`             |
+| `nvd`    | `nvd`             |
+| `custom` | `custom`          |
+
+Future sources must add a row here and bump the wire schema version.
+
+### Field-by-field validation
+
+The wire schema is enforced twice:
+
+1. At the route handler, via `VulnerabilityGitOpsRecordSchema.safeParse()`
+   on the projection result. If validation fails, the record is logged
+   and dropped (we do not publish malformed events).
+2. At the GitOps agent, as a contract test fixture in
+   `tests/contracts/vulnerability-gitops-record.schema.json`.
+
+The internal `VulnerabilitySchema` is **not** visible on the wire — if
+a subscriber reads the raw event and sees `cvssV3`, that's a contract
+violation.
 
 ## Sprint 2.1 roadmap (not in this task)
 

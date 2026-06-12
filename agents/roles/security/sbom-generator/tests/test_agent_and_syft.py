@@ -80,7 +80,11 @@ def test_build_command_default_format():
 def test_build_command_excludes_dev_dependencies_by_default():
     req = GenerateRequest(source=SourceRef(type=SourceType.DIRECTORY, value="/x"))
     cmd = _build_command("syft", req, "dir:/x", req.formats[0])
-    assert "--select-catalogers" in cmd
+    # Syft 1.x does not have a ``--select-catalogers`` flag; we
+    # narrow the cataloger set with ``-c package`` to drop dev
+    # catalogers. The test asserts that some cataloger-narrowing
+    # knob is on the command line.
+    assert ("-c", "package") in [tuple(cmd[i:i+2]) for i in range(len(cmd)-1)]
 
 
 def test_build_command_includes_excludes():

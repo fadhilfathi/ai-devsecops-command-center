@@ -270,6 +270,24 @@ groups:
 
       # Per-bucket risk-calc alerts (locked by SLO targets in
       # docs/observability/slos-security-stack.md §3).
+      # Bucket scheme is D7 (SecurityArchitect, S2.8 cap-driven, 2026-06-12):
+      # xs (<10) / small (10–99) / medium (100–999) / large (1k–4,999) / xlarge (≥5k).
+      # xxlarge bucket is RETIRED — workloads that would have been xxlarge now
+      # flow into the xlarge alert and are accepted as SLO overshoots.
+      - alert: RiskCalcHighLatencyXs
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="xs"}[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: ticket
+          service: dependency-intel
+        annotations:
+          summary: "risk calc p95 > 0.5s for xs SBOMs (<10 components)"
+          description: "p95 = {{ $value | humanizeDuration }}. Trivially small SBOMs should be sub-100ms. Likely graph-DB warm-up or service cold start."
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXs"
+
       - alert: RiskCalcHighLatencySmall
         expr: |
           histogram_quantile(0.95,
@@ -280,7 +298,7 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 1s for small SBOMs"
+          summary: "risk calc p95 > 1s for small SBOMs (10–99 components)"
           description: "p95 = {{ $value | humanizeDuration }}. Small SBOMs should be sub-second. Likely graph-DB issue or memory pressure."
           runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencySmall"
 
@@ -294,7 +312,7 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 5s for medium SBOMs"
+          summary: "risk calc p95 > 5s for medium SBOMs (100–999 components)"
           description: "p95 = {{ $value | humanizeDuration }}. Cold cache or GC?"
           runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyMedium"
 
@@ -308,7 +326,7 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 15s for large SBOMs"
+          summary: "risk calc p95 > 15s for large SBOMs (1k–4,999 components)"
           description: "p95 = {{ $value | humanizeDuration }}. Check graph DB indices."
           runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyLarge"
 
@@ -322,23 +340,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 60s for xlarge SBOMs"
-          description: "p95 = {{ $value | humanizeDuration }}. Likely deep transitive chains or N+1 graph queries."
+          summary: "risk calc p95 > 60s for xlarge SBOMs (≥5k components)"
+          description: "p95 = {{ $value | humanizeDuration }}. Likely deep transitive chains, N+1 graph queries, or runaway SBOMs (former xxlarge bucket). May be acceptable overshoot — see SLO doc §3."
           runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXlarge"
-
-      - alert: RiskCalcHighLatencyXxlarge
-        expr: |
-          histogram_quantile(0.95,
-            sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="xxlarge"}[5m]))
-          ) > 300
-        for: 10m
-        labels:
-          severity: ticket
-          service: dependency-intel
-        annotations:
-          summary: "risk calc p95 > 300s for xxlarge SBOMs"
-          description: "p95 = {{ $value | humanizeDuration }}. OS image / monorepo. Check for runaway jobs."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXxlarge"
 
   # ---------------------------------------------------------------------------
   # Sprint 2.8 — Security control integrity alerts

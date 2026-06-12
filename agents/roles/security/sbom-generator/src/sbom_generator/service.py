@@ -30,6 +30,7 @@ from fastapi import (
     Response,
     status,
 )
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import ValidationError as PydanticValidationError
 
@@ -84,6 +85,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         telemetry=telemetry,
     )
 
+    # Build the app first so we can stash references on ``app.state``
+    # for both the route handlers and the test fixtures. The
+    # ``runner`` / ``bus`` / ``agent`` attributes are part of the
+    # public test surface — see :mod:`tests.test_service`.
     app = FastAPI(
         title="AionRs SBOM Generator",
         version="1.0.0",
@@ -120,9 +125,62 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             content=ErrorResponse(
                 code="validation_error",
                 message="Request payload failed validation",
-                details={"errors": exc.errors()},
+                details={"errors": _sanitize_validation_errors(exc.errors())},
             ).model_dump(),
         )
+
+    @app.exception_handler(RequestValidationError)
+    async def _request_validation_error_handler(
+        _: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        # FastAPI raises ``RequestValidationError`` (a wrapper over
+        # Pydantic's ``ValidationError``) when the request body or
+        # query parameters fail schema validation. We surface those
+        # as 400 to match the rest of the service's error envelope.
+        #
+        # The errors dict Pydantic returns includes the original
+        # exception in ``ctx["error"]`` (or other non-JSON types in
+        # ``ctx``). Starlette's JSONResponse cannot serialise those
+        # — we scrub them here.
+        errors = _sanitize_validation_errors(exc.errors() if hasattr(exc, "errors") else [])
+        return JSONResponse(
+            status_code=400,
+            content=ErrorResponse(
+                code="validation_error",
+                message="Request payload failed validation",
+                details={"errors": errors},
+            ).model_dump(),
+        )
+
+
+def _sanitize_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Coerce Pydantic ``ValidationError.errors()`` output to JSON.
+
+    Pydantic v2 includes the original ``ValueError`` instance (or any
+    other exception) in the ``ctx`` field of a validation error when
+    a field validator raised it explicitly. Starlette's
+    ``JSONResponse`` cannot serialise that — it raises a
+    ``TypeError: Object of type ValueError is not JSON serializable``
+    when the response is rendered. We strip non-primitive values
+    from ``ctx`` and ``input`` here.
+
+    This is a copy of the helper used in v2 of the service at
+    ``backend/services/sbom-pipeline-service/src/sbom_pipeline/main.py``
+    and is needed because the v1 service was authored before the
+    Pydantic v2 ``ctx`` change was rolled out across the team.
+    """
+    sanitized: List[Dict[str, Any]] = []
+    for err in errors:
+        cleaned: Dict[str, Any] = {}
+        for k, v in err.items():
+            if k == "ctx" and isinstance(v, dict):
+                cleaned[k] = {ck: str(cv) for ck, cv in v.items()}
+            elif k == "input" and isinstance(v, (bytes, bytearray)):
+                cleaned[k] = f"<{len(v)} bytes>"
+            else:
+                cleaned[k] = v
+        sanitized.append(cleaned)
+    return sanitized
 
     # ---- Auth ---------------------------------------------------------
 

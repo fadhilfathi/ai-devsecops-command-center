@@ -80,6 +80,19 @@ export interface SecurityVulnerabilityDetectedEvent {
   vulnerabilityId: string;
   tenantId: string;
   affectedBomRefs: string[];
+  /**
+   * Per-affected first-known-vulnerable version range, parallel to `affectedBomRefs`.
+   * Position `i` corresponds to `affectedBomRefs[i]`. `null` if unknown.
+   * Sourced from NVD/GHSA/OSV (per-version). Sprint 2.9 alignment with ComplianceOfficer.
+   */
+  affectedIntroducedIn?: (string | null)[];
+  /**
+   * Per-affected tenant-side introducedAt (ISO-8601 with offset), parallel to `affectedBomRefs`.
+   * Position `i` corresponds to `affectedBomRefs[i]`. `null` if unknown.
+   * Sourced from tenant-side scanner / SBOM tool / dependency-intel (per-deploy).
+   * ComplianceOfficer's `effectiveIntroducedAt()` helper takes `introducedAt ?? introducedIn ?? null` so the fresher tenant-side signal wins.
+   */
+  affectedIntroducedAt?: (string | null)[];
   /** Asset id of the scanned target. Optional for fan-out cases (one CVE across many assets). */
   assetId?: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unknown';

@@ -538,6 +538,38 @@ class KevValidator(FeedValidator):
         return record.get("cveID")
 
 
+# Per-item NVD CVE-5 schema (used to validate individual records
+# during the fetch loop, so a single bad CVE doesn't taint the
+# whole page).
+NVD_CVE_5_ITEM_SCHEMA: Final[dict[str, Any]] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["cve"],
+    "properties": {
+        "cve": {
+            "type": "object",
+            "required": ["id", "published", "lastModified"],
+            "properties": {
+                "id": {"type": "string", "pattern": r"^CVE-\d{4}-\d{4,}$"},
+                "published": {"type": "string", "minLength": 10, "maxLength": 40},
+                "lastModified": {"type": "string", "minLength": 10, "maxLength": 40},
+            },
+        },
+    },
+}
+
+
+class NvdItemValidator(FeedValidator):
+    """Validates a single NVD CVE 5.0 vulnerability item (not the envelope)."""
+
+    schema = NVD_CVE_5_ITEM_SCHEMA
+    source_name = "nvd-item"
+
+    def _extract_id(self, record: Mapping[str, Any]) -> str | None:
+        cve = record.get("cve") or {}
+        return cve.get("id")
+
+
 # ---------------------------------------------------------------------------
 # Convenience factory
 # ---------------------------------------------------------------------------
@@ -545,6 +577,7 @@ def get_validator(source: str) -> FeedValidator:
     """Return the validator registered for ``source``."""
     registry: dict[str, type[FeedValidator]] = {
         "nvd": NvdValidator,
+        "nvd-item": NvdItemValidator,
         "ghsa": GhsaValidator,
         "osv": OsvValidator,
         "epss": EpssValidator,

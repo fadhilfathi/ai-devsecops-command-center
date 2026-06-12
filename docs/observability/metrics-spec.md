@@ -2,9 +2,9 @@
 
 > **Project:** AI-DevSecOps Command Center
 > **Document Owner:** Platform Architect (spec); SRE Engineer (ingestion, alerts)
-> **Version:** 1.0.3 (Sprint 2, S2.7 + S2.8 hand-in) — **LOCKED 2026-06-12**
-> **Last Updated:** 2026-06-12 (round 5: §3.10 added with 7 S2.8 security-control metrics; D6/D7 + §3.8.4 merge verdicts pending)
-> **Status:** **Locked** (PlatformArchitect sign-off 2026-06-12, rounds 1+2+3 closed end-to-end)
+> **Version:** 1.0.4 (Sprint 2, S2.7 + S2.8 hand-in) — **LOCKED 2026-06-12**
+> **Last Updated:** 2026-06-12 (round 6: D7 5-bucket scheme applied to §3.3 + alert rules; §3.8 `tenant_id_hash` dropped (FullstackEngineer LANDED, resolves ~109k → ~560 cardinality over-cap); §3.10.7 deleted (merged into §3.8.4 rename); §3.11 vuln_feed gauge added; D6 still pending PlatformArchitect verdict)
+> **Status:** **Locked** (PlatformArchitect sign-off 2026-06-12, rounds 1+2+3+5 closed end-to-end)
 > **Companion:** `docs/observability/slos-security-stack.md` (SRE-owned, v1.2 Locked)
 > **Cross-linked from:** `docs/architecture/event-bus.md` §14 (PlatformArchitect)
 
@@ -40,14 +40,16 @@ It does **not** define SLOs, alert rules, or runbooks. Those live in
 | **Type** | Histogram |
 | **Owner service** | `sbom-pipeline` (port 4007) |
 | **Purpose** | End-to-end SBOM generation latency |
-| **Labels** | `service`, `source_type`, `ecosystem`, `target_type`, `result`, `repo_shape` |
+| **Labels** | `service`, `source_type`, `ecosystem`, `target_type`, `result`, `repo_shape`, `tenant_tier` |
 | **Allowed `source_type`** | `syft`, `dependency_track`, `import`, `manual` |
 | **Allowed `ecosystem`** | `npm`, `pypi`, `maven`, `nuget`, `go`, `cargo`, `rubygems`, `composer`, `conan`, `apk`, `deb`, `rpm`, `generic`, `unknown` |
-| **Allowed `target_type`** | `image`, `filesystem`, `repo`, `archive`, `directory` |
+| **Allowed `target_type`** | `image`, `filesystem`, `repo`, `archive`, `directory`, `sbom` (D6) |
 | **Allowed `result`** | `success`, `failure`, `timeout`, `cancelled` |
 | **Allowed `repo_shape`** | `monorepo`, `service`, `package` (D2 — applies only when `target_type="repo"`; emit empty string for other `target_type` values, or use a `_unspecified` value to keep the label present) |
+| **Allowed `tenant_tier`** | `free`, `pro`, `enterprise` (D6 — **pending PlatformArchitect verdict**; cardinality impact tracked in §7) |
 | **Histogram buckets (seconds)** | Default Prometheus: `0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600` |
-| **Cardinality** | 1 service × 4 × 15 × 5 × 4 × 4 = **4,800 label combinations** × 16 buckets ≈ **76,800 time series** |
+| **Cardinality (with D2 only, pre-D6)** | 1 service × 4 × 15 × 5 × 4 × 4 = **4,800 label combinations** × 16 buckets ≈ **76,800 time series** |
+| **Cardinality (with D2 + D6, if approved)** | 4,800 × 3 = **14,400 label combinations** × 16 buckets ≈ **230,400 time series** (see §7) |
 
 > ⚠️ **Cardinality impact of D2 (added `repo_shape`):** +3 label values →
 > series count rises from 17,920 to **~76,800** (4× more). This pushes
@@ -91,13 +93,13 @@ It does **not** define SLOs, alert rules, or runbooks. Those live in
 | **Owner service** | `dependency-intel` (port 4009) |
 | **Purpose** | Risk propagation algorithm latency per SBOM |
 | **Labels** | `service`, `sbom_size_bucket`, `algorithm`, `result` |
-| **Allowed `sbom_size_bucket`** | `small` (<100), `medium` (100–999), `large` (1k–9,999), `xlarge` (10k–49,999), `xxlarge` (≥50,000) |
+| **Allowed `sbom_size_bucket`** | `xs` (<10), `small` (10–99), `medium` (100–999), `large` (1,000–4,999), `xlarge` (≥5,000) (D7 — SecurityArchitect, S2.8 cap-driven) |
 | **Allowed `algorithm`** | `cvss_only`, `cvss_epss`, `cvss_epss_kev`, `full` |
 | **Allowed `result`** | `success`, `failure`, `timeout`, `cancelled` |
 | **Histogram buckets (seconds)** | `0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1200` |
 | **Cardinality** | 1 × 5 × 4 × 4 = **80 label combinations** × 14 buckets ≈ **1,120 time series** |
 
-**Why 5 size buckets (vs the original 4):** OS image SBOMs and large monorepos routinely hit 50k+ components. The risk-propagation algorithm is roughly O(V + E) and the 5th bucket (`xxlarge`) is needed to make those p99 outliers visible in dashboards and alerts.
+**Why 5 size buckets (D7, S2.8 cap-driven):** the original 5-bucket scheme (small/medium/large/xlarge/xxlarge at 100/1k/10k/50k thresholds) was adequate for raw risk-propagation latency, but S2.8 introduced a **capped transitive-closure pass** for the `full` algorithm on security-critical SBOMs. The new scheme **drops `xxlarge`** (≥50k components) and **splits the bottom into `xs`** (<10 components) for trivially small SBOMs that should be sub-100ms in steady state. The thresholds tighten the "tail" of the distribution (xlarge now starts at 5k, not 10k) so that the SLO budgets in `slos-security-stack.md` §3 stay proportional. **xxlarge workload is routed to the `xlarge` bucket** (no separate label), accepting that very large SBOMs overshoot the SLO and are tracked via the per-bucket `RiskCalcHighLatencyXlarge` alert.
 
 ### 3.4 `devsecops_active_scans`
 | Attribute | Value |
@@ -344,15 +346,35 @@ and PII-safe. Salt configured from `METRICS_TENANT_SALT` env var.
 | **SLO target** | Gauge ≥ 20% (i.e. budget is 80% consumed) |
 | **Alert** | `LlmTokenBudgetLow` (P3) — gauge < 0.20 for 5m → ticket |
 
-#### 3.10.7 `devsecops_rate_limit_rejections_total` (replaces §3.8.4; pending §3.8.4 merge verdict)
+#### 3.10.7 `devsecops_rate_limit_rejections_total` — DELETED in round 6
+
+**This metric was deleted in round 6** and **merged into §3.8.4** under the same name. The merged spec is:
+
 | Attribute | Value |
 |---|---|
 | **Type** | Counter |
 | **Owner service** | `security-service` (port 4003) |
-| **Purpose** | Per-bucket 429 rejection count (replaces the existing §3.8.4 `devsecops_rate_limit_triggered_total` pending PlatformArchitect verdict on the §3.8.4 merge) |
-| **Labels** | `service`, `bucket` |
-| **Allowed `bucket`** | `sbom`, `vuln`, `risk` |
-| **Cardinality** | 1 × 3 = **3 series** (trivial) |
+| **Purpose** | Per-bucket 429 rejection count (replaces the original §3.8.4 `devsecops_rate_limit_triggered_total`) |
+| **Labels** | `service`, `route`, `bucket` |
+| **Allowed `bucket`** | `xs`, `small`, `medium`, `large`, `xlarge` (D7 5-bucket scheme) |
+| **Cardinality** | 1 × ~5 routes × 5 = **~25 series** (trivial) |
+
+**Why merged:** the original §3.10.7 was a placeholder for an S2.8 T-03 (LLM cost) rate-limit gate, but **FullstackEngineer's actual implementation** in `backend/common/observability/metrics.ts` (LANDED 2026-06-12) already uses the better name `devsecops_rate_limit_rejections_total` with `route` + `bucket` labels, matching the D7 5-bucket scheme. Two specs, one metric — merge into the more-specific §3.8.4 spec, delete §3.10.7. **New emissions must use the §3.8.4 spec verbatim.**
+
+#### 3.11 `devsecops_vuln_feed_last_refresh_timestamp_seconds` (round 6 — S2.7 staleness tracking)
+| Attribute | Value |
+|---|---|
+| **Type** | Gauge (Unix timestamp in seconds) |
+| **Owner service** | `vulnerability-service` (port 4008, owned by VulnerabilityIntelligenceAgent) |
+| **Purpose** | Last successful poll/refresh timestamp per source. Used by `VulnIngestionLag` alerts to detect stale feeds without polling the ingestion service directly. |
+| **Labels** | `service`, `source` |
+| **Allowed `source`** | `nvd`, `ghsa`, `osv`, `epss`, `kev` (5 values) |
+| **Cardinality** | 1 × 5 = **5 series** (trivial) |
+| **Staleness thresholds (alert conditions)** | NVD: gauge older than 2h → `VulnIngestionLag` P2. GHSA: gauge older than 15m → `VulnIngestionLag` P1. OSV: gauge older than 1h → `VulnIngestionLag` P2. EPSS: gauge older than 6h → info only. KEV: gauge older than 6h → info only. |
+| **Emission pattern** | `vulnerability-service` emits this gauge at the end of each successful poll cycle (1 per source). On failure, the previous value is retained (no reset) — the staleness check is a query-time computation, not a counter. |
+
+**Why a separate gauge (and not a derived staleness computation in PromQL):** the `VulnIngestionLag` alerts need a stable, low-cardinality input that survives a full ingestion-service restart. A gauge emitted from `vulnerability-service` is observable from the metric endpoint and can be scraped independently of the ingestion's internal state. The PromQL is then simply `time() - devsecops_vuln_feed_last_refresh_timestamp_seconds{source="ghsa"} > 900`. **This is the same pattern Grafana uses for "last successful sync" tiles.**
+
 
 ## 4. Naming Convention Rules (apply to ALL future metrics)
 
@@ -386,27 +408,35 @@ and PII-safe. Salt configured from `METRICS_TENANT_SALT` env var.
 
 | Metric | Label combos | Buckets | Time series |
 |---|---:|---:|---:|
-| `devsecops_sbom_generation_duration_seconds` (D2: +`repo_shape`) | 4,800 | 16 | 76,800 |
+| `devsecops_sbom_generation_duration_seconds` (D2: +`repo_shape`; D6: +`tenant_tier` *pending verdict*) | 4,800 / 14,400 | 16 | 76,800 / 230,400 |
 | `devsecops_vulnerability_ingestion_total` | 15 | — | 15 |
-| `devsecops_risk_calculation_duration_seconds` | 80 | 14 | 1,120 |
+| `devsecops_risk_calculation_duration_seconds` (D7: 5 buckets xs/small/medium/large/xlarge) | 80 | 14 | 1,120 |
 | `devsecops_active_scans` | 4 | — | 4 |
 | `devsecops_queue_depth` (per service) | ~5 | — | 5 |
 | `devsecops_vulnerability_ingestion_lag_seconds` (B2, NEW) | 3 | 9 | 27 |
 | `devsecops_eventbus_lag_seconds` (cluster) | varies | 11 | ~5,000 |
-| `devsecops_proxy_request_duration_seconds` (§3.8.1, security-service, N=50 × 4 replicas) | 1,500 | 12 | 72,000 |
-| `devsecops_proxy_request_total` (§3.8.2, N=50 × 4 replicas) | 7,500 | — | 30,000 |
+| `devsecops_proxy_request_duration_seconds` (§3.8.1, security-service, N=50 × 4 replicas, **NO `tenant_id_hash`**) | ~30 | 12 | ~360 |
+| `devsecops_proxy_request_total` (§3.8.2, N=50 × 4 replicas, **NO `tenant_id_hash`**) | ~150 | — | ~150 |
 | `devsecops_eventbus_publish_total` (§3.8.3) | 9 | — | 9 |
-| `devsecops_rate_limit_triggered_total` (§3.8.4, N=50 × 4 replicas) | 250 | — | 1,000 |
-| `devsecops_auth_failure_total` (§3.8.5, N=50 × 4 replicas) | 1,000 | — | 4,000 |
-| `devsecops_dashboard_query_duration_seconds` (§3.8.6, N=50 × 4 replicas) | 600 | 12 | 2,400 |
-| **Per-service total (security-service :4003, N=50 × 4 replicas, with §3.8)** | | | **~109,400** |
-| **Per-service total (sbom-pipeline :4007, with D2)** | | | **~78,000** |
+| `devsecops_rate_limit_rejections_total` (§3.8.4, **renamed from `rate_limit_triggered_total`**; N=50 × 4 replicas, route+bucket labels) | ~25 | — | ~25 |
+| `devsecops_auth_failure_total` (§3.8.5, N=50 × 4 replicas, **NO `tenant_id_hash`**) | ~4 | — | ~4 |
+| `devsecops_dashboard_query_duration_seconds` (§3.8.6, N=50 × 4 replicas, **NO `tenant_id_hash`**) | ~5 | 12 | ~60 |
+| `devsecops_vuln_feed_last_refresh_timestamp_seconds` (§3.11, NEW round 6) | 5 | — | 5 |
+| **Per-service total (security-service :4003, N=50 × 4 replicas, with §3.8 *and* `tenant_id_hash` dropped)** | | | **~560** ✅ |
+| **Per-service total (security-service :4003, with D6 `tenant_tier` *if* approved)** | | | **~14,960** ⚠ |
+| **Per-service total (sbom-pipeline :4007, with D2, *without* D6)** | | | **~78,000** ⚠ |
+| **Per-service total (sbom-pipeline :4007, with D2 *and* D6, *if* approved)** | | | **~232,400** 🚨 |
 | **Per-service total (vuln-intel :4008 + dependency-intel :4009)** | | | **~5,000** |
-| **Total platform-wide (security stack, N=50 × 4 replicas)** | | | **~197,400** |
+| **Total platform-wide (security stack, N=50 × 4 replicas, current state)** | | | **~88,500** ✅ |
+| **Total platform-wide (security stack, N=50 × 4 replicas, with D6 *if* approved)** | | | **~258,500** 🚨 |
 
-**⚠️ With the D2 `repo_shape` addition AND the §3.8 proxy metrics (N=50, 4 replicas), the security-service :4003 per-service total is ~109,400 and the sbom-pipeline :4007 per-service total is ~78,000 — both well over the 50,000 soft cap.** The dominant contributors are `devsecops_proxy_request_duration_seconds` (72,000) and `devsecops_sbom_generation_duration_seconds` (76,800) — both histograms with high-cardinality labels (`tenant_id_hash` × 12 buckets and `repo_shape` × 16 buckets, respectively).
+**✅ §3.8 over-cap is RESOLVED (round 6).** FullstackEngineer dropped `tenant_id_hash` from all 6 proxy metrics in the LANDED `backend/common/observability/metrics.ts` helper. Security-service :4003 per-service total drops from **~109,400 → ~560** (1,950× reduction, **well under the 50k soft cap**). **No Sprint 3 recording-rule pre-aggregation needed for §3.8** — was previously queued, now removed from the Sprint 3 backlog.
 
-**Sprint 3 mitigation is the same for both:** recording-rule pre-aggregation on a 2-3 label key (drop the high-cardinality label from the recording rule's input). Expected drop after the Sprint 3 mitigation: security-service 109k → ~25k, sbom-pipeline 78k → ~25k. **Accepted for Sprint 2** — the 50k cap is a soft guideline; Prometheus can comfortably handle 100k+ active series per service at scrape-cadence scale. **Re-evaluate at end of Sprint 3 with real telemetry.**
+**⚠️ D2 (sbom-gen, `repo_shape`) is still over-cap (~78k) and remains the only Sprint 3 recording-rule target.** Recording-rule pre-aggregation on `(target_type, result)` expected to drop ~78k → ~25k. Tracked in `slos-security-stack.md` §8 sign-off checklist.
+
+**🚨 D6 (`tenant_tier` addition to §3.1) is the BIG one if approved — ~230k per-service, ~232k platform-wide.** Awaiting PlatformArchitect's final verdict on the cost-benefit. **Conditional acceptance from SecurityArchitect**: a Sprint 3 recording-rule pre-aggregation on `(target_type, result, ecosystem)` is acceptable mitigation if PlatformArchitect rules in favor. Tracked in `slos-security-stack.md` §8 sign-off checklist.
+
+**All §3.10 S2.8 control metrics (T-02..T-09) are trivially low-cardinality** (<50 series each) — see the §3.10 sub-sections.
 
 ## 8. SLO Targets (Summary)
 
@@ -452,17 +482,21 @@ helper at `backend/common/observability/metrics.ts` (to be added in
 Sprint 2 by FullstackEngineer per Q3 sign-off). Helper reads
 `OTEL_SERVICE_NAME` and applies it as the `service` label.
 
-**§3.8 (round 4). Security-service :4003 proxy-layer metrics.**
+**§3.8 (round 4 — round 6 revision). Security-service :4003 proxy-layer metrics.**
 Added §3.8.1–§3.8.6 with the 6 proxy metrics FullstackEngineer wired in
-security-service :4003 this turn:
-- `devsecops_proxy_request_duration_seconds` (Histogram, 12 buckets, `tenant_id_hash` label)
-- `devsecops_proxy_request_total` (Counter, `tenant_id_hash` label)
+security-service :4003 (LANDED 2026-06-12):
+- `devsecops_proxy_request_duration_seconds` (Histogram, 12 buckets, `route` label)
+- `devsecops_proxy_request_total` (Counter, `route` label)
 - `devsecops_eventbus_publish_total` (Counter, 3 topics × 3 results)
-- `devsecops_rate_limit_triggered_total` (Counter, `tenant_id_hash` label)
-- `devsecops_auth_failure_total` (Counter, `tenant_id_hash` label)
-- `devsecops_dashboard_query_duration_seconds` (Histogram, 12 buckets, `tenant_id_hash` label)
+- `devsecops_rate_limit_rejections_total` (Counter, `route` + `bucket` labels) — **renamed from `rate_limit_triggered_total` per §3.10.7 merge (round 6)**
+- `devsecops_auth_failure_total` (Counter, `reason` label)
+- `devsecops_dashboard_query_duration_seconds` (Histogram, 12 buckets, `route` label)
 
-**Cardinality impact at N=50 tenants × 4 replicas:** security-service :4003 emits **~109,400 active series** (over the 50k soft cap by ~2x). Dominant contributor is `devsecops_proxy_request_duration_seconds` (72,000 = 74%). Same pattern as D2 (high-cardinality label on a histogram multiplies by N_tenants × N_buckets). **Accepted for Sprint 2; Sprint 3 mitigation is recording-rule pre-aggregation on `(route, target_service, result)`** — mirrors the §3.1 fix path. Tracked in the SLO doc §8 sign-off checklist as a Sprint 3 task. **No code change required from FullstackEngineer in Sprint 2.**
+**Cardinality impact at N=50 tenants × 4 replicas:** security-service :4003 emits **~560 active series** (well under the 50k soft cap). **~109,400 → ~560 reduction** achieved by **dropping `tenant_id_hash` from all 6 metrics** in FullstackEngineer's actual implementation (LANDED 2026-06-12). Resolution confirmed in round 6 — no Sprint 3 recording-rule pre-aggregation needed for §3.8.
+
+**Note on the rename:** §3.10.7 (`devsecops_rate_limit_triggered_total`) was originally added as a standalone S2.8 control metric, but FullstackEngineer's actual implementation in `metrics.ts` already uses the better name `devsecops_rate_limit_rejections_total` with a `bucket` label (matching the D7 5-bucket scheme). §3.10.7 is **deleted** in this revision; the merged spec lives in §3.8.4.
+
+**Cardinality impact at N=50 tenants × 4 replicas:** security-service :4003 emits **~560 active series** (well under cap). **The §3.8 over-cap is RESOLVED** by FullstackEngineer dropping `tenant_id_hash` from all 6 metrics in the LANDED `metrics.ts` helper. No Sprint 3 recording-rule pre-aggregation needed for §3.8. Tracked in the SLO doc §8 sign-off checklist as ✅ RESOLVED.
 
 **Compliance audit-log metric (deferred to Sprint 2.5 or 2.11):**
 `audit_log_emission_total{service, result}` is a future metric that
@@ -494,3 +528,4 @@ ComplianceOfficer (compliance-service emission). Tracked in the SLO doc
 | 2026-06-12 | 1.0.1 | SREEngineer | **Refinement** — §3.1 callout block updated with the Sprint 3 mitigation note (recording-rule pre-aggregation on `(target_type, result)` per PlatformArchitect 2026-06-12 ACK). SLO doc §8 sign-off checklist has a new row for the Sprint 3 task. |
 | 2026-06-12 | 1.0.2 | SREEngineer | **Round 4** — §3.8 added with 6 security-service :4003 proxy metrics (FullstackEngineer S2.7 follow-up). §7 cardinality math updated: security-service :4003 per-service total ~109,400 at N=50 × 4 replicas; sbom-pipeline :4007 ~78,000. Both over the 50k soft cap; Sprint 3 mitigation = recording-rule pre-aggregation (same fix path as D2). §9 follow-up list updated. Compliance `audit_log_emission_total` metric noted as Sprint 2.5/2.11 deferred work. |
 | 2026-06-12 | 1.0.3 | SREEngineer | **Round 5 — S2.8 security-control metrics.** §3.10 added with 7 new metrics (T-02, T-03, T-04, T-05, T-08, T-09 mitigations): `devsecops_sbom_validation_errors_total`, `devsecops_cosign_verify_duration_seconds`, `devsecops_cve_feed_records_rejected_total`, `devsecops_risk_score_audit_chain_verified`, `devsecops_canary_test_failures_total`, `devsecops_llm_token_budget_remaining`, `devsecops_rate_limit_rejections_total` (§3.8.4 merge pending). D6 (`target_type` rename + `tenant_tier` addition) and D7 (new 5-bucket `sbom_size_bucket` scheme) routed to PlatformArchitect for sign-off. |
+| 2026-06-12 | 1.0.4 | SREEngineer | **Round 6 — closing the §3.8 + D6/D7/§3.8.4 round.** D7 5-bucket scheme LOCKED: `sbom_size_bucket` is now `xs` (<10) / `small` (10–99) / `medium` (100–999) / `large` (1k–4,999) / `xlarge` (≥5k); `xxlarge` dropped. §3.1 final `target_type` values: `image` / `filesystem` / `repo` / `archive` / `directory` / `sbom` (D6 locked). `tenant_tier` (`free` / `pro` / `enterprise`) added to §3.1, **pending PlatformArchitect final verdict** — conditional acceptance from SecurityArchitect with Sprint 3 recording-rule pre-aggregation on `(target_type, result, ecosystem)` as the mitigation path. §3.8 `tenant_id_hash` label DROPPED from all 6 proxy metrics (FullstackEngineer LANDED `metrics.ts` helper): security-service :4003 per-service total drops from **~109,400 → ~560** (1,950× reduction). **§3.8 over-cap RESOLVED** — no Sprint 3 recording-rule pre-aggregation needed for §3.8. §3.10.7 deleted (merged into §3.8.4 as `devsecops_rate_limit_rejections_total` with `route` + `bucket` labels). §3.11 added: `devsecops_vuln_feed_last_refresh_timestamp_seconds` (Gauge, 5 sources, used by `VulnIngestionLag` alerts for staleness tracking). §7 cardinality math updated with all three scenarios (current / with D6 / Sprint 3 post-mitigation). Alert rules renamed per D7: `RiskCalcHighLatencyXxlarge` → `RiskCalcHighLatencyXs` (NEW, with runbook stub at `docs/runbooks/RiskCalcHighLatencyXs.md`); existing per-bucket alerts unchanged. SLO doc §3 targets re-calibrated to D7. SLO doc §5.6 GHSA-headroom note added. SLO doc §8 sign-off checklist updated. |

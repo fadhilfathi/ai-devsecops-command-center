@@ -25,7 +25,7 @@
  *   - proxy_request_duration: 5 routes × 3 targets × 2 results × 14 buckets = ~420 series
  *   - proxy_request_total: 5 × 3 × ~6 status = ~90 series
  *   - eventbus_publish_total: 3 topics × 2 results = 6 series
- *   - rate_limit_triggered_total: 5 routes = 5 series
+ *   - rate_limit_rejections_total: 5 routes × 3 buckets = 15 series
  *   - auth_failure_total: 5 routes × 5 reasons = 25 series
  *   - dashboard_query_duration: 1 endpoint × 14 buckets = ~14 series
  *   - All well under the 50k budget.
@@ -68,11 +68,17 @@ export const eventbusPublishTotal = createCounter({
   labelNames: ['topic', 'result'] as const,
 });
 
-// ---------- 4. Rate-limit triggers (429 responses) ----------
-export const rateLimitTriggeredTotal = createCounter({
-  name: 'devsecops_rate_limit_triggered_total',
+// ---------- 4. Rate-limit rejections (429 responses) ----------
+// Renamed from rate_limit_triggered → rate_limit_rejections per SRE §3.8.4
+// coordination (2026-06-12). The `bucket` label categorises the route by
+// access pattern. Sprint 2 ships with a single 'global' bucket (the rate
+// limit is registered as `global: true` in index.ts). Sprint 3 can widen
+// to 3 (D1: auth/read/write) or 5 (D7: xs/small/medium/large/xlarge)
+// values if per-route rate limits are added.
+export const rateLimitRejectionsTotal = createCounter({
+  name: 'devsecops_rate_limit_rejections_total',
   help: 'Total 429 responses from per-route rate limiting in security-service.',
-  labelNames: ['route'] as const,
+  labelNames: ['route', 'bucket'] as const,
 });
 
 // ---------- 5. Auth failures ----------
@@ -105,7 +111,7 @@ export function classifyProxyResult(statusCode: number): 'success' | 'error' {
  * Re-throws on failure after incrementing the `error` counter.
  *
  * Use this in place of `bus.publish()` at every emission site in security-service
- * so the publish_total metric covers all 3 security topics (SBOM, VULN, RISK).
+ * so the publish_total metric covers all 4 security topics (SBOM, VULN, RISK, SCAN).
  */
 export async function publishInstrumented(
   bus: EventBus,

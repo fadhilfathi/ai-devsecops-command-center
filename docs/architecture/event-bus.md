@@ -282,6 +282,44 @@ sequenceDiagram
     WS-->>UI: live update (incident toast)
 ```
 
+## Observability
+
+### 12.1 Operational SLOs (cross-link)
+
+The SLOs, error budgets, and alert thresholds for the event-bus observability
+metrics are owned by SRE and live in
+**[`docs/observability/slos-security-stack.md`](../observability/slos-security-stack.md)**.
+
+The platform SLI `devsecops_eventbus_lag_seconds` has these targets:
+
+| Stream | p99 SLO | Rationale |
+|---|---:|---|
+| `security.events`   | 5 s  | Critical-path security events must propagate fast (incident detection, vuln detection, agent proposals). |
+| `compliance.events`  | 30 s | Compliance evaluations are near-real-time but not user-blocking. |
+| `audit.events`      | 60 s | Audit is asynchronous; consumers tolerate higher lag (audit log has its own durability story in Postgres + S3). |
+| **Aggregate**        | 5 s  | Fleet-wide target; computed as `histogram_quantile(0.99, sum(rate(devsecops_eventbus_lag_seconds_bucket[5m])) by (le))`. |
+
+**Why three per-stream targets and one aggregate:** the aggregate is the
+platform-level commitment; the per-stream targets acknowledge that
+`audit.events` legitimately tolerates higher lag (we should not be
+paged at 3am because audit is a few minutes behind — that's a
+different operational concern).
+
+**Histogram bucket shape for lag:** the metric uses SLO-shaped buckets
+`(0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 300)` so that
+`histogram_quantile(0.99, …)` has good resolution at the 5s SLO
+threshold. Always `sum by (le, …)` before `histogram_quantile()` —
+a p99 computed on a single-pod series is wrong for the fleet.
+
+**Related metrics:**
+- `devsecops_sbom_generation_duration_seconds` — see `metrics-spec.md` §3.1
+- `devsecops_risk_calculation_duration_seconds` — see `metrics-spec.md` §3.3
+- `devsecops_vulnerability_ingestion_lag_seconds` — see `metrics-spec.md` §3.7
+
+**Future work (Sprint 3+):**
+- Multi-window burn-rate alerts (Google SRE workbook style) — currently the platform uses threshold alerts. See SLO doc F1 follow-up.
+- Per-tenant SLI rollup job (without exploding cardinality) — open design question.
+
 ## See also
 
 - [`agent-topology.md`](./agent-topology.md) — who produces what
