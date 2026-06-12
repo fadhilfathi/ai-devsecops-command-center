@@ -149,7 +149,6 @@ def test_cve_record_consensus_sources_default_empty() -> None:
         id="CVE-2024-9999",
         severity=SeverityAggregate(
             qualitative=SeverityQualitative.HIGH,
-            max_score=7.5,
             primary_source=ScoreSource.NVD_PRIMARY,
         ),
     )
@@ -167,7 +166,6 @@ def test_cve_record_pre_actionable_default_none() -> None:
         id="CVE-2024-9999",
         severity=SeverityAggregate(
             qualitative=SeverityQualitative.HIGH,
-            max_score=7.5,
             primary_source=ScoreSource.NVD_PRIMARY,
         ),
     )
