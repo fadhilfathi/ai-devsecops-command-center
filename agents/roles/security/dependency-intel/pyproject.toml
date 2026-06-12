@@ -1,0 +1,91 @@
+# =============================================================================
+# Dependency Intelligence Service — S2.3
+# Builds dependency graphs from SBOM components, propagates risk
+# transitively, and correlates vulnerabilities from the vuln-intel
+# service. Sibling to S2.1 (SBOM pipeline) and S2.2 (vuln-intel).
+# =============================================================================
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dependency-intel"
+version = "0.1.0"
+description = "Dependency graph + risk propagation + vulnerability correlation"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "VulnerabilityIntelligenceAgent" },
+  { name = "AI-DevSecOps Command Center Team" },
+]
+keywords = ["dependency-graph", "sbom", "vulnerability", "risk", "propagation", "security"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Framework :: FastAPI",
+  "Topic :: Security",
+  "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "pydantic==2.10.4",
+  "pydantic-settings==2.7.0",
+  "httpx==0.28.1",
+  "anyio==4.7.0",
+  "tenacity==9.0.0",
+  "structlog==24.4.0",
+  "python-json-logger==3.2.1",
+  "python-dateutil==2.9.0",
+  "networkx==3.4.2",
+  "prometheus-client==0.21.1",
+  "opentelemetry-api==1.29.0",
+  "opentelemetry-sdk==1.29.0",
+  "opentelemetry-exporter-otlp==1.29.0",
+  "opentelemetry-instrumentation-fastapi==0.50b0",
+  "opentelemetry-instrumentation-httpx==0.50b0",
+  "PyJWT[crypto]==2.10.1",
+  "cachetools==5.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.3.4",
+  "pytest-asyncio==0.25.0",
+  "pytest-cov==6.0.0",
+  "respx==0.22.0",
+  "mypy==1.14.0",
+  "ruff==0.8.4",
+  "freezegun==1.5.1",
+]
+
+[project.scripts]
+dependency-intel = "dependency_intel.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dependency_intel = ["py.typed"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --strict-markers --tb=short"
+markers = [
+  "integration: marks tests as integration (deselect with '-m \"not integration\"')",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "RUF", "ASYNC"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+disallow_untyped_defs = true

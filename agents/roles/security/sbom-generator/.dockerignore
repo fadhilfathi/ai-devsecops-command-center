@@ -1,0 +1,33 @@
+# Build context exclusions for the SBOM generator container.
+# Keeping the context small speeds up `docker build` and avoids
+# shipping test fixtures / virtualenvs in the image.
+
+.git
+.gitignore
+.github
+.venv
+venv
+env
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+coverage.xml
+*.egg-info
+build
+dist
+.tox
+.idea
+.vscode
+.DS_Store
+tests
+docs
+examples
+Makefile
+*.md
+!README.md

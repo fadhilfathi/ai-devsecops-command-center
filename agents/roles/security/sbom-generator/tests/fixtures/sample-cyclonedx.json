@@ -1,0 +1,39 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-0000000000aa",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-01-01T00:00:00+00:00",
+    "tools": [
+      {
+        "vendor": "Anchore",
+        "name": "syft",
+        "version": "1.6.0"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lodash@4.17.21",
+      "name": "lodash",
+      "version": "4.17.21",
+      "purl": "pkg:npm/lodash@4.17.21",
+      "cpe": "cpe:2.3:a:lodash:lodash:4.17.21:*:*:*:*:*:*:*",
+      "licenses": [
+        { "license": { "id": "MIT" } }
+      ],
+      "hashes": [
+        { "alg": "SHA-1", "content": "679591c564c3bffaae8454cf0b3df370c3d6911c" }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/lodash@4.17.21",
+      "dependsOn": []
+    }
+  ]
+}

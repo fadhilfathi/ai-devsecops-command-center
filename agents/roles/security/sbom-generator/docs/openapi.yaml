@@ -1,0 +1,269 @@
+openapi: 3.1.0
+info:
+  title: AionRs SBOM Generator
+  version: 1.0.0
+  description: |
+    Syft-wrapped SBOM generation service. Produces CycloneDX
+    (JSON/XML) and SPDX (JSON/tag-value) for Docker images, git
+    repositories, filesystems, archives, and registry catalogs.
+  contact:
+    name: AionRs Security Team
+    email: security@aionrs.io
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: http://localhost:4007
+    description: Local development
+  - url: http://sbom-generator.aionrs.svc.cluster.local:4007
+    description: Kubernetes service
+tags:
+  - name: ops
+    description: Operational endpoints (health, metrics, readiness)
+  - name: discovery
+    description: Endpoint discovery
+  - name: sbom
+    description: SBOM generation
+paths:
+  /healthz:
+    get:
+      tags: [ops]
+      summary: Liveness + syft version + bus status
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /readyz:
+    get:
+      tags: [ops]
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+        '503':
+          description: Service is unready
+  /metrics:
+    get:
+      tags: [ops]
+      summary: Prometheus metrics
+      responses:
+        '200':
+          description: Metrics exposition
+          content:
+            text/plain:
+              schema:
+                type: string
+  /v1/sbom/formats:
+    get:
+      tags: [discovery]
+      summary: List supported output formats
+      responses:
+        '200':
+          description: Formats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  formats:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        media_type: { type: string }
+                        spec: { type: string }
+  /v1/sbom/source-kinds:
+    get:
+      tags: [discovery]
+      summary: List supported source types
+      responses:
+        '200':
+          description: Source kinds
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source_kinds:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        description: { type: string }
+  /v1/sbom/generate:
+    post:
+      tags: [sbom]
+      summary: Generate one or more SBOMs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+      responses:
+        '200':
+          description: Generated SBOM(s)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Syft execution error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sbom/analyze:
+    post:
+      tags: [sbom]
+      summary: Compatibility alias of /generate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+      responses:
+        '200':
+          description: Generated SBOM(s)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+  /v1/sbom/quick:
+    post:
+      tags: [sbom]
+      summary: Simplified {source, format} payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source: { type: string }
+                format:
+                  type: string
+                  enum: [cyclonedx-json, cyclonedx-xml, spdx-json, spdx-tag-value, syft-json]
+      responses:
+        '200':
+          description: Generated SBOM(s)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+components:
+  schemas:
+    SourceType:
+      type: string
+      enum: [directory, file, docker-image, oci-image, git-repository, archive, registry]
+    SBOMFormat:
+      type: string
+      enum: [cyclonedx-json, cyclonedx-xml, spdx-json, spdx-tag-value, syft-json]
+    SourceRef:
+      type: object
+      required: [type, value]
+      properties:
+        type: { $ref: '#/components/schemas/SourceType' }
+        value: { type: string }
+        options:
+          type: object
+          additionalProperties: true
+    GenerateRequest:
+      type: object
+      required: [source]
+      properties:
+        source: { $ref: '#/components/schemas/SourceRef' }
+        formats:
+          type: array
+          items: { $ref: '#/components/schemas/SBOMFormat' }
+          minItems: 1
+        scan_root: { type: string, nullable: true }
+        exclude_paths:
+          type: array
+          items: { type: string }
+        include_dev_dependencies: { type: boolean }
+        catalogs:
+          type: array
+          items: { type: string }
+        output_relationships: { type: boolean }
+        metadata:
+          type: object
+          additionalProperties: { type: string }
+        tenant_id: { type: string, nullable: true }
+    FormattedSBOM:
+      type: object
+      required: [format, media_type, body, byte_size]
+      properties:
+        format: { $ref: '#/components/schemas/SBOMFormat' }
+        media_type: { type: string }
+        body: { type: string }
+        byte_size: { type: integer }
+    GenerateResponse:
+      type: object
+      properties:
+        request_id: { type: string }
+        job_id: { type: string }
+        accepted_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
+        duration_ms: { type: integer, nullable: true }
+        source_type: { type: string }
+        source_value: { type: string }
+        format: { $ref: '#/components/schemas/SBOMFormat' }
+        components_count: { type: integer }
+        distinct_licenses: { type: integer }
+        formats:
+          type: array
+          items: { $ref: '#/components/schemas/FormattedSBOM' }
+        warnings:
+          type: array
+          items: { type: string }
+        bus_event_id: { type: string, nullable: true }
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string }
+        service: { type: string }
+        version: { type: string }
+        syft_path: { type: string }
+        syft_version: { type: string, nullable: true }
+        uptime_seconds: { type: number }
+        bus_connected: { type: boolean }
+        active_jobs: { type: integer }
+        max_concurrent_jobs: { type: integer }
+        checks:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+        request_id: { type: string, nullable: true }

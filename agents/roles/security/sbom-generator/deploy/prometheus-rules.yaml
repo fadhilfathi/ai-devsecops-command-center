@@ -1,0 +1,86 @@
+# Prometheus alerting rules for the SBOM generator.
+
+groups:
+  - name: sbom-generator
+    interval: 30s
+    rules:
+      - alert: SBOMGeneratorDown
+        expr: up{job="sbom-generator"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: security-stack
+        annotations:
+          summary: SBOM generator is down
+          description: |
+            The SBOM generator has been unreachable for more than
+            2 minutes. Security scans will fail until it recovers.
+          runbook: "https://aionrs.io/runbooks/sbom-generator#down"
+
+      - alert: SBOMGeneratorHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{service="sbom-generator",status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{service="sbom-generator"}[5m]))
+          > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: security-stack
+        annotations:
+          summary: SBOM generator error rate > 5%
+          description: |
+            More than 5% of SBOM generation requests have failed with
+            5xx for the last 10 minutes. Check Syft execution logs.
+
+      - alert: SBOMGeneratorHighP99Latency
+        expr: histogram_quantile(0.99, sum by (le) (rate(syft_duration_ms_bucket[5m]))) > 30000
+        for: 10m
+        labels:
+          severity: warning
+          component: security-stack
+        annotations:
+          summary: SBOM generation p99 > 30s
+          description: |
+            99th percentile Syft scan latency exceeded 30s for the
+            last 10 minutes. May indicate slow image pulls or
+            saturated semaphore.
+
+      - alert: SBOMGeneratorSaturated
+        expr: active_jobs > (max_concurrent_jobs * 0.9)
+        for: 15m
+        labels:
+          severity: info
+          component: security-stack
+        annotations:
+          summary: SBOM generator near concurrency cap
+          description: |
+            Active scans are consistently above 90% of the configured
+            max. Consider scaling up the HPA maxReplicas or raising
+            MAX_CONCURRENT_SCANS.
+
+      - alert: SBOMGeneratorSyftMissing
+        expr: syft_version == "unknown" or syft_version == ""
+        for: 5m
+        labels:
+          severity: critical
+          component: security-stack
+        annotations:
+          summary: SBOM generator cannot locate Syft binary
+          description: |
+            The /readyz probe is reporting that Syft is missing. The
+            image may be corrupted; rebuild from the pinned
+            SYFT_VERSION.
+
+      - alert: SBOMGeneratorBusDisconnected
+        expr: bus_connected == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: security-stack
+        annotations:
+          summary: SBOM generator bus connection lost
+          description: |
+            The agent has lost its connection to the event bus. Scans
+            are still served over HTTP but agent-level requests will
+            not be processed. Check the NATS/Redis sidecar.

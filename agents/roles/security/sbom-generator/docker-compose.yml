@@ -1,0 +1,39 @@
+version: "3.9"
+
+# Local-development compose file for the SBOM generator.
+# `docker compose up` starts the service on :4007 with an in-memory
+# bus (no external broker needed).
+
+services:
+  sbom-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: "3.11"
+        SYFT_VERSION: "1.6.0"
+    image: aionrs/sbom-generator:dev
+    container_name: aionrs-sbom-generator
+    restart: unless-stopped
+    ports:
+      - "4007:4007"
+    environment:
+      PORT: "4007"
+      HOST: "0.0.0.0"
+      LOG_LEVEL: "INFO"
+      BUS_URL: "memory://"
+      MAX_CONCURRENT_SCANS: "4"
+      REQUEST_TIMEOUT_SECONDS: "600"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:4007/healthz', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 2G
+      reservations:
+        cpus: "0.2"
+        memory: 256M

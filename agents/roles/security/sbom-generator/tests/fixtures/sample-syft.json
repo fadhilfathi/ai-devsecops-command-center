@@ -1,0 +1,114 @@
+{
+  "artifacts": [
+    {
+      "id": "57b2e93a2ad7b48d",
+      "name": "lodash",
+      "version": "4.17.21",
+      "type": "npm",
+      "foundBy": "javascript-lock-cataloger",
+      "locations": [
+        {
+          "path": "/app/package.json",
+          "layerID": "sha256:abc123"
+        }
+      ],
+      "licenses": [
+        {
+          "value": "MIT",
+          "type": "declared",
+          "url": "https://spdx.org/licenses/MIT.html"
+        }
+      ],
+      "language": "javascript",
+      "purl": "pkg:npm/lodash@4.17.21",
+      "cpe": "cpe:2.3:a:lodash:lodash:4.17.21:*:*:*:*:*:*:*",
+      "layer": {
+        "digest": "sha256:abc123",
+        "size": 12345678
+      },
+      "hashes": [
+        {
+          "algorithm": "sha1",
+          "value": "679591c564c3bffaae8454cf0b3df370c3d6911c"
+        }
+      ]
+    },
+    {
+      "id": "abc123",
+      "name": "requests",
+      "version": "2.31.0",
+      "type": "python-pkg",
+      "foundBy": "python-installed-package-cataloger",
+      "locations": [
+        {
+          "path": "/usr/lib/python3.11/site-packages/requests/__init__.py",
+          "layerID": "sha256:def456"
+        }
+      ],
+      "licenses": [
+        {
+          "value": "Apache-2.0",
+          "type": "declared",
+          "url": "https://spdx.org/licenses/Apache-2.0.html"
+        }
+      ],
+      "language": "python",
+      "purl": "pkg:pypi/requests@2.31.0",
+      "cpe": "cpe:2.3:a:python-requests:requests:2.31.0:*:*:*:*:*:*:*",
+      "hashes": [
+        {
+          "algorithm": "sha256",
+          "value": "942c5a758f98abd790aed241fd0b85b8d5ae5e3c2032d57c84553b80d0d3bb19"
+        }
+      ]
+    },
+    {
+      "id": "def456",
+      "name": "jackson-databind",
+      "version": "2.15.2",
+      "type": "java-archive",
+      "foundBy": "java-cataloger",
+      "locations": [
+        {
+          "path": "/app/libs/jackson-databind-2.15.2.jar",
+          "layerID": "sha256:789xyz"
+        }
+      ],
+      "licenses": [
+        {
+          "value": "Apache-2.0",
+          "type": "declared"
+        }
+      ],
+      "language": "java",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.2",
+      "cpe": "cpe:2.3:a:fasterxml:jackson-databind:2.15.2:*:*:*:*:*:*:*",
+      "hashes": []
+    }
+  ],
+  "artifactRelationships": [
+    {
+      "parent": "57b2e93a2ad7b48d",
+      "child": "abc123",
+      "type": "direct"
+    }
+  ],
+  "source": {
+    "type": "directory",
+    "target": "/app"
+  },
+  "distro": {
+    "name": "alpine",
+    "version": "3.18",
+    "idLike": "alpine"
+  },
+  "descriptor": {
+    "name": "syft",
+    "version": "1.6.0"
+  },
+  "schema": {
+    "version": "15.0.0",
+    "url": "https://raw.githubusercontent.com/anchore/syft/main/schema/json/schema-15.0.0.json"
+  },
+  "version": "1.6.0"
+}
