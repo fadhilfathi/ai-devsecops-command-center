@@ -2,8 +2,8 @@
 
 > **Project:** AI-DevSecOps Command Center
 > **Document Owner:** Platform Architect (spec); SRE Engineer (ingestion, alerts)
-> **Version:** 1.0.2 (Sprint 2, S2.7 hand-in) — **LOCKED 2026-06-12**
-> **Last Updated:** 2026-06-12 (round 4: §3.8 security-service proxy metrics added; §7 cardinality math updated)
+> **Version:** 1.0.3 (Sprint 2, S2.7 + S2.8 hand-in) — **LOCKED 2026-06-12**
+> **Last Updated:** 2026-06-12 (round 5: §3.10 added with 7 S2.8 security-control metrics; D6/D7 + §3.8.4 merge verdicts pending)
 > **Status:** **Locked** (PlatformArchitect sign-off 2026-06-12, rounds 1+2+3 closed end-to-end)
 > **Companion:** `docs/observability/slos-security-stack.md` (SRE-owned, v1.2 Locked)
 > **Cross-linked from:** `docs/architecture/event-bus.md` §14 (PlatformArchitect)
@@ -493,3 +493,4 @@ ComplianceOfficer (compliance-service emission). Tracked in the SLO doc
 | 2026-06-12 | 1.0.0 | SREEngineer | **Locked** — D1–D5 verdicts + Q3 sign-off applied: §3.1 +`repo_shape` (D2), §3.7 new `devsecops_vulnerability_ingestion_lag_seconds` (B2), §5.1.1 Node.js service-label helper footnote (Q3), §7 cardinality math updated (per-service total ~78,000, over soft cap — re-evaluate Sprint 3), §9 follow-up list updated with D1–D5 + Q3 resolutions |
 | 2026-06-12 | 1.0.1 | SREEngineer | **Refinement** — §3.1 callout block updated with the Sprint 3 mitigation note (recording-rule pre-aggregation on `(target_type, result)` per PlatformArchitect 2026-06-12 ACK). SLO doc §8 sign-off checklist has a new row for the Sprint 3 task. |
 | 2026-06-12 | 1.0.2 | SREEngineer | **Round 4** — §3.8 added with 6 security-service :4003 proxy metrics (FullstackEngineer S2.7 follow-up). §7 cardinality math updated: security-service :4003 per-service total ~109,400 at N=50 × 4 replicas; sbom-pipeline :4007 ~78,000. Both over the 50k soft cap; Sprint 3 mitigation = recording-rule pre-aggregation (same fix path as D2). §9 follow-up list updated. Compliance `audit_log_emission_total` metric noted as Sprint 2.5/2.11 deferred work. |
+| 2026-06-12 | 1.0.3 | SREEngineer | **Round 5 — S2.8 security-control metrics.** §3.10 added with 7 new metrics (T-02, T-03, T-04, T-05, T-08, T-09 mitigations): `devsecops_sbom_validation_errors_total`, `devsecops_cosign_verify_duration_seconds`, `devsecops_cve_feed_records_rejected_total`, `devsecops_risk_score_audit_chain_verified`, `devsecops_canary_test_failures_total`, `devsecops_llm_token_budget_remaining`, `devsecops_rate_limit_rejections_total` (§3.8.4 merge pending). D6 (`target_type` rename + `tenant_tier` addition) and D7 (new 5-bucket `sbom_size_bucket` scheme) routed to PlatformArchitect for sign-off. |

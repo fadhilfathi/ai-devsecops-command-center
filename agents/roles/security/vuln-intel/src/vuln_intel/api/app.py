@@ -22,7 +22,10 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import ValidationError
 
+from ..audit import FeedAuditLog, build_audit_event
 from ..config import Settings, get_settings
+from ..consensus import CrossSourceConsensus, consensus_tag
+from ..llm import LlmConfig, LlmExploitScorer
 from ..matcher import filter_findings, match_components, summarise
 from ..models.cve import CveRecord, SeverityQualitative, SourceName
 from ..models.dto import (
@@ -46,6 +49,8 @@ from ..telemetry import (
     REGISTRY,
     configure_logging,
     get_logger,
+    vuln_feed_last_refresh_timestamp_seconds,
+    vuln_intel_consensus_unofficial_total,
     vuln_intel_http_request_duration_seconds,
     vuln_intel_http_requests_total,
     vuln_intel_ingest_duration_seconds,
@@ -54,7 +59,9 @@ from ..telemetry import (
     vuln_intel_records_stored,
     vuln_intel_score_requests_total,
     vuln_intel_source_up,
+    vuln_intel_validation_rejected_total,
 )
+from ..validators import get_validator
 
 logger = get_logger(__name__)
 
@@ -75,6 +82,29 @@ class Service:
         self._last_ingest_at: dict[SourceName, datetime] = {}
         self._last_ingest_error: dict[SourceName, str] = {}
         self._shutdown = asyncio.Event()
+
+        # S2.8 hardening
+        self._audit_log = FeedAuditLog(
+            settings.audit_log_path, max_bytes=settings.audit_log_max_bytes
+        )
+        self._consensus = CrossSourceConsensus()
+        # Per-CVE evidence of which sources corroborated it. Populated
+        # during ingest and consulted after the per-source pass to
+        # apply the unofficial tag.
+        self._sources_seen: dict[str, set[str]] = {}
+        # LLM exploit scorer (opt-in via settings.llm_enabled).
+        self._llm = LlmExploitScorer(
+            LlmConfig(
+                enabled=settings.llm_enabled,
+                model=settings.llm_model,
+                base_url=settings.llm_base_url,
+                timeout_seconds=settings.llm_timeout_seconds,
+                max_retries=settings.llm_max_retries,
+                per_tenant_budget_tokens=settings.llm_tenant_budget_tokens,
+                global_budget_tokens=settings.llm_global_budget_tokens,
+                cost_per_1k_tokens_micros=settings.llm_cost_per_1k_micros,
+            )
+        )
 
     # ---------------------------------------------------------------- lifecycle
     async def start(self) -> None:
@@ -114,6 +144,15 @@ class Service:
                 errors[src] = "unknown source"
                 continue
             t0 = time.perf_counter()
+            # S2.8: per-source validator — record-level schema check.
+            # The validator is lazy-initialised because some pytest
+            # fixtures monkey-patch sources without instantiating the
+            # full Service.
+            try:
+                validator = get_validator(src.value)
+            except Exception:  # noqa: BLE001
+                validator = None
+            validation_results: list = []
             try:
                 emitted = 0
                 async for rec in source.fetch(
@@ -121,7 +160,27 @@ class Service:
                     limit=req.max_per_source,
                     full=req.full,
                 ):
+                    # S2.8: validate the upstream record before storing.
+                    if validator is not None:
+                        raw = rec.raw or {}
+                        vres = validator.validate_record(raw)
+                        validation_results.append(vres)
+                        if not vres.valid:
+                            reason = vres.rejected_reason or "schema_violation"
+                            vuln_intel_validation_rejected_total.labels(
+                                source=src.value, reason=reason
+                            ).inc()
+                            logger.warning(
+                                "validation_rejected source=%s record_id=%s reason=%s",
+                                src.value, vres.record_id, reason,
+                            )
+                            # Reject: do NOT store the record.
+                            continue
+
                     is_new = await self.store.upsert(rec)
+                    # Track which sources have corroborated this CVE
+                    # so the consensus pass can evaluate later.
+                    self._sources_seen.setdefault(rec.id, set()).add(src.value)
                     if is_new:
                         vuln_intel_ingest_total.labels(source=src.value, result="new").inc()
                         merged_total += 1
@@ -136,10 +195,31 @@ class Service:
                 results[src] = emitted
                 self._last_ingest_at[src] = datetime.utcnow()
                 self._last_ingest_error.pop(src, None)
+                # S2.7: feed-refresh gauge.
+                vuln_feed_last_refresh_timestamp_seconds.labels(
+                    source=src.value
+                ).set(self._last_ingest_at[src].timestamp())
+                # S2.8: per-feed audit event.
+                if validation_results:
+                    self._audit_log.append(
+                        build_audit_event(
+                            feed=src.value,
+                            records=None,
+                            results=validation_results,
+                            tenant_id=self.settings.tenant_id,
+                            signature_valid=not self.settings.feed_signature_required,
+                            fetched_at=self._last_ingest_at[src],
+                        )
+                    )
             except (httpx.HTTPError, ValueError) as exc:
                 errors[src] = str(exc)
                 self._last_ingest_error[src] = str(exc)
                 logger.error("ingest_source_failed source=%s: %s", src.value, exc)
+
+        # S2.8: cross-source consensus pass. Re-evaluate every CVE
+        # touched in this run and apply the unofficial tag where
+        # HIGH/CRITICAL lacks corroboration.
+        await self._apply_consensus_to_recent()
 
         # Enrich with EPSS + KEV in the background
         asyncio.create_task(self._enrich_all())
@@ -159,6 +239,28 @@ class Service:
             skipped=skipped_total,
             errors=errors,
         )
+
+    async def _apply_consensus_to_recent(self) -> None:
+        """Apply the cross-source consensus tag to every CVE touched in
+        the most recent ingest run."""
+        for cve_id, sources in list(self._sources_seen.items()):
+            rec = self.store.get(cve_id)
+            if rec is None:
+                continue
+            severity_label = rec.severity.qualitative.value if rec.severity else "NONE"
+            decision = self._consensus.evaluate(sources, severity_label, cve_id=cve_id)
+            existing_tags = list(getattr(rec, "tags", []) or [])
+            new_tags = consensus_tag(existing_tags, decision)
+            if new_tags != existing_tags and hasattr(rec, "tags"):
+                rec.tags = new_tags  # type: ignore[attr-defined]
+                try:
+                    await self.store.upsert(rec)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "consensus_persist_failed cve_id=%s: %s", cve_id, exc
+                    )
+            if decision.is_unofficial:
+                vuln_intel_consensus_unofficial_total.inc()
 
     async def _enrich_all(self) -> None:
         try:
@@ -486,6 +588,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> StatsResponse:
         _ = claims
         return await service.stats()
+
+    # ---------------------------------------------------------------- S2.8 audit
+    @app.get("/vuln-intel/audit")
+    async def audit(
+        limit: int = 50,
+        claims: dict[str, Any] | None = Depends(auth_dep),
+    ) -> dict[str, Any]:
+        """Return the most recent per-feed audit events."""
+        _ = claims
+        events = service._audit_log.read()[-limit:]
+        return {
+            "events": [event.to_dict() if hasattr(event, "to_dict") else event.__dict__ for event in events],
+            "count": len(events),
+            "log_path": str(service._audit_log.path),
+        }
+
+    @app.get("/vuln-intel/llm/status")
+    async def llm_status(
+        claims: dict[str, Any] | None = Depends(auth_dep),
+    ) -> dict[str, Any]:
+        """Expose LLM scorer state (enabled flag + budget remaining)."""
+        _ = claims
+        budget = service._llm._budget  # noqa: SLF001 — introspection
+        return {
+            "enabled": service._llm.enabled,
+            "model": service.settings.llm_model,
+            "per_tenant_used": dict(budget.per_tenant),
+            "global_used": budget.global_used,
+            "tenant_ceiling": service.settings.llm_tenant_budget_tokens,
+            "global_ceiling": service.settings.llm_global_budget_tokens,
+        }
 
     # ---------------------------------------------------------------- errors
     @app.exception_handler(ValidationError)

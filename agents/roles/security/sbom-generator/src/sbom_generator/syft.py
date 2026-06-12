@@ -186,17 +186,31 @@ class SyftRunner:
     """Stateful runner that owns the binary path and concurrency limits."""
 
     def __init__(self, binary: str, semaphore: asyncio.Semaphore) -> None:
-        self._binary = resolve_syft(binary)
+        # Resolve lazily — this lets the agent class instantiate
+        # cleanly in unit tests, CI smoke, and dev environments
+        # where Syft may not be on $PATH yet. The binary is
+        # actually looked up the first time :meth:`run` is called.
+        self._explicit_binary = binary
+        self._binary: Optional[str] = None
         self._semaphore = semaphore
         self._version: Optional[str] = None
 
+    def _ensure_resolved(self) -> str:
+        if self._binary is None:
+            self._binary = resolve_syft(self._explicit_binary)
+        return self._binary
+
     @property
     def binary_path(self) -> str:
-        return self._binary
+        # Prefer the resolved path; fall back to whatever was passed
+        # in (so :class:`SBOMGeneratorAgent` can be constructed for
+        # inspection without a live Syft binary).
+        return self._binary or self._explicit_binary
 
     async def warmup(self) -> Optional[str]:
         """Cache the version string so /healthz can report it cheaply."""
         if self._version is None:
+            self._binary = self._ensure_resolved()
             self._version = await get_syft_version(self._binary)
         return self._version
 
@@ -209,7 +223,8 @@ class SyftRunner:
     ) -> SyftResult:
         request.validate_source()
         target = _syft_target(request.source)
-        cmd = _build_command(self._binary, request, target, fmt)
+        binary = self._ensure_resolved()
+        cmd = _build_command(binary, request, target, fmt)
 
         logger.info("invoking syft: %s", " ".join(cmd))
         start = time.monotonic()
@@ -222,7 +237,7 @@ class SyftRunner:
                     env={**os.environ, **(env or {})},
                 )
             except FileNotFoundError as exc:
-                raise SyftNotFoundError(str(exc), details={"binary": self._binary})
+                raise SyftNotFoundError(str(exc), details={"binary": binary})
 
             try:
                 stdout_b, stderr_b = await asyncio.wait_for(
