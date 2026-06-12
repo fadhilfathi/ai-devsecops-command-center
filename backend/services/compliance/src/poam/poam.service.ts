@@ -24,6 +24,7 @@ import {
 } from './poam.types.js';
 import type { PoamRepository } from './poam.repository.js';
 import type { ControlVulnTuple } from '../control-mapper/index.js';
+import { recordAudit, withAudit } from '../observability/audit.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -218,7 +219,28 @@ export class PoamService {
     }
     const updated = await this.repo.update(tenantId, poamId, { ...extra, status: next });
     if (next === 'closed') {
+      // closed has a corresponding bus event (COMPLIANCE_POAM_CLOSED); the
+      // audit emission is inside emitPoamClosed's withAudit wrapper.
       await this.emitPoamClosed(updated, userId);
+    } else {
+      // Other transitions don't currently emit a bus event, but the state
+      // change is still auditable. Record the audit here so the metric and
+      // log line reflect the transition.
+      const auditKind = mapPoamStatusToAuditKind(next);
+      if (auditKind) {
+        recordAudit({
+          tenantId,
+          result: 'success',
+          auditKind,
+          subjectId: poamId,
+          detail: {
+            controlId: updated.controlId,
+            fromStatus: current.status,
+            toStatus: next,
+            actor: userId,
+          },
+        });
+      }
     }
     return updated;
   }
@@ -271,7 +293,10 @@ export class PoamService {
       },
       severity: severityFromPoam(poam.severity),
     };
-    await this.bus.publish(envelope);
+    await withAudit(
+      { tenantId: poam.tenantId, auditKind: 'poam.created', subjectId: poam.poamId, detail: { controlId: poam.controlId, severity: poam.severity, source: poam.source } },
+      () => this.bus.publish(envelope),
+    );
   }
 
   private async emitPoamClosed(poam: PoamItem, userId: string): Promise<void> {
@@ -291,7 +316,10 @@ export class PoamService {
       },
       severity: 'notice',
     };
-    await this.bus.publish(envelope);
+    await withAudit(
+      { tenantId: poam.tenantId, auditKind: 'poam.closed', subjectId: poam.poamId, detail: { controlId: poam.controlId, closedBy: userId, evidenceCount: poam.evidenceRefs.length } },
+      () => this.bus.publish(envelope),
+    );
   }
 
   private async emitPoamOverdue(poam: PoamItem): Promise<void> {
@@ -310,7 +338,10 @@ export class PoamService {
       },
       severity: severityFromPoam(poam.severity),
     };
-    await this.bus.publish(envelope);
+    await withAudit(
+      { tenantId: poam.tenantId, auditKind: 'poam.overdue', subjectId: poam.poamId, detail: { controlId: poam.controlId, severity: poam.severity, daysOverdue: Math.floor((this.now().getTime() - Date.parse(poam.dueAt)) / DAY_MS) } },
+      () => this.bus.publish(envelope),
+    );
   }
 }
 
@@ -343,4 +374,24 @@ const VALID_TRANSITIONS: Record<PoamStatus, ReadonlySet<PoamStatus>> = {
 
 export function isValidTransition(from: PoamStatus, to: PoamStatus): boolean {
   return VALID_TRANSITIONS[from]?.has(to) ?? false;
+}
+
+/**
+ * Map a POA&M status transition to the audit-log kind. Returns null for
+ * statuses that have their own dedicated bus event (the audit is emitted
+ * inside that event's emit* function via withAudit).
+ */
+function mapPoamStatusToAuditKind(
+  status: PoamStatus,
+): import('../observability/audit.js').AuditKind | null {
+  switch (status) {
+    case 'in_progress':         return 'poam.in_progress';
+    case 'awaiting_evidence':   return 'poam.pending_verification';
+    case 'risk_accepted':       return 'poam.risk_accepted';
+    // 'created' is handled by emitPoamCreated
+    // 'closed' is handled by emitPoamClosed
+    // 'overdue' is handled by emitPoamOverdue
+    // 'open' is not a real transition (only the initial state)
+    default:                    return null;
+  }
 }
