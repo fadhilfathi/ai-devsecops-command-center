@@ -44,6 +44,13 @@ env:
   SBOM_BOT_EMAIL: "github-actions[bot]@users.noreply.github.com"
   SBOM_BRANCH_PREFIX: "security/automated"
   RETENTION_DAYS: "90"
+  # Fork-context support: when the workflow runs in a fork (e.g. a security
+  # researcher fork), the default GITHUB_TOKEN lacks contents:write and
+  # pull-requests:write on the upstream repo. Set `GH_PUSH_TOKEN` to a PAT
+  # (or a GitHub App token) on the upstream repo's Actions secrets to enable
+  # the auto-PR jobs from forks. The jobs degrade gracefully when the secret
+  # is absent: they log a warning and exit 0 (no PR is opened).
+  GH_PUSH_TOKEN_FALLBACK: ${{ secrets.GH_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
