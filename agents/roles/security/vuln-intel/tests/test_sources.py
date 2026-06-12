@@ -75,7 +75,7 @@ def test_normalize_nvd_basic() -> None:
     assert rec.published is not None
     assert rec.published.year == 2024
     assert rec.affected[0].name == "example:foo"
-    assert rec.affected[0].versions[0].introduced == "1.0"
+    assert rec.affected[0].versions[0].introduced_in == "1.0"
 
 
 def test_normalize_nvd_missing_id() -> None:
@@ -179,7 +179,7 @@ def test_normalize_osv_basic() -> None:
     assert "GHSA-aaaa-bbbb-cccc" in rec.aliases
     assert rec.severity.qualitative.value == "CRITICAL"
     assert rec.affected[0].purl == "pkg:pypi/foo@1.0.0"
-    assert rec.affected[0].versions[0].introduced == "0"
+    assert rec.affected[0].versions[0].introduced_in == "0"
     assert rec.affected[0].versions[0].fixed == "1.2.4"
 
 

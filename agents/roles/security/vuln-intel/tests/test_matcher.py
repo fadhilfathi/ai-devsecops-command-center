@@ -35,7 +35,7 @@ def _vuln(name: str, ecosystem: str, purl: str, versions: list[AffectedVersionRa
 
 
 def test_version_in_range_semver() -> None:
-    ranges = [AffectedVersionRange(introduced="1.0.0", fixed="1.2.4")]
+    ranges = [AffectedVersionRange(introduced_in="1.0.0", fixed="1.2.4")]
     assert version_in_range("1.0.0", ranges)
     assert version_in_range("1.2.3", ranges)
     assert not version_in_range("1.2.4", ranges)
@@ -44,7 +44,7 @@ def test_version_in_range_semver() -> None:
 
 def test_match_by_purl_with_version() -> None:
     vuln = _vuln(
-        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced="0", fixed="1.2.4")]
+        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced_in="0", fixed="1.2.4")]
     )
     comp = MatchRequestComponent(purl="pkg:pypi/foo@1.0.0", name="foo", version="1.0.0")
     findings = match_components([comp], [vuln])
@@ -55,7 +55,7 @@ def test_match_by_purl_with_version() -> None:
 
 def test_match_no_version_lower_confidence() -> None:
     vuln = _vuln(
-        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced="0", fixed="1.2.4")]
+        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced_in="0", fixed="1.2.4")]
     )
     comp = MatchRequestComponent(name="foo", ecosystem="PyPI")
     findings = match_components([comp], [vuln])
@@ -65,7 +65,7 @@ def test_match_no_version_lower_confidence() -> None:
 
 def test_match_filtered_by_severity() -> None:
     vuln = _vuln(
-        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced="0", fixed="1.2.4")]
+        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced_in="0", fixed="1.2.4")]
     )
     comp = MatchRequestComponent(purl="pkg:pypi/foo@1.0.0", name="foo", version="1.0.0")
     findings = match_components([comp], [vuln], min_severity=SeverityQualitative.CRITICAL)
@@ -74,7 +74,7 @@ def test_match_filtered_by_severity() -> None:
 
 def test_match_exploited_only() -> None:
     vuln = _vuln(
-        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced="0", fixed="1.2.4")]
+        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced_in="0", fixed="1.2.4")]
     )
     comp = MatchRequestComponent(purl="pkg:pypi/foo@1.0.0", name="foo", version="1.0.0")
     findings = match_components([comp], [vuln], exploited_only=True)
@@ -84,7 +84,7 @@ def test_match_exploited_only() -> None:
 
 def test_match_no_double_counting() -> None:
     vuln = _vuln(
-        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced="0", fixed="1.2.4")]
+        "foo", "PyPI", "pkg:pypi/foo@1.0.0", [AffectedVersionRange(introduced_in="0", fixed="1.2.4")]
     )
     comp = MatchRequestComponent(purl="pkg:pypi/foo@1.0.0", name="foo", version="1.0.0")
     findings = match_components([comp], [vuln])

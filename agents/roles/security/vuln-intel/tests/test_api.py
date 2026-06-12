@@ -84,7 +84,7 @@ async def test_match_endpoint(app_client: AsyncClient) -> None:
                 primary_source=ScoreSource.OSV,
             ),
             affected=[AffectedPackage(name="foo", ecosystem="PyPI", purl="pkg:pypi/foo@1.0.0",
-                                       versions=[AffectedVersionRange(introduced="0", fixed="1.2.4")])],
+                                       versions=[AffectedVersionRange(introduced_in="0", fixed="1.2.4")])],
         )
     )
     r = await app_client.post(

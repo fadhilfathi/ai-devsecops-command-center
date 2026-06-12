@@ -48,8 +48,8 @@ from ..store import CveStore
 from ..telemetry import (
     REGISTRY,
     configure_logging,
+    devsecops_vuln_feed_last_refresh_timestamp_seconds,
     get_logger,
-    vuln_feed_last_refresh_timestamp_seconds,
     vuln_intel_consensus_unofficial_total,
     vuln_intel_http_request_duration_seconds,
     vuln_intel_http_requests_total,
@@ -208,8 +208,9 @@ class Service:
                 self._last_ingest_at[src] = datetime.utcnow()
                 self._last_ingest_error.pop(src, None)
                 # S2.7: feed-refresh gauge.
-                vuln_feed_last_refresh_timestamp_seconds.labels(
-                    source=src.value
+                # Spec §3.11: required labels are ``service`` and ``source``.
+                devsecops_vuln_feed_last_refresh_timestamp_seconds.labels(
+                    service="vuln-intel", source=src.value
                 ).set(self._last_ingest_at[src].timestamp())
                 # S2.8: per-feed audit event.
                 if validation_results:
@@ -254,7 +255,10 @@ class Service:
 
     async def _apply_consensus_to_recent(self) -> None:
         """Apply the cross-source consensus tag to every CVE touched in
-        the most recent ingest run."""
+        the most recent ingest run. Also populates the
+        ``consensus_sources`` list (O-3.7 wire-format requirement) and
+        computes the ``vuln_intel_pre_actionable`` internal hint.
+        """
         for cve_id, sources in list(self._sources_seen.items()):
             rec = self.store.get(cve_id)
             if rec is None:
@@ -265,14 +269,60 @@ class Service:
             new_tags = consensus_tag(existing_tags, decision)
             if new_tags != existing_tags and hasattr(rec, "tags"):
                 rec.tags = new_tags  # type: ignore[attr-defined]
-                try:
-                    await self.store.upsert(rec)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning(
-                        "consensus_persist_failed cve_id=%s: %s", cve_id, exc
-                    )
+            # O-3.7: populate the consensus_sources list on the record
+            # so the security-service :4003 projection can evaluate
+            # the 4-condition ``auto_actionable`` gate. The list is
+            # sorted + de-duplicated to keep the wire format stable.
+            if hasattr(rec, "consensus_sources"):
+                rec.consensus_sources = sorted(set(decision.sources))  # type: ignore[attr-defined]
+            # S2.8: compute the internal pre-actionable hint. The
+            # wire ``auto_actionable`` is owned by security-service
+            # (4-condition AND) — this is just the first + third
+            # conditions, suitable for operator alerting.
+            if hasattr(rec, "vuln_intel_pre_actionable"):
+                rec.vuln_intel_pre_actionable = self._compute_pre_actionable(rec)  # type: ignore[attr-defined]
+            try:
+                await self.store.upsert(rec)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "consensus_persist_failed cve_id=%s: %s", cve_id, exc
+                )
             if decision.is_unofficial:
                 vuln_intel_consensus_unofficial_total.inc()
+
+    def _compute_pre_actionable(self, rec: CveRecord) -> bool:
+        """Internal pre-actionable hint.
+
+        Computes the first + third conditions of the O-3.6 4-condition
+        ``auto_actionable`` gate:
+
+          (kev OR (severity in {high, critical} AND epss_score >= 0.36))
+            AND has_reachable_fix(fixed_in, package)
+
+        The second condition (``consensus_sources >= 2``) and fourth
+        condition (``in_graph == true``) require graph state owned by
+        the security-service, so the wire ``auto_actionable`` flag is
+        computed by the security-service :4003 projection.
+        """
+        sev = (rec.severity.qualitative.value if rec.severity else "NONE").upper()
+        high_or_crit = sev in {"HIGH", "CRITICAL"}
+        epss = rec.epss.score if rec.epss else None
+        epss_high = epss is not None and epss >= 0.36
+        kev = rec.kev is not None
+        condition_exploit = kev or (high_or_crit and epss_high)
+        # "Reachable fix" = any affected package has a non-empty
+        # ``fixed`` range. Per the O-3.6 spec this is the third
+        # condition; we conservatively require at least one
+        # ``fixed`` version.
+        condition_fix = False
+        for pkg in rec.affected_packages or []:
+            for vr in pkg.versions or []:
+                if vr.fixed:
+                    condition_fix = True
+                    break
+            if condition_fix:
+                break
+        return bool(condition_exploit and condition_fix)
 
     async def _enrich_all(self) -> None:
         try:

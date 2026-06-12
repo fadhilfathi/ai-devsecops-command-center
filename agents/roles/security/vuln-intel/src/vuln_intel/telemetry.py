@@ -78,14 +78,16 @@ vuln_intel_cache = Gauge(
 )
 
 # --- S2.7: feed refresh timestamp (lag SLO) ----------------------------------
-# Single global gauge, labelled by source, used by the SREEngineer to
-# alert on feed staleness. The value is the Unix timestamp (seconds)
-# of the last successful ingest run; 0 means "never run". The
-# service layer is responsible for setting this after every pull.
-vuln_feed_last_refresh_timestamp_seconds = Gauge(
-    "vuln_feed_last_refresh_timestamp_seconds",
-    "Unix timestamp (seconds) of the last successful feed refresh, by source",
-    ["source"],
+# Single global gauge, labelled by source + service, used by the
+# SREEngineer to alert on feed staleness (SLO spec §3.11). The value
+# is the Unix timestamp (seconds) of the last successful ingest run;
+# 0 means "never run". The service layer is responsible for setting
+# this after every pull. Both the ``service`` and ``source`` labels
+# are required by the locked spec — see metrics-spec.md §3.11.
+devsecops_vuln_feed_last_refresh_timestamp_seconds = Gauge(
+    "devsecops_vuln_feed_last_refresh_timestamp_seconds",
+    "Unix timestamp (seconds) of the last successful feed refresh, by service and source",
+    ["service", "source"],
     registry=REGISTRY,
 )
 

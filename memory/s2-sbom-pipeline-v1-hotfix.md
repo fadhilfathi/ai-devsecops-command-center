@@ -111,11 +111,20 @@ that arrived in the post-Sprint-2 closeout message:
   `generated_at` (ISO 8601), `git_sha` (40-char when available,
   null otherwise), `scope`, `sbom_fingerprint`
   (`sha256:<hex>` over RFC 8785 / JCS canonicalised CycloneDX
-  JSON).
+  JSON), `sbom_fingerprint_algorithm` (`"sha256"`), and
+  `sbom_fingerprint_format` (`"cyclonedx-json"`) — the latter
+  two are the O-3.7 additions for forward-compat with
+  sha512/blake3 migrations.
 - v1 → v2 prefix-string mapper
   (`_v1_to_prefix_string`): `docker-image`/`oci-image`/
   `registry` → `docker:`, `git-repository` → `git:`,
   `directory`/`file`/`archive` → `fs:`.
+- **Runtime / Workflow boundary (locked 2026-06-12):**
+  runtime emits the 3 O-3.7 fingerprint fields in the event
+  payload; GitOps auto-committer writes the sibling
+  `security/sboms/<sbom_id>/sbom.fingerprint.txt` file.
+  Runtime does not touch the GitOps-owned tree
+  ("single writer per artifact" invariant).
 
 ## Final state
 

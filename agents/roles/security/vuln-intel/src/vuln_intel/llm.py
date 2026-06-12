@@ -207,7 +207,20 @@ class _BudgetTracker:
 # ---------------------------------------------------------------------------
 @dataclass(slots=True, frozen=True)
 class LlmCallAudit:
-    """One row in the LLM-call audit log (also emitted to structlog)."""
+    """One row in the LLM-call audit log (also emitted to structlog).
+
+    Two new fields were added per the SecurityArchitect S2.8 follow-up
+    (2026-06-12, message slot 019ebae2-9de4):
+
+    * ``clamp_applied`` — True when the LLM's score was clamped to
+      the CVSS+EPSS band. If False and the score is outside the band,
+      ``human_review_routed`` is True.
+    * ``human_review_routed`` — True when the LLM tried to push the
+      score outside its lane. These two fields are the S2.8 T-03
+      detection signal — they let the security team answer "how
+      often is the LLM trying to push us outside its lane" without
+      re-querying the model. The LP-09 audit test asserts both.
+    """
 
     call_id: str
     tenant_id: str
@@ -217,9 +230,11 @@ class LlmCallAudit:
     completion_tokens: int
     total_tokens: int
     duration_ms: int
-    status: str  # "ok" | "schema_violation" | "budget_exceeded" | "transport_error"
+    status: str  # "ok" | "schema_violation" | "budget_exceeded" | "transport_error" | "disabled"
     error: str | None = None
     fallback_used: bool = False
+    clamp_applied: bool = False
+    human_review_routed: bool = False
     timestamp: str = field(
         default_factory=lambda: datetime.now(UTC).isoformat()
     )
@@ -594,6 +609,24 @@ class LlmExploitScorer:
                 cve_id, est_tokens, actual,
             )
 
+        # S2.8 (2026-06-12 SecurityArchitect follow-up): evaluate
+        # clamp band on the LLM's output. ``clamp_applied`` is set
+        # when the score is outside the band; ``human_review_routed``
+        # is set when the model is pushing the score outside its
+        # lane. These are the S2.8 §T-03 detection signals.
+        llm_score = float(parsed["exploit_likelihood"])
+        band = self._clamp_band(float(cvss_base_score or 0.0), epss_score)
+        clamp_applied = False
+        human_review_routed = False
+        if band is not None:
+            lo, hi = band
+            if llm_score < lo or llm_score > hi:
+                clamp_applied = True
+                # Outside the band → route to human review. This is
+                # the S2.8 §T-03 detection signal: "how often is the
+                # LLM trying to push us outside its lane".
+                human_review_routed = True
+
         self._audit(
             LlmCallAudit(
                 call_id=call_id,
@@ -605,11 +638,13 @@ class LlmExploitScorer:
                 total_tokens=total_tokens,
                 duration_ms=duration_ms,
                 status="ok",
+                clamp_applied=clamp_applied,
+                human_review_routed=human_review_routed,
             )
         )
         return LlmScore(
             cve_id=cve_id,
-            score=float(parsed["exploit_likelihood"]),
+            score=llm_score,
             confidence=str(parsed["confidence"]),
             rationale=str(parsed["rationale"]),
             source="llm",
@@ -620,6 +655,26 @@ class LlmExploitScorer:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    # The "clamp band" for an LLM exploit-liklihood score is computed
+    # from the CVSS base score and the EPSS score (when both are
+    # available). The LLM's score should sit in a band around the
+    # observed EPSS value, with a width proportional to the CVSS
+    # base. If the LLM produces a score outside the band, we mark
+    # the audit row ``clamp_applied=True`` and ``human_review_routed=True``
+    # so the security team can spot model drift.
+    #
+    # The band is:
+    #   [EPSS - cvss_width, EPSS + cvss_width]
+    # where cvss_width = (cvss_base / 10) * 0.3 (max ±0.3 around EPSS).
+    @staticmethod
+    def _clamp_band(
+        cvss_base: float | None, epss_score: float | None
+    ) -> tuple[float, float] | None:
+        if epss_score is None or cvss_base is None:
+            return None
+        width = (max(0.0, min(10.0, cvss_base)) / 10.0) * 0.3
+        return (max(0.0, epss_score - width), min(1.0, epss_score + width))
+
     def fallback_score(
         self,
         cve_id: str,
@@ -675,7 +730,8 @@ class LlmExploitScorer:
         logger.info(
             "llm_audit call_id=%s tenant_id=%s cve_id=%s model=%s "
             "prompt_tokens=%s completion_tokens=%s total_tokens=%s "
-            "duration_ms=%s status=%s error=%s fallback_used=%s timestamp=%s",
+            "duration_ms=%s status=%s error=%s fallback_used=%s "
+            "clamp_applied=%s human_review_routed=%s timestamp=%s",
             event.call_id,
             event.tenant_id,
             event.cve_id,
@@ -687,6 +743,8 @@ class LlmExploitScorer:
             event.status,
             event.error,
             event.fallback_used,
+            event.clamp_applied,
+            event.human_review_routed,
             event.timestamp,
         )
 

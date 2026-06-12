@@ -84,7 +84,7 @@ def version_in_range(version: str, ranges: Iterable[AffectedVersionRange]) -> bo
         # Non-semver — try a string comparison
         return _string_in_range(version, ranges)
     for r in ranges:
-        lo = VersionTriple.parse(r.introduced) if r.introduced else None
+        lo = VersionTriple.parse(r.introduced_in) if r.introduced_in else None
         hi_excl = VersionTriple.parse(r.fixed) if r.fixed else None
         hi_incl = VersionTriple.parse(r.last_affected) if r.last_affected else None
         if lo is not None and v < lo:
@@ -99,7 +99,7 @@ def version_in_range(version: str, ranges: Iterable[AffectedVersionRange]) -> bo
 
 def _string_in_range(version: str, ranges: Iterable[AffectedVersionRange]) -> bool:
     for r in ranges:
-        if r.introduced and version < r.introduced:
+        if r.introduced_in and version < r.introduced_in:
             continue
         if r.fixed and version >= r.fixed:
             continue
