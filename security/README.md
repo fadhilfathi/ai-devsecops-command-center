@@ -69,6 +69,43 @@ security/
 **Provenance:** SBOMs are also attached to GitHub Releases by
 `.github/workflows/release.yml` (job `attach-sbom`).
 
+### `security.sbom.generated.v1` event payload (LOCKED 2026-06-12)
+
+The producer (`sbom-pipeline :4007`) publishes one event per
+generated SBOM on the Redis Stream subject
+`security.sbom.generated.v1`. The full payload:
+
+```json
+{
+  "schema": "security.sbom.generated.v1",
+  "sbom_id": "sbom-2026-06-12-a1b2c3d-monorepo",
+  "source": "fs:.",
+  "format": "cyclonedx-json",
+  "component_count": 247,
+  "generated_at": "2026-06-12T19:25:00Z",
+  "git_sha": "a1b2c3d4e5f6",
+  "scope": "monorepo",
+  "sbom_fingerprint": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+}
+```
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `schema` | `string` (const) | yes | Discriminator. Value: `"security.sbom.generated.v1"`. |
+| `sbom_id` | `string` | yes | The `<sbom_id>` of the generated SBOM. See schema above. |
+| `source` | `string` | yes | Where the SBOM was scanned from. Prefix-style per S2.1 v2 spec: `fs:`, `git:`, `docker:`, `lockfile:`. |
+| `format` | `string` (enum) | yes | `cyclonedx-json`, `cyclonedx-xml`, `spdx-json`. |
+| `component_count` | `integer` | yes | Number of components in the SBOM (drives `sbom_size_bucket` for S2.7 metrics). |
+| `generated_at` | `string` (RFC 3339) | yes | When the SBOM was generated. |
+| `git_sha` | `string \| null` | yes | Short or full git SHA of the scanned commit. Null for non-repo scans. |
+| `scope` | `string` | yes | `monorepo`, `<service-name>`, or `<package-name>`. |
+| `sbom_fingerprint` | `string` | yes | Content-addressable fingerprint. Format: `<alg>:<hex>` (e.g. `sha256:9f86...`). Computed over the **canonicalized** (RFC 8785 / JCS) primary-format SBOM bytes. Used by SecurityArchitect's S2.8 audit chain for deterministic risk-score calculation. |
+
+A machine-readable JSON Schema is in
+[`security/wire-format/sbom-generated.schema.json`](wire-format/sbom-generated.schema.json).
+Cross-team reference for: Python `sbom-pipeline` validator,
+github-bridge, security-automation `parse` step.
+
 ---
 
 ## Vulnerability report contract
@@ -144,20 +181,38 @@ of truth for the GitOps wire format; the rich internal schema
 | `git_sha` | `string \| null` | no | Short git SHA of the scanned commit. Null for image/archive/directory scans. |
 | `auto_actionable` | `boolean` | yes | `true` when **(KEV == true) AND (fixed_in is non-empty) AND (package is in our dependency graph)**. Default `false`. |
 
-### `auto_actionable` gate (LOCKED)
+### `auto_actionable` gate (LOCKED — 4 conditions)
 
 The `vuln-projection.ts` helper in `backend/services/security/src/services/`
-sets `auto_actionable: true` **only when all three conditions hold**:
+sets `auto_actionable: true` **only when all 4 conditions hold** (the
+3 upstream + 1 projection breakdown):
 
-1. The CVE is in the **CISA KEV** catalog (Known Exploited Vulnerabilities).
-2. `fixed_in` is a non-empty array (i.e. a fix is available).
-3. The package is **in our dependency graph** (i.e. reachable from the
-   root of the scanned repo, not a phantom transitive that we don't ship).
+**Upstream (vuln-intel :4008 sets `autoActionable: true` on the rich schema when):**
 
-Otherwise, `auto_actionable: false`. This is the gate that determines
-whether the GitOps consumer (`.github/workflows/security-issue.yml`)
-opens a Critical-CVE issue. See
-[`docs/runbooks/security-automation.md`](../../docs/runbooks/security-automation.md#triage-a-critical-cve-issue)
+1. **Cross-source consensus reached.** The record was corroborated by
+   ≥2 independent sources (e.g. NVD + GHSA, OSV + Snyk). Records with
+   consensus below this threshold have `unofficial: true` on the
+   rich schema and `autoActionable: false`. Maps to SecurityArchitect's
+   S2.8 T-03 cross-source consensus gate.
+2. **CISA KEV catalog hit.** The CVE is in the
+   [CISA Known Exploited Vulnerabilities](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)
+   catalog. Distinct from CVSS — a 9.8 CVE with no in-the-wild
+   exploitation is NOT auto_actionable.
+3. **Fix available.** `fixed_in` is a non-empty array (i.e. a fix is
+   available upstream, even if not yet in our local dependency
+   closure).
+
+**Projection (security-service :4003 refines to `auto_actionable: true` on the wire format when):**
+
+4. **In our dependency graph.** The package is **reachable from the
+   root of the scanned repo**, not a phantom transitive that we don't
+   ship. The `dependency-intel :4009` service provides the
+   `in_graph: bool` flag at projection time.
+
+If any of the 4 conditions is false, `auto_actionable: false`. This
+is the gate that determines whether the GitOps consumer
+(`.github/workflows/security-issue.yml`) opens a Critical-CVE issue.
+See [`docs/runbooks/security-automation.md`](../../docs/runbooks/security-automation.md#triage-a-critical-cve-issue)
 for the issue-triage runbook.
 
 ### JSON Schema
