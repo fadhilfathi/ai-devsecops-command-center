@@ -95,6 +95,8 @@ class Settings:
     tenant_header: str = "x-tenant-id"
     auth_header: str = "authorization"
     require_auth: bool = False
+    # T-07 SSRF defense (S2.8 hotfix)
+    ssrf: SsrfConfig = field(default_factory=SsrfConfig.from_env)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -119,4 +121,5 @@ class Settings:
                 "true",
                 "yes",
             },
+            ssrf=SsrfConfig.from_env(),
         )

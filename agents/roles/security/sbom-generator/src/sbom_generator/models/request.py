@@ -3,6 +3,14 @@
 The request model is intentionally a superset of all source kinds so
 that callers don't have to learn a per-source type. The source kind
 itself is encoded in the ``source.type`` field.
+
+T-07 SSRF defense (S2.8 hotfix):
+  - The synchronous validator at module level classifies the target host
+    against the CIDR/hostname blocklist in `security.ssrf`. IP literals
+    that fall in private/reserved ranges are rejected at the model layer
+    so they never reach the service code.
+  - The asynchronous DNS-rebinding check lives in the service layer
+    (see ``SbomService.generate``). The model layer is sync-only.
 """
 
 from __future__ import annotations
@@ -15,6 +23,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from sbom_generator.errors import ValidationError
 from sbom_generator.models.sbom import SBOMFormat
+from sbom_generator.security.ssrf import classify_hostname, extract_host
 
 
 class SourceType(str):

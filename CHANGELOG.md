@@ -121,6 +121,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **New env vars** (all in `config.py`): `VULN_INTEL_INGEST_SCHEDULE_NVD|GHSA|OSV|EPSS|KEV_MINUTES`, `VULN_INTEL_LLM_*` (model, base_url, api_key, timeout_seconds, max_retries, tenant_budget_tokens, global_budget_tokens, cost_per_1k_micros), `VULN_INTEL_AUDIT_LOG_FILENAME`, `VULN_INTEL_AUDIT_LOG_MAX_BYTES`, `VULN_INTEL_CONSENSUS_MIN_SOURCES_HIGH_CRITICAL`, `VULN_INTEL_FEED_SIGNATURE_REQUIRED`, `VULN_INTEL_VALIDATION_MAX_JSON_DEPTH`
   - **Test coverage** (`test_validators.py`, `test_consensus.py`, `test_audit.py`, `test_llm.py`): 46 new tests covering CF-01..CF-07 (feed validation + consensus) and LP-01..LP-09 (LLM scoring). Full suite **82/82 passing**.
 
+- **`vuln-intel` S2.8 follow-up** (2026-06-12, post-Sprint-2-closeout, 7 new tests)
+  - **Metric rename**: `vuln_feed_last_refresh_timestamp_seconds` → `devsecops_vuln_feed_last_refresh_timestamp_seconds` with **required `service` and `source` labels** (SREEngineer spec §3.11).
+  - **`affected[].introduced` → `introduced_in` rename** + new `introduced_at` field. The two fields are intentionally separate (per FullstackEngineer Pydantic↔Zod alignment, 2026-06-12): `introduced_in` is per-version semver (on the wire), `introduced_at` is per-deploy ISO-8601 (internal-only, security-service projection strips it).
+  - **`CveRecord.consensus_sources: list[str]`** — populated by the consensus pass after every ingest run, emitted to the GitOps wire (O-3.7 19-field schema). Used by security-service :4003 for the `length(consensus_sources) >= 2` condition of the 4-condition `auto_actionable` gate.
+  - **`CveRecord.vuln_intel_pre_actionable: bool | None`** — internal pre-actionable hint (NEVER on the wire). Computed by `Service._compute_pre_actionable()`: `(kev OR (high/critical AND epss >= 0.36)) AND fix_available`. The wire `auto_actionable` is computed by security-service as the 4-condition AND.
+  - **LLM audit additions**: `clamp_applied` + `human_review_routed` fields on `LlmCallAudit` (SecurityArchitect S2.8 §T-03 detection signal). The clamp band is `[EPSS - cvss_width, EPSS + cvss_width]` where `cvss_width = (cvss_base / 10) * 0.3`. When the LLM score is outside the band, both flags are set to True.
+  - **Threat-model citations**: `validators.py` and `consensus.py` docstrings now cite `docs/threat-models/s2-security-mitigations.md` § 3.5 (per-feed JSON-Schema validation, T-02 CVE feed poisoning) and § 3.6 (flag-don't-downgrade policy, O-3.6 4-condition `auto_actionable` gate).
+  - **Test coverage** (7 new tests): 2 in `test_models.py` (consensus_sources default, pre_actionable default), 2 in `test_models.py` (introduced_in rename, introduced_at field), 3 in `test_llm.py` (clamp-outside-band → human_review, clamp-inside-band → no human_review, clamp_band helper). Full suite **89/89 passing**.
+
 - **`dependency-intel` service** (S2.3, port 4009) — dependency graph + risk
   - CycloneDX/SPDX-compatible SBOM ingest (per-component + per-dependency)
   - Graph builder with PURL-keyed nodes, dedupe across SBOMs, workspace merge
