@@ -1,5 +1,8 @@
 # Memory Index — MiniMax Command Center Team
 
+## Decisions
+- [decision-pnpm-turborepo.md](./decision-pnpm-turborepo.md) — Sprint 2 toolchain: pnpm + Turborepo (no npm migration)
+
 ## Sprint 1 — COMPLETE ✅
 - [sprint-1-status.md](./sprint-1-status.md) — Sprint 1 final status (232 files, 16,889 insertions, all 10 success criteria met)
 - [sprint-1-retrospective.md](./sprint-1-retrospective.md) — PlatformArchitect retrospective: contributions, conventions locked, Sprint 2 hot list

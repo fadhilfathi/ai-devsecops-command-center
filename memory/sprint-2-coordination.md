@@ -102,32 +102,32 @@ GitOpsManager owns writing the new ADR in the docs PR.
 
 ### Package manager (pnpm vs npm)
 
-**Open decision — escalated to Lead for Sprint 2 kickoff.**
+**RESOLVED 2026-06-12 (Leader decision).** See
+[`decision-pnpm-turborepo.md`](./decision-pnpm-turborepo.md).
 
-Current on-disk state: **pnpm workspaces** (root `package.json` +
-`pnpm-workspace.yaml` + `Makefile` + `"packageManager": "pnpm@9.12.0"`).
+**Stay on pnpm + add Turborepo. No npm migration.**
 
-Conflict: 9-step spec mentioned by FullstackEngineer uses `npm`
-workspaces. The two are not interchangeable for the build graph, the
-CI cache, and the developer experience — this should not drift in.
+Reasons (Leader):
+- Sprint 1 is already on pnpm; switching to npm is gratuitous churn.
+- pnpm + Turborepo is the well-supported 2026 default.
+- pnpm is faster, more disk-efficient, and avoids known npm + Turborepo
+  cache quirks.
+- One package manager is the right call; multi-PM support is punted
+  to Sprint 3+ if ever.
 
-GitOpsManager recommendation when Lead asks: **stay on pnpm, add
-Turborepo on top.** Reasons:
-- Sprint 1 is already on pnpm; switching is gratuitous churn.
-- pnpm + Turborepo is the de-facto 2026 combo.
-- pnpm is faster and more disk-efficient.
-- npm workspaces have known Turborepo cache quirks that pnpm doesn't.
+Implications (per Leader):
+- FullstackEngineer splits `@aicc/shared` into 6 target packages using
+  pnpm workspaces.
+- Turborepo is added at the repo root (`turbo.json`) for
+  build/test/lint pipeline.
+- CI workflows pin pnpm, not npm.
+- `Makefile` keeps pnpm everywhere.
+- `pnpm-lock.yaml` is the source of truth; no `package-lock.json`.
 
-If the Lead confirms npm instead, the docs PR will additionally flip:
-- root `package.json` (remove pnpm-specific fields, add npm engines)
-- `pnpm-workspace.yaml` → `package.json` `workspaces` field
-- `Makefile` `pnpm` → `npm` everywhere
-- `.env.example` and docs that mention pnpm
-- CI workflows (`.github/workflows/*.yml`) — pin npm
-- README quickstart
-
-That flip is a 1-commit addition to the docs PR — fully scoped, no
-scope creep. Waiting for explicit go-ahead before planning around it.
+GitOpsManager is the **Reviewer** of this decision per the Leader's
+note in `decision-pnpm-turborepo.md`. GitOpsManager's docs PR is
+unchanged: all pnpm references in `Makefile`, `package.json`,
+`pnpm-workspace.yaml`, `.env.example`, and `*.md` stand.
 
 ### File scope
 
@@ -159,10 +159,13 @@ single docs PR after. This:
 
 ## Open items at time of writing
 
-- **Lead confirmation** of Sprint 2 plan AND pnpm-vs-npm decision.
-- **Loki config** for docker-compose (SRE follow-up from Sprint 1).
+- **Lead confirmation** of Sprint 2 plan — implicit, awaiting the
+  formal kickoff message.
 - **Runbook URL templating** in `infra/observability/prometheus/alert-rules.yml`
   (SRE follow-up from Sprint 1).
 - One stale path in `memory/monitoring-architecture.md` referencing the
   old root-level `infra/observability/alertmanager.yml` (SRE follow-up
   from Sprint 1).
+- **Loki config** — ✅ resolved 2026-06-12 (SREEngineer published
+  `infra/observability/loki-config.yaml`; GitOpsManager uncommented
+  the docker-compose mount).

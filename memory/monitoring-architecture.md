@@ -44,7 +44,7 @@ Delivered the full observability architecture for the AI-DevSecOps Command Cente
 - `backend/common/observability/otel.ts` — reference OTel bootstrap
 - `backend/common/observability/logger.ts` — reference structured logger
 - `backend/common/observability/health.ts` — reference health check server
-- `infra/observability/alertmanager.yml` — dev/docker-compose alertmanager
+- `infra/observability/alertmanager/alertmanager.yml` — production alertmanager (also used by docker-compose with dev env vars)
 
 ## Risks
 - **Loki multi-tenant cost** — at 500 GB/day we need to revisit the storage tier. Plan in §10 of `monitoring-architecture.md`.

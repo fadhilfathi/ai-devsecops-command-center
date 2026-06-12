@@ -11,6 +11,7 @@
 #   infra/observability/prometheus/recording-rules.yml
 #   infra/observability/otel-collector/collector-config.yaml
 #   infra/observability/alertmanager/alertmanager.yml
+#   infra/observability/loki-config.yaml
 #   infra/observability/grafana/provisioning/
 #   infra/observability/grafana/dashboards/
 # See `infra/observability/README.md` and
@@ -229,12 +230,8 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
-    # NOTE: SREEngineer has not yet added a Loki config to the repo
-    # (`infra/observability/loki-config.yaml`). The container will use its
-    # built-in default config. To override, drop a loki-config.yaml into
-    # `infra/observability/` and uncomment the line below.
-    # volumes:
-    #   - ./infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    volumes:
+      - ./infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
     networks:
       - ccnet
 

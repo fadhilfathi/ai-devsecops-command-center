@@ -41,11 +41,9 @@ prod file. There are **no** dev-only root-level files in
 
 ### Open items (Sprint 2 follow-ups)
 
-- **Loki config**: there is no `infra/observability/loki-config.yaml` in
-  the repo. The `loki` container in `docker-compose.yml` uses its
-  built-in default config. A commented-out mount in docker-compose.yml
-  shows where it would go. **Action**: SREEngineer to publish a Loki
-  config (or remove the Loki service until we need it).
+- ✅ **Loki config** — resolved 2026-06-12. SREEngineer published
+  `infra/observability/loki-config.yaml`. GitOpsManager uncommented
+  the mount in `docker-compose.yml` (commit pending).
 - **Runbook URL templating**: `alert-rules.yml` references
   `https://runbooks.example.com/observability/...` — this needs to be
   templated to use `RUNBOOK_BASE_URL` from env. **Action**: SRE to
