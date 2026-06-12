@@ -86,6 +86,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   log, agent safety) in `docs/architecture/security-model.md`.
 - Pinned Dependabot to weekly updates with group rules per package.
 
+## Sprint 2 — Security foundation (2026-06-12)
+
+### Added
+
+- **`vuln-intel` service** (S2.2, port 4008) — CVE ingestion, normalization, and scoring
+  - Source adapters: NVD 2.0, GitHub Security Advisories (GHSA), OSV.dev
+  - Enrichment: FIRST.org EPSS (exploit likelihood) + CISA KEV (known exploited)
+  - CVSS 3.0/3.1/4.0 vector parser + custom base-score calculator (no external CVSS lib)
+  - Unified `CveRecord` Pydantic schema (CVE-5.0-aligned) with multi-source merge
+  - SBOM↔CVE matcher (semver-aware range matching, confidence scoring)
+  - FastAPI surface: `POST /vuln-intel/ingest`, `GET /vuln-intel/cve/{id}`,
+    `POST /vuln-intel/cve/lookup`, `POST /vuln-intel/score`,
+    `POST /vuln-intel/match`, `GET /vuln-intel/stats`, `POST /vuln-intel/sync/once`
+  - Health & telemetry: `/livez`, `/readyz` (deep source probe), `/metrics`
+  - Append-only JSONL store with restart-safe index; Prometheus instrumentation;
+    OTel-ready; structlog JSON logs; non-root Docker image; multi-tenant
+  - **36 unit + integration tests passing** (`pytest`, ASGI in-process)
+
+- **`dependency-intel` service** (S2.3, port 4009) — dependency graph + risk
+  - CycloneDX/SPDX-compatible SBOM ingest (per-component + per-dependency)
+  - Graph builder with PURL-keyed nodes, dedupe across SBOMs, workspace merge
+  - Pure-Python personalised PageRank on the **reversed** graph for risk
+    propagation from vulnerable leaves up to roots
+  - Risk formula: `risk_i = alpha * (0.4 * local_i + 0.6 * pr_i) + (1 - alpha) * baseline`
+  - Vulnerability cluster detection (CVE-shared-neighbour groups)
+  - GraphML / DOT / JSON export for the UI
+  - FastAPI surface: `POST /dep-intel/graph/build`, `GET /dep-intel/graph/{id}`,
+    `POST /dep-intel/graph/{id}/correlate`, `POST /dep-intel/risk/calculate`,
+    `GET /dep-intel/risk/{id}`, `GET /dep-intel/clusters/{id}`,
+    `GET /dep-intel/graph/{id}/export`
+  - Talks to `vuln-intel` via the documented S2.5 contract
+  - **24 unit + integration tests passing**
+
+- **Smoke tests** in `scripts/`:
+  - `smoke_vuln_intel.py` — pure-Python CVSS, model, matcher smoke
+  - `smoke_e2e_security.py` — in-process end-to-end (ingest → match → risk)
+  - `smoke_boot_services.py` — boots both HTTP services in subprocesses and
+    verifies `/livez`, `/metrics`, and OpenAPI paths
+  - `verify_compile.py` — bytecode-compile gate
+
+### Changed
+
+- Service skeletons from Sprint 1 now have full implementations in Python
+  (vuln-intel, dependency-intel) co-located under
+  `agents/roles/security/{vuln-intel,dependency-intel}/`.
+
 ## Sprint roadmap (planned)
 
 | Sprint | Focus                                                     |

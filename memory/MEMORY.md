@@ -16,8 +16,13 @@
 - [event-bus-design.md](./event-bus-design.md) — PlatformArchitect: event bus design
 - [s2-runtime-observability.md](./s2-runtime-observability.md) — SREEngineer: S2.7 Python OTel, metrics, alerts, dashboard
 - [s2-security-service-metrics.md](./s2-security-service-metrics.md) — FullstackEngineer: 6 proposed metrics for security-service :4003 proxy layer (S2.7 scope)
+- [s2-security-service-metrics-wired.md](./s2-security-service-metrics-wired.md) — FullstackEngineer: 6 metrics wired in code; awaiting SRE cardinality lint
+- [s2-shared-metrics-helper.md](./s2-shared-metrics-helper.md) — FullstackEngineer: `@aicc/observability` helper created; refactored metrics to use it; dropped `tenant_id_hash` per metrics-spec §5.1
+- [s2-scan-topic-and-assetid.md](./s2-scan-topic-and-assetid.md) — FullstackEngineer → ComplianceOfficer: `SCAN_TOPIC` + `assetId` + `kind` added to topics.ts; 1 open question (introducedIn vs introducedAt)
 - [s2-vuln-schema-handoff.md](./s2-vuln-schema-handoff.md) — FullstackEngineer → ComplianceOfficer: CloudEvents envelope + vulnerability shape + `kind`/`introducedAt` proposal (S2.9)
 - [s2-gitops-wire-format-alignment.md](./s2-gitops-wire-format-alignment.md) — FullstackEngineer ↔ GitOpsManager: 3 gaps between security-service :4003 emit code and S2.10 NDJSON contract; holding code changes pending sign-off
+- [s2-sbom-v2-spec-alignment.md](./s2-sbom-v2-spec-alignment.md) — FullstackEngineer ↔ SBOMPipelineAgent: Lead's v2 spec (URN bom-ref + prefix-string target) — code changes landed
+- [s2-sbom-pipeline-v2-completion.md](./s2-sbom-pipeline-v2-completion.md) — S2.1 v2 service: missing `syft_wrapper.py` written, 12 test failures fixed, 69/69 pass
 - [monitoring-architecture.md](./monitoring-architecture.md) — SREEngineer: monitoring, logging, metrics architecture
 - [gitops-manager-sprint-1.md](./gitops-manager-sprint-1.md) — GitOpsManager: repo, CI/CD, contributor docs, ADRs 0005-0007
 
