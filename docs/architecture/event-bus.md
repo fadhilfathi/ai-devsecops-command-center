@@ -117,6 +117,72 @@ Examples:
 > can evolve additively (new optional fields) without bumping the subject
 > version. Breaking changes require a new subject.
 
+## Sprint 2 contract addendum — security topics (S2.4 / S2.5)
+
+The Sprint 2 security stack introduces three typed event subjects,
+with their **canonical string constants** exported from
+[`@aicc/shared/security`](../../backend/packages/shared/src/security/index.ts):
+
+| Constant        | Subject                              | Producer          | Consumers                                                     |
+| --------------- | ------------------------------------ | ----------------- | ------------------------------------------------------------- |
+| `SBOM_TOPIC`    | `security.sbom.generated`            | `sbom-pipeline`   | `dependency-intel`, `security-service`, `security-automation` |
+| `VULN_TOPIC`    | `security.vulnerability.detected`    | `vuln-intel`      | `dependency-intel`, `security-service`, `security-automation` |
+| `RISK_TOPIC`    | `security.risk.calculated`           | `dependency-intel`| `security-service`, `security-automation`                     |
+
+> **Hard rule:** service code **must not** hardcode the string
+> `"security.sbom.generated"` (or any of the others). It must
+> `import { SBOM_TOPIC } from "@aicc/shared/security"`. The
+> sub-path export is the single source of truth and is locked in
+> ADR 0008. The strings above are documentation mirrors only.
+
+**Type contract** — the constants are accompanied by typed event
+interfaces in the same sub-path, validated at producer boundary by a
+Zod schema exported from `backend/models/security/`:
+
+```ts
+// Consumer (Node.js / Fastify)
+import {
+  SBOM_TOPIC,
+  VULN_TOPIC,
+  RISK_TOPIC,
+  type SbomGeneratedEvent,
+  type VulnerabilityDetectedEvent,
+  type RiskCalculatedEvent,
+} from "@aicc/shared/security";
+
+// Producer
+import { publish } from "@aicc/event-bus";
+import { SBOM_TOPIC, type SbomGeneratedEvent } from "@aicc/shared/security";
+
+await publish(SBOM_TOPIC, {
+  tenantId: "tnt_01HXYZ",
+  gitSha:   "a1b2c3d",
+  scanner:  "syft",
+  sbom:     /* CycloneDX-shaped object, validated by SbomSchema */,
+} satisfies SbomGeneratedEvent);
+```
+
+The full per-model Zod schemas (`SbomSchema`, `VulnerabilitySchema`,
+`DependencyGraphSchema`, `RiskScoreSchema`) and their inferred TypeScript
+types are re-exported via `@aicc/shared/security/models`. See
+[`./security-model.md`](./security-model.md#service-to-service-event-contracts-sprint-2)
+for the full producer/consumer/schema-path matrix.
+
+**Versioning policy for these three subjects:**
+
+- Subject version (`.v1`) is bumped **only on a breaking payload change**.
+- Adding optional fields is non-breaking; consumers should ignore unknown
+  fields (Zod's `.strict()` is OFF by default for these schemas).
+- Deprecation of a subject version is announced via a
+  `security.<aggregate>.deprecated.v1` event, with at least one minor
+  release of overlap.
+
+**GitOps consumer:** `.github/workflows/security.yml` consumes
+`vulnerability-detected` (via a small `github-bridge` service that
+calls the GitHub `repository_dispatch` API). See
+[`../runbooks/security-automation.md`](../runbooks/security-automation.md#system-map)
+for the full flow.
+
 ## Consumer groups
 
 Each subject has one or more consumer groups, e.g.:
