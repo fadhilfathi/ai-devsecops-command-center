@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
 
-from sbom_generator.errors import ValidationError
+from sbom_generator.errors import SsrfBlockedError, ValidationError
 from sbom_generator.models.sbom import SBOMFormat
 from sbom_generator.security.ssrf import classify_hostname, extract_host
 
@@ -103,7 +103,14 @@ class GenerateRequest(BaseModel):
         return v
 
     def validate_source(self) -> None:
-        """Cross-field checks that pydantic can't express declaratively."""
+        """Cross-field checks that pydantic can't express declaratively.
+
+        T-07 (S2.8 hotfix): for every source kind whose target is a remote
+        resource, classify the host against the SSRF blocklist and reject
+        private/reserved IP literals and banned hostnames. The async
+        DNS-rebinding check (host resolves to private IP) is enforced at
+        the service layer before the Syft subprocess runs.
+        """
         kind = self.source.type
         target = self.source.value
         if kind in {SourceType.DIRECTORY, SourceType.FILE, SourceType.ARCHIVE}:
@@ -119,6 +126,11 @@ class GenerateRequest(BaseModel):
                 raise ValidationError(
                     "Invalid image reference", details={"value": target}
                 )
+            # SSRF: reject image references pointing at private/loopback hosts.
+            # docker.io/library/foo is fine; 10.0.0.5:5000/foo is not.
+            image_host = self._extract_image_host(target)
+            if image_host is not None:
+                self._assert_host_ssrf_safe(image_host, target)
         elif kind == SourceType.GIT_REPOSITORY:
             parsed = urlparse(target)
             # Accept three SSH-like forms:
@@ -136,6 +148,10 @@ class GenerateRequest(BaseModel):
                     "or scp-style [user@]host:path form",
                     details={"value": target, "scheme": parsed.scheme or None},
                 )
+            # SSRF: classify the host portion against the blocklist.
+            git_host = self._extract_git_host(target)
+            if git_host is not None:
+                self._assert_host_ssrf_safe(git_host, target)
         elif kind == SourceType.REGISTRY:
             parsed = urlparse(target)
             if parsed.scheme not in {"https", "http"}:
@@ -143,3 +159,78 @@ class GenerateRequest(BaseModel):
                     "registry source requires http(s) URL",
                     details={"value": target},
                 )
+            # SSRF: classify the URL host against the blocklist.
+            if parsed.hostname:
+                self._assert_host_ssrf_safe(parsed.hostname, target)
+
+    @staticmethod
+    def _extract_git_host(target: str) -> Optional[str]:
+        """Extract the host portion of a git URL or scp-style form."""
+        parsed = urlparse(target)
+        if parsed.hostname:
+            return parsed.hostname
+        # scp-style: ``user@host:path``
+        m = re.match(r"^[\w-]+@([\w.\-]+):", target)
+        if m:
+            return m.group(1)
+        return None
+
+    @staticmethod
+    def _extract_image_host(reference: str) -> Optional[str]:
+        """Extract the registry host from an OCI image reference.
+
+        Examples:
+          ``docker.io/library/alpine`` -> ``docker.io``
+          ``ghcr.io/owner/repo:tag``   -> ``ghcr.io``
+          ``10.0.0.5:5000/repo``       -> ``10.0.0.5``
+          ``[::1]:5000/repo``          -> ``::1``
+          ``alpine``                   -> ``docker.io`` (Docker Hub default)
+        """
+        # Split off the tag/digest first.
+        ref = reference.split("@", 1)[0]
+        # The first component (before the first '/') is the registry.
+        # If it contains '.' or ':' or is 'localhost', it is a registry;
+        # otherwise it's a Docker Hub library path and the implicit
+        # registry is docker.io.
+        first_slash = ref.find("/")
+        if first_slash == -1:
+            # bare name like ``alpine`` -> default registry
+            return "docker.io"
+        first = ref[:first_slash]
+        if (
+            first == "localhost"
+            or first == "localhost:"
+            or ":" in first
+            or (first.startswith("[") and first.endswith("]"))
+            or "." in first
+        ):
+            # IPv6 literal: ``[::1]``
+            if first.startswith("[") and first.endswith("]"):
+                return first[1:-1]
+            # Strip an embedded port: ``10.0.0.5:5000`` -> ``10.0.0.5``
+            if ":" in first and not first.startswith("["):
+                # Could be either host:port or just host. If second segment
+                # after the colon is all digits, treat as port.
+                host, _, port = first.partition(":")
+                if port.isdigit():
+                    return host
+                return first
+            return first
+        # No registry component -> Docker Hub default.
+        return "docker.io"
+
+    @staticmethod
+    def _assert_host_ssrf_safe(host: str, target: str) -> None:
+        """Reject `host` if it is on the SSRF blocklist.
+
+        Raises ``SsrfBlockedError`` (HTTP 400, code ``ssrf_blocked``) so the
+        service layer can surface a precise error code to the caller.
+        """
+        if not host:
+            return
+        reason = classify_hostname(host)
+        if reason is not None:
+            raise SsrfBlockedError(
+                f"SSRF defense: target host rejected ({reason})",
+                details={"value": target, "host": host, "reason": reason},
+            )

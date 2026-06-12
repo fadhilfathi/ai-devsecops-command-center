@@ -44,6 +44,17 @@ class UnsupportedSourceError(ValidationError):
     http_status = 400
 
 
+class SsrfBlockedError(ValidationError):
+    """T-07 (S2.8): the dev_input target's host was rejected by the SSRF defense.
+
+    Mapped to HTTP 400 with a stable ``ssrf_blocked`` code so callers can
+    distinguish it from generic validation failures. The ``details`` payload
+    includes the blocked host and the classification reason.
+    """
+    code = "ssrf_blocked"
+    http_status = 400
+
+
 class SourceNotFoundError(SBOMError):
     code = "source_not_found"
     http_status = 404
