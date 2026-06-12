@@ -339,3 +339,88 @@ groups:
           summary: "risk calc p95 > 300s for xxlarge SBOMs"
           description: "p95 = {{ $value | humanizeDuration }}. OS image / monorepo. Check for runaway jobs."
           runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXxlarge"
+
+  # ---------------------------------------------------------------------------
+  # Sprint 2.8 — Security control integrity alerts
+  #
+  # Added 2026-06-12 (S2.8 follow-up; SecurityArchitect spec).
+  # These are security-control integrity signals (T-02, T-03, T-04, T-05, T-09
+  # mitigations), NOT runtime SLI. They page on tamper/exfil/integrity events
+  # rather than latency/throughput.
+  # ---------------------------------------------------------------------------
+  - name: security_stack.s2_8_controls
+    rules:
+
+      - alert: RiskScoreAuditChainBroken
+        expr: sum by (service) (devsecops_risk_score_audit_chain_verified{ok="0"}) > 0
+        for: 1m
+        labels:
+          severity: page
+          s2_8_control: T-05
+        annotations:
+          summary: "risk-score audit chain verification FAILED on {{ $labels.service }}"
+          description: "T-05 tamper detection: at least one service has ok=0 for risk-score audit chain. Possible tamper event. Page on-call immediately."
+          runbook: "{{ $labels.runbook_base_url }}/RiskScoreAuditChainBroken"
+
+      - alert: CanaryTestFailure
+        expr: increase(devsecops_canary_test_failures_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: page
+          s2_8_control: T-09
+        annotations:
+          summary: "data-exfil canary test failed ({{ $labels.endpoint }})"
+          description: "T-09 canary detected possible data exfiltration on endpoint {{ $labels.endpoint }}. Page on-call immediately and initiate incident response."
+          runbook: "{{ $labels.runbook_base_url }}/CanaryTestFailure"
+
+      - alert: CveFeedIntegrityRejected
+        expr: sum by (feed) (rate(devsecops_cve_feed_records_rejected_total{reason="integrity"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: ticket
+          s2_8_control: T-02
+        annotations:
+          summary: "CVE feed integrity rejections > 0.1/s for {{ $labels.feed }}"
+          description: "T-02 feed integrity gate is rejecting records from {{ $labels.feed }} at > 0.1/s for 5m. Possible feed compromise or upstream schema change. Investigate before next ingestion cycle."
+          runbook: "{{ $labels.runbook_base_url }}/CveFeedIntegrityRejected"
+
+      - alert: CosignVerifySlow
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(devsecops_cosign_verify_duration_seconds_bucket{service="sbom-pipeline",result="success"}[5m]))
+          ) > 30
+        for: 10m
+        labels:
+          severity: ticket
+          s2_8_control: T-04
+        annotations:
+          summary: "cosign verify p95 > 30s on sbom-pipeline"
+          description: "T-04 supply-chain verification is slow. p95 = {{ $value | humanizeDuration }}. Rekor or Cosign service degradation. Check upstream service health."
+          runbook: "{{ $labels.runbook_base_url }}/CosignVerifySlow"
+
+      - alert: SbomValidationErrorRate
+        expr: |
+          (
+            sum(rate(devsecops_sbom_validation_errors_total[5m]))
+            /
+            sum(rate(devsecops_proxy_request_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: ticket
+          s2_8_control: T-08
+        annotations:
+          summary: "SBOM validation error rate > 1%"
+          description: "T-08 input validation: more than 1% of proxy requests are being rejected for SBOM validation. Investigate possible client regression or active attack pattern."
+          runbook: "{{ $labels.runbook_base_url }}/SbomValidationErrorRate"
+
+      - alert: LlmTokenBudgetLow
+        expr: devsecops_llm_token_budget_remaining < 0.20
+        for: 5m
+        labels:
+          severity: ticket
+          s2_8_control: T-03
+        annotations:
+          summary: "LLM token budget < 20% remaining"
+          description: "T-03 cost guardrail: vuln-intel LLM summarization budget is below 20%. Throttle non-essential LLM calls or expand budget before next cycle."
+          runbook: "{{ $labels.runbook_base_url }}/LlmTokenBudgetLow"
