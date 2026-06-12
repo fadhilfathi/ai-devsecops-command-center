@@ -103,6 +103,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 11     | Hardening, security review, OpenSSF Scorecard pass        |
 | 12     | 0.1.0 release, public docs, demo data                    |
 
+## Security changelog
+
+> **Status:** Auto-managed by
+> [`.github/workflows/security.yml`](.github/workflows/security.yml)
+> (owner: GitOpsManager). Do not hand-edit — the bot will
+> overwrite any changes inside the markers.
+
+This section is a **pointer** to the canonical, auto-generated
+security changelog. It is intentionally lightweight here so
+humans don't merge in 200 lines of raw CVE noise every release.
+The real data lives under [`security/`](security/) and is
+updated continuously by CI.
+
+### Where to look
+
+| What                                  | Where                                                                                          |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Daily vulnerability findings (NDJSON) | [`security/vulns/<YYYY-MM-DD>.json`](security/vulns/) (90-day retention)                        |
+| Weekly digest (Markdown)              | [`security/vulns/weekly-<YYYY-Www>.md`](security/vulns/) (kept indefinitely)                   |
+| SBOM artifacts                        | [`security/sboms/<sbom_id>/`](security/sboms/) (kept indefinitely; also attached to Releases)   |
+| SBOM index                            | [`security/sboms/index.json`](security/sboms/index.json) (NDJSON, one line per SBOM)            |
+| Response SLA                          | [`SECURITY.md` → Response targets (SLA)](SECURITY.md#response-targets-sla)                     |
+| Coordinated disclosures               | GitHub Security Advisories tab                                                                 |
+| Disclosed CVEs (post-disclosure)      | `CHANGELOG.md` "Security" section of the corresponding release entry                            |
+
+### Schema & contract
+
+See [`security/README.md`](security/README.md) for the locked
+folder + event-payload contracts. See
+[`docs/runbooks/security-automation.md`](docs/runbooks/security-automation.md)
+for the operator runbook (triage, override, rollback).
+
+<!-- BEGIN:auto:security-pointer -->
+<!-- END:auto:security-pointer -->
+
 ## Release history
 
 | Version | Date       | Notes                           |
