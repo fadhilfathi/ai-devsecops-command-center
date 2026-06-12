@@ -102,3 +102,47 @@ RBAC is **role-based** with **scope-based** granularity for actions and
   cross-prefix reads.
 - **Cache keys** are prefixed with `tnt:<id>:`; the runtime refuses to
   set or read keys without the prefix.
+
+## Threat model (STRIDE summary)
+
+| Category      | Threats                                            | Primary mitigation |
+| ------------- | -------------------------------------------------- | ------------------ |
+| **S**poofing  | Stolen JWT, forged webhook                         | MFA, mTLS, HMAC    |
+| **T**ampering | Mutating audit log, altering evidence              | Append-only audit, signed evidence |
+| **R**epudiation| Operator denies action                            | Audit log with actor + trace |
+| **I**nfo disc.| Cross-tenant leak via mis-scoped query             | Tenant filters in DAL, automated tests |
+| **D**oS       | Runaway agent, event bus flood, expensive prompt   | Rate limits, circuit breakers, max-token budgets |
+| **E**oP       | RBAC bypass, scope escalation                      | Centralized authz checks, fuzz tests |
+
+A full threat model with diagrams is in [`/docs/security/threat-model.md`](../security/threat-model.md).
+
+## Audit log
+
+- **Every** state-changing action produces an audit record.
+- Records are append-only, signed (HMAC chain), and replicated to an
+  off-host store.
+- Retention default: 365 days (configurable per tenant).
+- Format: a subset of the event envelope + a hash of the previous record
+  (hash-chained).
+
+## Secret management
+
+- **No secrets in `.env` files in production.** Use a real secret manager
+  (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager).
+- Secrets are read at startup; rotation is supported via a SIGHUP reload
+  and a periodic refresh.
+- All secret reads are themselves audit-logged.
+
+## AI / agent safety
+
+- Agents have a **declared blast radius**. An agent whose blast radius
+  is "open incidents" cannot be promoted to a role that allows it to
+  *close* incidents.
+- The agent runtime enforces a **tool allowlist**. A prompt that tries to
+  call an unauthorized tool is rejected and the run is failed loudly.
+- All LLM inputs and outputs are **logged** (with secrets redacted) and
+  retained for the audit period.
+- The runtime enforces a **per-run token budget** and a **per-tenant
+  daily token budget**.
+- The runtime detects **prompt injection** patterns in tool outputs and
+  refuses to follow instructions found in tool results.
