@@ -1,0 +1,93 @@
+# =============================================================================
+# Loki configuration — AI-DevSecOps Command Center
+# Owner: SREEngineer
+# See: docs/observability/monitoring-architecture.md §5
+#
+# This is the canonical Loki config. Used by both docker-compose (dev) and
+# the production deployment. Env-driven: set the env vars at startup to
+# adjust for the environment. See .env.example for the full list.
+# =============================================================================
+
+# --- Server ---
+server:
+  http_listen_port: 3100
+  log_level: info
+  grpc_listen_port: 9095
+
+# --- Common ---
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+# --- Schema (must remain backward compatible for 2 releases) ---
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# --- Limits ---
+limits_config:
+  # 14d hot retention
+  retention_period: 1344h
+  # Per-stream rate limits — protect against runaway producers
+  ingestion_rate_mb: 10
+  ingestion_burst_size_mb: 20
+  # Reject obviously bad clients
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+  # Cardinality: max active streams per tenant
+  max_streams_per_user: 10000
+  # Per-line limits
+  max_line_size: 256KB
+  max_entries_limit_per_query: 5000
+
+# --- Query-frontend / Querier ---
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+# --- Querier ---
+querier:
+  max_concurrent: 10
+
+# --- Storage ---
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+  filesystem:
+    directory: /loki/chunks
+
+# --- Compactor ---
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  delete_request_store: filesystem
+
+# --- Analytics ---
+analytics:
+  reporting_enabled: false
+
+# --- Multi-tenant (production only — disabled in dev) ---
+# In production, the AUTH_TOKEN env var is set to the tenant header secret.
+# The OTel Collector sends the X-Scope-OrgID header on every push.
+# multi_tenancy_enabled is set via env in production; the dev compose runs
+# in single-tenant mode.

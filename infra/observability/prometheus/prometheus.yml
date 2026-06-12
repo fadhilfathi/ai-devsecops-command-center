@@ -12,6 +12,11 @@ global:
     cluster: ${env:CLUSTER_NAME}
     region: ${env:REGION}
     environment: ${env:ENV}
+    # Templated URLs — used by alert annotations. Override in .env / deployment
+    # manifests. See docs/observability/alerting-runbooks.md for the full URL
+    # convention.
+    runbook_base_url: ${env:RUNBOOK_BASE_URL}
+    dashboard_base_url: ${env:DASHBOARD_BASE_URL}
 
 # -----------------------------------------------------------------------------
 # Load alerting rules and recording rules

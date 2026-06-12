@@ -76,6 +76,72 @@ that:
   work) — only update cross-references that depend on package names or
   ports.
 
+## Contract clarifications (post-Sprint-1-handoff, 2026-06-12)
+
+### "Code PR is ready" signal
+
+FullstackEngineer will post in the team channel with:
+- the PR link
+- a summary of what changed
+
+That's the signal. GitOpsManager does not need to be pinged directly.
+
+Docs PR will land within 24h of the signal, gated on:
+- PR is merged to `main` (preferred), OR
+- the on-disk layout is final and confirmed in the channel.
+
+### ADR preference
+
+**New ADR (e.g. 0008) > supersede 0006.**
+
+Cleaner audit trail. 0006 stays as the historical "we chose pnpm
+workspaces" decision (Sprint 1). The new ADR references 0006 explicitly
+in its Context section and explains the evolution. Status: `accepted`.
+
+GitOpsManager owns writing the new ADR in the docs PR.
+
+### Package manager (pnpm vs npm)
+
+**Open decision — escalated to Lead for Sprint 2 kickoff.**
+
+Current on-disk state: **pnpm workspaces** (root `package.json` +
+`pnpm-workspace.yaml` + `Makefile` + `"packageManager": "pnpm@9.12.0"`).
+
+Conflict: 9-step spec mentioned by FullstackEngineer uses `npm`
+workspaces. The two are not interchangeable for the build graph, the
+CI cache, and the developer experience — this should not drift in.
+
+GitOpsManager recommendation when Lead asks: **stay on pnpm, add
+Turborepo on top.** Reasons:
+- Sprint 1 is already on pnpm; switching is gratuitous churn.
+- pnpm + Turborepo is the de-facto 2026 combo.
+- pnpm is faster and more disk-efficient.
+- npm workspaces have known Turborepo cache quirks that pnpm doesn't.
+
+If the Lead confirms npm instead, the docs PR will additionally flip:
+- root `package.json` (remove pnpm-specific fields, add npm engines)
+- `pnpm-workspace.yaml` → `package.json` `workspaces` field
+- `Makefile` `pnpm` → `npm` everywhere
+- `.env.example` and docs that mention pnpm
+- CI workflows (`.github/workflows/*.yml`) — pin npm
+- README quickstart
+
+That flip is a 1-commit addition to the docs PR — fully scoped, no
+scope creep. Waiting for explicit go-ahead before planning around it.
+
+### File scope
+
+Confirmed. The docs-side file list maps 1:1 with no code overlap:
+- `*.md`
+- `Makefile`
+- `package.json`
+- `pnpm-workspace.yaml` (or `package.json` `workspaces` if npm)
+- `tsconfig.base.json`
+- `.env.example`
+- `docker-compose.yml` (if service rename touches it)
+- `memory/`
+- ADR files
+
 ## Decision rationale
 
 The team agreed **option (a)**: keep the on-disk Sprint 1 layout and
@@ -93,8 +159,7 @@ single docs PR after. This:
 
 ## Open items at time of writing
 
-- **Lead confirmation** that this is the Sprint 2 plan (and not a
-  different reshaping).
+- **Lead confirmation** of Sprint 2 plan AND pnpm-vs-npm decision.
 - **Loki config** for docker-compose (SRE follow-up from Sprint 1).
 - **Runbook URL templating** in `infra/observability/prometheus/alert-rules.yml`
   (SRE follow-up from Sprint 1).

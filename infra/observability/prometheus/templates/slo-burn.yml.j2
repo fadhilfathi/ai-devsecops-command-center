@@ -32,8 +32,8 @@ groups:
             Target: {{ target }}
             Budget remaining: {{ '{{' }} with query "service_error_budget_remaining_ratio{service='{{ service }}',slo='{{ slo }}'}" {{ '}}' }}{{ '{{' }} . | first | value | humanizePercentage {{ '}}' }}{{ '{{' }} end {{ '}}' }}.
             This would exhaust the budget in ~2 days.
-          runbook: "https://runbooks.example.com/observability/SLOBurnIncident"
-          dashboard: "https://grafana.example.com/d/{{ service }}-slo"
+          runbook: "{{ '{{' }} $labels.runbook_base_url {{ '}}' }}/SLOBurnIncident"
+          dashboard: "{{ '{{' }} $labels.dashboard_base_url {{ '}}' }}/d/{{ service }}-slo"
 
       # ----- Slow burn (ticket): 24h and 3d windows -----
       - alert: SLO_{{ service | title | replace("-", "") }}_{{ slo | title | replace("/", "") }}_SlowBurn
@@ -54,4 +54,4 @@ groups:
             SLO: {{ slo }}
             Target: {{ target }}
             Investigate within 1 business day.
-          runbook: "https://runbooks.example.com/observability/SLOSlowBurn"
+          runbook: "{{ '{{' }} $labels.runbook_base_url {{ '}}' }}/SLOSlowBurn"

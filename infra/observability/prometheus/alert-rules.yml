@@ -19,7 +19,7 @@ groups:
           description: |
             Prometheus has not been able to scrape {{ $labels.service }} for 2 minutes.
             Check pod status and recent deploys.
-          runbook: "https://runbooks.example.com/observability/ServiceDown"
+          runbook: "{{ $labels.runbook_base_url }}/ServiceDown"
 
       - alert: ServiceHigh5xxRate
         expr: |
@@ -35,8 +35,8 @@ groups:
             The 5xx rate on {{ $labels.service }} route {{ $labels.route }} has exceeded 5%
             for 5 minutes. Investigate recent errors in Grafana Explore filtered by
             service={{ $labels.service }} and route={{ $labels.route }}.
-          runbook: "https://runbooks.example.com/observability/ServiceHigh5xxRate"
-          dashboard: "https://grafana.example.com/d/{{ $labels.service }}-overview"
+          runbook: "{{ $labels.runbook_base_url }}/ServiceHigh5xxRate"
+          dashboard: "{{ $labels.dashboard_base_url }}/d/{{ $labels.service }}-overview"
 
       - alert: ServiceHighP99Latency
         expr: |
@@ -49,7 +49,7 @@ groups:
         annotations:
           summary: "{{ $labels.service }} p99 latency on {{ $labels.route }} > 1s"
           description: "p99 latency = {{ $value | humanizeDuration }}. Open the latency panel and look for slow dependencies."
-          runbook: "https://runbooks.example.com/observability/ServiceHighP99Latency"
+          runbook: "{{ $labels.runbook_base_url }}/ServiceHighP99Latency"
 
       - alert: ServiceErrorBudgetExhausted
         expr: service_error_budget_remaining_ratio < 0
@@ -62,7 +62,7 @@ groups:
             SLO budget remaining: {{ $value | humanizePercentage }}.
             Deploys to {{ $labels.service }} are halted by the admission webhook.
             Engage SRE and the service owner; see the burn breakdown dashboard.
-          runbook: "https://runbooks.example.com/observability/ServiceErrorBudgetExhausted"
+          runbook: "{{ $labels.runbook_base_url }}/ServiceErrorBudgetExhausted"
 
       - alert: ServiceDeepHealthCheckFailing
         expr: probe_success{job="readyz-probes"} == 0
@@ -72,7 +72,7 @@ groups:
         annotations:
           summary: "{{ $labels.service }} /readyz is failing"
           description: "The deep readiness probe is returning non-2xx. A downstream dependency is likely unhealthy."
-          runbook: "https://runbooks.example.com/observability/ServiceDeepHealthCheckFailing"
+          runbook: "{{ $labels.runbook_base_url }}/ServiceDeepHealthCheckFailing"
 
       - alert: ServiceCardinalityExplosion
         expr: deriv(prometheus_tsdb_head_series[10m]) > 100000
@@ -82,7 +82,7 @@ groups:
         annotations:
           summary: "Cardinality on {{ $labels.job }} is growing > 100k series/min"
           description: "Inspect the top 50 label combinations at /api/v1/status/tsdb and roll back the offending change."
-          runbook: "https://runbooks.example.com/observability/ServiceCardinalityExplosion"
+          runbook: "{{ $labels.runbook_base_url }}/ServiceCardinalityExplosion"
 
       - alert: WatchdogDeadmanSwitch
         expr: vector(time() - prometheus_last_evaluation_timestamp) > 300
@@ -92,7 +92,7 @@ groups:
         annotations:
           summary: "Prometheus is not evaluating rules"
           description: "Prometheus last evaluation was more than 5 minutes ago. The monitoring stack itself is unhealthy."
-          runbook: "https://runbooks.example.com/observability/WatchdogDeadmanSwitch"
+          runbook: "{{ $labels.runbook_base_url }}/WatchdogDeadmanSwitch"
 
   # ---------------------------------------------------------------------------
   # SLO burn-rate alerts — example for Auth availability
@@ -124,8 +124,8 @@ groups:
           description: |
             Burn rate: 14.4x. Budget would exhaust in ~2 days.
             Budget remaining: {{ with query "service_error_budget_remaining_ratio{service='auth',slo='availability'}" }}{{ . | first | value | humanizePercentage }}{{ end }}.
-          runbook: "https://runbooks.example.com/observability/SLOBurnIncident"
-          dashboard: "https://grafana.example.com/d/auth-slo"
+          runbook: "{{ $labels.runbook_base_url }}/SLOBurnIncident"
+          dashboard: "{{ $labels.dashboard_base_url }}/d/auth-slo"
 
       # Slow burn: budget would exhaust in ~30 days
       - alert: SLO_Auth_Availability_SlowBurn
@@ -142,7 +142,7 @@ groups:
         annotations:
           summary: "Auth SLO 'availability' is slow-burning"
           description: "Burn rate: 1x. Investigate root cause within 1 business day."
-          runbook: "https://runbooks.example.com/observability/SLOSlowBurn"
+          runbook: "{{ $labels.runbook_base_url }}/SLOSlowBurn"
 
   # ---------------------------------------------------------------------------
   # Agent alerts
@@ -161,7 +161,7 @@ groups:
         annotations:
           summary: "Agent {{ $labels.agent }} task '{{ $labels.task_type }}' failing > 10%"
           description: "Failure rate: {{ $value | humanizePercentage }}. Check LLM provider status and tool call errors."
-          runbook: "https://runbooks.example.com/observability/AgentTaskFailureRate"
+          runbook: "{{ $labels.runbook_base_url }}/AgentTaskFailureRate"
 
       - alert: AgentTaskDurationP99High
         expr: |
@@ -174,7 +174,7 @@ groups:
         annotations:
           summary: "Agent {{ $labels.agent }} task p99 > 5m"
           description: "Sustained for 15m. May indicate provider degradation or runaway loops."
-          runbook: "https://runbooks.example.com/observability/AgentTaskDurationP99High"
+          runbook: "{{ $labels.runbook_base_url }}/AgentTaskDurationP99High"
 
       - alert: AgentLLMTokenSpendAnomaly
         expr: |
@@ -188,7 +188,7 @@ groups:
         annotations:
           summary: "Agent {{ $labels.agent }} LLM spend 3x baseline on {{ $labels.model }}"
           description: "Suspect runaway loops or abuse. Lower max_tokens via dynamic config."
-          runbook: "https://runbooks.example.com/observability/AgentLLMTokenSpendAnomaly"
+          runbook: "{{ $labels.runbook_base_url }}/AgentLLMTokenSpendAnomaly"
 
       - alert: AgentDecisionOverride
         expr: |
@@ -201,4 +201,4 @@ groups:
         annotations:
           summary: "Agent {{ $labels.agent }} decision override rate > 20%"
           description: "Likely model drift. Engage AI team; consider downgrading to 'suggest' mode."
-          runbook: "https://runbooks.example.com/observability/AgentDecisionOverride"
+          runbook: "{{ $labels.runbook_base_url }}/AgentDecisionOverride"
