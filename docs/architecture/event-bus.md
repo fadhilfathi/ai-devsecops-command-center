@@ -155,12 +155,32 @@ import { publish } from "@aicc/event-bus";
 import { SBOM_TOPIC, type SbomGeneratedEvent } from "@aicc/shared/security";
 
 await publish(SBOM_TOPIC, {
-  tenantId: "tnt_01HXYZ",
-  gitSha:   "a1b2c3d",
-  scanner:  "syft",
-  sbom:     /* CycloneDX-shaped object, validated by SbomSchema */,
+  schema:            "security.sbom.generated.v1",   // discriminator
+  sbomId:            "sbom-2026-06-12-a1b2c3d-monorepo",
+  sbomFingerprint:   "sha256:9b74c989...d7c8a",      // sha256 of RFC 8785/JCS canonicalized primary-format SBOM bytes — SecurityArchitect T-09 audit-log correlation key
+  sbomFormat:        "cyclonedx-json",
+  sbomPath:          "security/sboms/sbom-2026-06-12-a1b2c3d-monorepo.cyclonedx-json",
+  scope:             "monorepo",
+  subject:           "repo:aicc/command-center",
+  subjectFingerprint:"a1b2c3d4e5f6...",             // git SHA / image digest
+  generatedAt:       "2026-06-12T18:42:11.420Z",
+  generator:         "syft:1.18.0",
+  componentsCount:   1842,
 } satisfies SbomGeneratedEvent);
 ```
+
+The `sbomFingerprint` field is required on every `SBOM_TOPIC` event
+as of the O-3.6 contract lock (2026-06-12). Producers MUST compute
+the digest over the RFC 8785 / JCS canonicalized bytes of the
+**primary** format (CycloneDX JSON preferred; SPDX JSON if
+CycloneDX is not produced) and emit it as `sha256:<64-hex>`. The
+field is the audit-log correlation key for SecurityArchitect's
+S2.8 § 3.6 mitigations; the JSON Schema in
+`security/wire-format/sbom-generated.schema.json` is the source of
+truth for the full event contract (snake_case at the wire boundary,
+camelCase internally — the field is published as `sbom_fingerprint`
+in NDJSON and over the wire, but the TypeScript interface uses
+`sbomFingerprint`; the event-bus runtime maps between the two).
 
 The full per-model Zod schemas (`SbomSchema`, `VulnerabilitySchema`,
 `DependencyGraphSchema`, `RiskScoreSchema`) and their inferred TypeScript
