@@ -1,0 +1,89 @@
+{
+  "$schema": "./mapping-rules.schema.json",
+  "version": "1.0.0",
+  "description": "Per-control rules for mapping vulnerability findings to compliance controls. Each rule defines a predicate that is evaluated against a vulnerability input. Multiple rules can match the same vuln (a vuln can map to multiple controls). Predicates are pure data, evaluated by the mapping-engine.",
+  "rules": [
+    {
+      "ruleId": "cis-7-continuous-vuln-management",
+      "framework": "cis_v8",
+      "controlId": "7",
+      "title": "Continuous Vulnerability Management",
+      "description": "Any CVE with severity >= Medium is in scope of CIS Control 7 (Continuous Vulnerability Management).",
+      "predicate": {
+        "type": "severity_gte",
+        "value": "medium"
+      },
+      "slaDays": 30,
+      "priority": 100,
+      "enabled": true
+    },
+    {
+      "ruleId": "cis-16-application-software-security",
+      "framework": "cis_v8",
+      "controlId": "16",
+      "title": "Application Software Security",
+      "description": "Any CVE discovered through Software Composition Analysis (SCA) is in scope of CIS Control 16 (Application Software Security).",
+      "predicate": {
+        "type": "kind_eq",
+        "value": "sca"
+      },
+      "slaDays": 30,
+      "priority": 110,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-si-2-flaw-remediation",
+      "framework": "nist_800_53",
+      "controlId": "SI-2",
+      "title": "Flaw Remediation",
+      "description": "All CVEs are subject to NIST SI-2 (Flaw Remediation). This is the default catch-all rule.",
+      "predicate": {
+        "type": "always"
+      },
+      "slaDays": 30,
+      "priority": 1,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-ra-5-vuln-monitoring",
+      "framework": "nist_800_53",
+      "controlId": "RA-5",
+      "title": "Vulnerability Monitoring and Scanning",
+      "description": "All CVEs detected by the platform's scanning are evidence of NIST RA-5 (Vulnerability Monitoring and Scanning) operating.",
+      "predicate": {
+        "type": "always"
+      },
+      "slaDays": 30,
+      "priority": 2,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-si-7-software-firmware-integrity",
+      "framework": "nist_800_53",
+      "controlId": "SI-7",
+      "title": "Software, Firmware, and Information Integrity",
+      "description": "CVEs flagged as Known Exploited Vulnerabilities (KEV) — actively exploited in the wild — escalate to NIST SI-7 (Software/Firmware Integrity) for integrity-verification and emergency remediation.",
+      "predicate": {
+        "type": "kev",
+        "value": true
+      },
+      "slaDays": 7,
+      "priority": 200,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-sa-11-developer-testing",
+      "framework": "nist_800_53",
+      "controlId": "SA-11",
+      "title": "Developer Testing and Evaluation",
+      "description": "CVEs introduced into the codebase within the last 30 days imply a gap in NIST SA-11 (Developer Testing and Evaluation) — pre-commit and CI tests should have caught them.",
+      "predicate": {
+        "type": "introduced_within_days",
+        "value": 30
+      },
+      "slaDays": 14,
+      "priority": 150,
+      "enabled": true
+    }
+  ]
+}

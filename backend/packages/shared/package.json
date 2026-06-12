@@ -24,6 +24,10 @@
     "./http": {
       "types": "./dist/http/index.d.ts",
       "default": "./dist/http/index.js"
+    },
+    "./security": {
+      "types": "./dist/security/index.d.ts",
+      "default": "./dist/security/index.js"
     }
   },
   "scripts": {
@@ -33,7 +37,7 @@
   },
   "dependencies": {
     "pino": "^9.0.0",
-    "zod": "^3.22.4"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

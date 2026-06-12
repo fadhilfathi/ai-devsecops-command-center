@@ -111,6 +111,11 @@ export const EventTypes = {
   INCIDENT_CREATED: 'incident.created',
   INCIDENT_RESOLVED: 'incident.resolved',
   COMPLIANCE_CONTROL_UPDATED: 'compliance.control.updated',
+  COMPLIANCE_CONTROL_VIOLATED: 'compliance.control.violated',
+  COMPLIANCE_EVIDENCE_ATTACHED: 'compliance.evidence.attached',
+  COMPLIANCE_POAM_CREATED: 'compliance.poam.created',
+  COMPLIANCE_POAM_CLOSED: 'compliance.poam.closed',
+  COMPLIANCE_POAM_OVERDUE: 'compliance.poam.overdue',
   INTEGRATION_SYNC_COMPLETED: 'integration.sync.completed',
 } as const;
 
