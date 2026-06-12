@@ -2,7 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aicc.local/schemas/security.sbom.generated.v1.json",
   "title": "security.sbom.generated.v1",
-  "description": "Wire format for the `security.sbom.generated.v1` event published by sbom-pipeline (:4007) and consumed by security-service (:4003) and GitOps automation (.github/workflows/security.yml). LOCKED 2026-06-12 (O-3.6). Projection boundary: security-service :4003 (NOT the Python agents). One event per SBOM artifact. O-3.7 additions: `sbom_fingerprint_algorithm` and `sbom_fingerprint_format` fields (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention). Schema grows from 11 to 13 required fields.",
+  "x-deprecated-values-convention": "Vendor extension adopted O-3.7.1 (2026-06-12, post-Sprint-2). Keys are field names that have an `x-deprecated-values` block; values are JSON Schema 2020-12-compatible (vendor `x-` prefix is ignored by Ajv strict mode but respected by `pnpm run check:deprecations`). To add a new deprecation: (1) set `status: 'deprecated'`, (2) set `since: '<sprint-id>'`, (3) set `successor: '<replacement-value>'`, (4) set `removal-target: '<sprint-id>'` so Compliance can plan the cleanup PR.",
+  "description": "Wire format for the `security.sbom.generated.v1` event published by sbom-pipeline (:4007) and consumed by security-service (:4003) and GitOps automation (.github/workflows/security.yml). LOCKED 2026-06-12 (O-3.6). Projection boundary: security-service :4003 (NOT the Python agents). One event per SBOM artifact. O-3.7 additions: `sbom_fingerprint_algorithm` and `sbom_fingerprint_format` fields (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention). Schema grows from 11 to 13 required fields. O-3.7.1 addition: `x-deprecated-values` extension on `sbom_fingerprint_format` (SecurityArchitect suggestion; machine-parseable shape for `pnpm run check:deprecations`).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -42,7 +43,7 @@
       "default": "sha256"
     },
     "sbom_fingerprint_format": {
-      "description": "Versioned string describing the canonicalization applied to the SBOM bytes before hashing. Versioned contract: 'cyclonedx-json+canonicalized-jcs' (default — RFC 8785 / JCS canonicalized CycloneDX JSON), 'cyclonedx-json+raw' (no canonicalization — legacy interop only, will be deprecated), 'spdx-json+canonicalized-jcs' (future — when SPDX is the primary format), 'spdx-json+raw' (future). The format string is a contract, not an implementation detail. Consumers MUST reproduce the exact same input bytes (subject to the format) before hashing. Two semantically-identical SBOMs hashed with JCS vs. without JCS will produce different fingerprints — encoding the canonicalization eliminates an entire class of 'why doesn't my hash match?' debugging. O-3.7 addition (SecurityArchitect redline; future-proofs the wire contract for Sprint 3+ format additions).",
+      "description": "Versioned string describing the canonicalization applied to the SBOM bytes before hashing. Versioned contract: 'cyclonedx-json+canonicalized-jcs' (default — RFC 8785 / JCS canonicalized CycloneDX JSON), 'cyclonedx-json+raw' (no canonicalization — legacy interop only, will be deprecated), 'spdx-json+canonicalized-jcs' (future — when SPDX is the primary format), 'spdx-json+raw' (future). The format string is a contract, not an implementation detail. Consumers MUST reproduce the exact same input bytes (subject to the format) before hashing. Two semantically-identical SBOMs hashed with JCS vs. without JCS will produce different fingerprints — encoding the canonicalization eliminates an entire class of 'why doesn't my hash match?' debugging. O-3.7 addition (SecurityArchitect redline; future-proofs the wire contract for Sprint 3+ format additions). DEPRECATED VALUES are marked in `x-deprecated-values`; do NOT add a new deprecation without setting a `removal-target` so a future sprint (S5 per the current schedule) can `pnpm run check:deprecations` and `grep` deterministically.",
       "type": "string",
       "enum": [
         "cyclonedx-json+canonicalized-jcs",
@@ -50,7 +51,15 @@
         "spdx-json+canonicalized-jcs",
         "spdx-json+raw"
       ],
-      "default": "cyclonedx-json+canonicalized-jcs"
+      "default": "cyclonedx-json+canonicalized-jcs",
+      "x-deprecated-values": {
+        "cyclonedx-json+raw": {
+          "status": "deprecated",
+          "since": "S2",
+          "successor": "cyclonedx-json+canonicalized-jcs",
+          "removal-target": "S5"
+        }
+      }
     },
     "sbom_format": {
       "description": "Primary serialization format of the SBOM on disk (`security/sboms/<sbom_id>.<sbom_format>`). Producers publish the primary format only; secondary format is optional and not referenced in the event.",
