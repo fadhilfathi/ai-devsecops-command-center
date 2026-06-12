@@ -1,11 +1,25 @@
 """Cross-source consensus for CVE severity scoring.
 
-The SecurityArchitect's S2.8 threat model requires that a CVE only be
-eligible for HIGH or CRITICAL severity when **at least two** of the
-upstream sources {NVD, GHSA, OSV} corroborate it. Single-source
+The SecurityArchitect's S2.8 threat model (``docs/threat-models/
+s2-security-mitigations.md`` § 3.5 + § 3.6) requires that a CVE only
+be eligible for HIGH or CRITICAL severity when **at least two** of
+the upstream sources {NVD, GHSA, OSV} corroborate it. Single-source
 HIGH/CRITICAL classifications are tagged ``unofficial`` so that the
 Security UI can flag them for human review and the risk engine can
 down-weight them in cluster scoring.
+
+**Threat-model references (S2.8):**
+* **§ 3.5** — per-feed JSON-Schema validation: T-02 (CVE feed
+  poisoning) is mitigated by ``validators.py``; the consensus rule
+  is a *secondary* defence against an attacker who manages to push
+  a single poisoned feed past the validator.
+* **§ 3.6** — "flag, don't downgrade" policy. The ``unofficial``
+  tag is added to the record but the stored ``severity`` field is
+  never silently downgraded. The 4-condition ``auto_actionable``
+  gate at the security-service :4003 projection is what gates
+  auto-remediation; the wire ``auto_actionable`` field is the
+  security-service's responsibility (see GitOpsManager sign-off
+  2026-06-12).
 
 The module is intentionally framework-free (no FastAPI, no Pydantic)
 so it can be unit-tested in isolation and reused from the CLI.
