@@ -79,3 +79,118 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             CHANGELOG.md
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Attach the latest SBOM artifacts to the release.
+  # Owned by GitOpsManager (S2.10).
+  # Depends on the `release` job to ensure the release exists.
+  # See: docs/runbooks/security-automation.md
+  # ─────────────────────────────────────────────────────────────────────────
+  attach-sbom:
+    name: "Attach SBOMs to release"
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      release_tag: ${{ steps.detect-tag.outputs.tag }}
+      sbom_attached: ${{ steps.attach.outputs.attached }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect release tag
+        id: detect-tag
+        run: |
+          set -euo pipefail
+          # For tag pushes, GITHUB_REF_NAME is the tag (e.g. v0.1.0).
+          # For workflow_dispatch, we look up the most recent release.
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            core_output "tag=${TAG}"
+          else
+            TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+          fi
+          if [ -z "${TAG}" ]; then
+            echo "::warning::No release tag detected; nothing to attach"
+            core_output "tag="
+            core_output "attaching=false"
+            return 0
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "🏷️  Attaching SBOMs to release: ${TAG}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Locate latest SBOM triplet
+        id: locate
+        if: steps.detect-tag.outputs.tag != ''
+        run: |
+          set -euo pipefail
+          # Find the most recent SBOM folder by mtime (security/sboms/<sbom_id>/)
+          if [ ! -d security/sboms ]; then
+            echo "::error::security/sboms does not exist; cannot attach SBOMs"
+            exit 1
+          fi
+          LATEST=$(ls -1t security/sboms/ 2>/dev/null \
+                     | grep -E '^sbom-' \
+                     | grep -v 'index.json' \
+                     | head -1 || true)
+          if [ -z "${LATEST}" ]; then
+            echo "::warning::No SBOMs found under security/sboms/; skipping"
+            echo "sbom_dir=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SBOM_DIR="security/sboms/${LATEST}"
+          if [ ! -d "${SBOM_DIR}" ]; then
+            # LATEST might be a file (index.json etc.). Take its parent sbom_id folder.
+            echo "::warning::${SBOM_DIR} is not a directory; trying sbom_id pattern"
+            echo "sbom_dir=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "sbom_dir=${SBOM_DIR}" >> "$GITHUB_OUTPUT"
+          echo "📂 Latest SBOM directory: ${SBOM_DIR}"
+          ls -la "${SBOM_DIR}"
+
+      - name: Upload SBOM files to release
+        id: attach
+        if: steps.locate.outputs.sbom_dir != '' && steps.locate.outputs.sbom_dir != null
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.detect-tag.outputs.tag }}
+          SBOM_DIR: ${{ steps.locate.outputs.sbom_dir }}
+        run: |
+          set -euo pipefail
+          echo "📎 Attaching files from ${SBOM_DIR} to ${TAG}:"
+          # Build a list of files to attach
+          FILES=()
+          for f in "${SBOM_DIR}"/*.cyclonedx.json \
+                   "${SBOM_DIR}"/*.cyclonedx.xml \
+                   "${SBOM_DIR}"/*.spdx.json \
+                   "${SBOM_DIR}"/provenance.intoto.jsonl; do
+            if [ -f "${f}" ]; then
+              echo "  + $(basename "${f}")"
+              FILES+=("${f}")
+            fi
+          done
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "::warning::No SBOM files matched in ${SBOM_DIR}"
+            echo "attached=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh release upload "${TAG}" "${FILES[@]}" --clobber
+          echo "attached=true" >> "$GITHUB_OUTPUT"
+          echo "✅ Attached ${#FILES[@]} SBOM file(s) to ${TAG}"
+
+      - name: Verify attachments
+        if: steps.attach.outputs.attached == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.detect-tag.outputs.tag }}
+        run: |
+          echo "🔍 Verifying attachments on ${TAG}:"
+          gh release view "${TAG}" --json assets --jq '.assets[] | "  - \(.name) (\(.size) bytes)"'
