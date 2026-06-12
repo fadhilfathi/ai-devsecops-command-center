@@ -99,7 +99,9 @@ generated SBOM on the Redis Stream subject
 | `generated_at` | `string` (RFC 3339) | yes | When the SBOM was generated. |
 | `git_sha` | `string \| null` | yes | Short or full git SHA of the scanned commit. Null for non-repo scans. |
 | `scope` | `string` | yes | `monorepo`, `<service-name>`, or `<package-name>`. |
-| `sbom_fingerprint` | `string` | yes | Content-addressable fingerprint. Format: `<alg>:<hex>` (e.g. `sha256:9f86...`). Computed over the **canonicalized** (RFC 8785 / JCS) primary-format SBOM bytes. Used by SecurityArchitect's S2.8 audit chain for deterministic risk-score calculation. |
+| `sbom_fingerprint` | `string` | yes | Content-addressable fingerprint. Format: `<alg>:<hex>` (e.g. `sha256:9f86...`). Computed over the **canonicalized** (RFC 8785 / JCS) primary-format SBOM bytes. Used by SecurityArchitect's S2.8 audit chain for deterministic risk-score calculation. The algorithm prefix MUST match `sbom_fingerprint_algorithm`; the canonicalization is described by `sbom_fingerprint_format`. |
+| `sbom_fingerprint_algorithm` | `string` (enum) | yes | Hash algorithm. Default `sha256`. Enum: `sha256`, `sha512`, `blake3`. Open-ended for Sprint 3+ migration. Added in O-3.7 (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention of explicitly describing the digest algorithm). |
+| `sbom_fingerprint_format` | `string` (enum) | yes | Canonicalization applied to the SBOM bytes before hashing. Default `cyclonedx-json+canonicalized-jcs`. Versioned enum: `cyclonedx-json+canonicalized-jcs`, `cyclonedx-json+raw`, `spdx-json+canonicalized-jcs`, `spdx-json+raw`. The format string is a contract, not an implementation detail. Added in O-3.7 (SecurityArchitect redline; eliminates the 'why doesn't my hash match?' debugging class). |
 
 A machine-readable JSON Schema is in
 [`security/wire-format/sbom-generated.schema.json`](wire-format/sbom-generated.schema.json).
@@ -156,7 +158,12 @@ of truth for the GitOps wire format; the rich internal schema
   "references": ["https://nvd.nist.gov/..."],
   "detected_at": "2026-06-12T03:14:15Z",
   "git_sha": "a1b2c3d",
-  "auto_actionable": true
+  "auto_actionable": true,
+  "epss_score": 0.74,
+  "kev": true,
+  "last_modified_at": "2026-06-11T22:05:01Z",
+  "tenant_id": "default",
+  "consensus_sources": ["nvd", "github-advisory", "osv"]
 }
 ```
 
@@ -179,41 +186,134 @@ of truth for the GitOps wire format; the rich internal schema
 | `references` | `string[]` | yes | URLs only. The rich schema's `references: Array<{url, type, tags?}>` is projected to `url` strings. |
 | `detected_at` | `string` (RFC 3339) | yes | When **our scanner** detected the finding. Distinct from `publishedAt`/`lastModifiedAt` (upstream). |
 | `git_sha` | `string \| null` | no | Short git SHA of the scanned commit. Null for image/archive/directory scans. |
-| `auto_actionable` | `boolean` | yes | `true` when **(KEV == true) AND (fixed_in is non-empty) AND (package is in our dependency graph)**. Default `false`. |
+| `epss_score` | `number \| null` | yes | EPSS exploit-likelihood score in `[0.0, 1.0]`. Null when EPSS has not yet been fetched. The 0.36 threshold is FIRST's "1 in 3" band (top-third exploit likelihood); the 0.36 default is the EPSS branch of the O-3.7 4-condition `auto_actionable` gate (condition 2). Tunable via `VULN_INTEL_AUTO_ACTION_EPSS_MIN` env var on vuln-intel :4008. |
+| `kev` | `boolean` | yes | True if the CVE is in the CISA Known Exploited Vulnerabilities catalog. Distinct from CVSS — a 9.8 CVE with no in-the-wild exploitation has `kev: false`. The KEV branch of condition 2. |
+| `last_modified_at` | `string \| null` (RFC 3339) | yes | ISO 8601 timestamp of the upstream feed's `modified` field. Null if the feed does not expose a modification time. Distinct from `detected_at` (our scanner) and `publishedAt` (CVE publication). |
+| `tenant_id` | `string` | yes | Multi-tenant identifier. Default `"default"` for single-tenant deployments. Multi-tenant deployments MUST set this to the tenant UUID. |
+| `consensus_sources` | `string[]` (enum) | yes | List of upstream source identifiers that independently confirmed this (CVE, package) pair (e.g. `["nvd", "github-advisory"]`). The primary source is in the `source` field; the full list is here. The 4-condition `auto_actionable` gate (condition 1: cross-source consensus) requires `length(consensus_sources) >= 2`. Min items: 1 (a record must have at least one confirming source to be emitted at all). |
+| `auto_actionable` | `boolean` | yes | `true` ONLY when all 4 conditions of the `auto_actionable` gate are satisfied (see the dedicated section below). Default `false`. Computed by security-service :4003 `vuln-projection.ts` as the AND of: (a) `(kev == true) OR (severity in {critical, high} AND epss_score >= 0.36)`, (b) `length(consensus_sources) >= 2`, (c) `length(fixed_in) > 0 AND has_reachable_fix(fixed_in, package)`, (d) `in_graph == true`. |
 
-### `auto_actionable` gate (LOCKED — 4 conditions)
+### `auto_actionable` gate (LOCKED — 4 conditions, O-3.7 EPSS refinement)
 
 The `vuln-projection.ts` helper in `backend/services/security/src/services/`
-sets `auto_actionable: true` **only when all 4 conditions hold** (the
-3 upstream + 1 projection breakdown):
+publishes `auto_actionable: true` on the wire **only when all 4 conditions
+hold** (the 3 upstream + 1 projection breakdown). The O-3.7 refinement
+(O-3.6 lock + EPSS branch) accepts VulnerabilityIntelligenceAgent's
+KEV+severity+EPSS formula as the canonical "is this exploited or
+high-likelihood-exploitable" check. The wire formula is:
 
-**Upstream (vuln-intel :4008 sets `autoActionable: true` on the rich schema when):**
+```text
+auto_actionable =
+    (  (kev == true)                                                  // condition 2a: CISA KEV catalog hit
+    OR (severity in {critical, high} AND epss_score >= 0.36) )        // condition 2b: EPSS top-third band (FIRST "1 in 3"); 0.36 tunable via VULN_INTEL_AUTO_ACTION_EPSS_MIN
+  AND length(consensus_sources) >= 2                                  // condition 1: cross-source consensus (SecurityArchitect S2.8 T-03)
+  AND length(fixed_in) > 0 AND has_reachable_fix(fixed_in, package)   // condition 3: fix available in our upgrade path
+  AND in_graph == true                                                 // condition 4: package reachable in our dependency graph
+```
 
-1. **Cross-source consensus reached.** The record was corroborated by
-   ≥2 independent sources (e.g. NVD + GHSA, OSV + Snyk). Records with
-   consensus below this threshold have `unofficial: true` on the
-   rich schema and `autoActionable: false`. Maps to SecurityArchitect's
-   S2.8 T-03 cross-source consensus gate.
-2. **CISA KEV catalog hit.** The CVE is in the
-   [CISA Known Exploited Vulnerabilities](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)
-   catalog. Distinct from CVSS — a 9.8 CVE with no in-the-wild
-   exploitation is NOT auto_actionable.
-3. **Fix available.** `fixed_in` is a non-empty array (i.e. a fix is
-   available upstream, even if not yet in our local dependency
-   closure).
+**Upstream (vuln-intel :4008 emits the raw upstream fields; conditions 1-3 are evaluated upstream and surfaced as data on the event):**
 
-**Projection (security-service :4003 refines to `auto_actionable: true` on the wire format when):**
+1. **Cross-source consensus reached.** `length(consensus_sources) >= 2`.
+   The record was corroborated by ≥2 independent sources (e.g. NVD + GHSA,
+   OSV + Snyk). Records with consensus below this threshold have
+   `consensus_sources: ["nvd"]` (length 1) and fail condition 1. Maps to
+   SecurityArchitect's S2.8 T-03 cross-source consensus gate.
+2. **Exploited OR high-likelihood-exploitable.** `(kev == true) OR
+   (severity in {critical, high} AND epss_score >= 0.36)`. Either the
+   CVE is in the CISA Known Exploited Vulnerabilities catalog
+   ([cisa.gov/known-exploited-vulnerabilities-catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)),
+   OR the EPSS top-third band (FIRST "1 in 3") is reached. The 0.36
+   threshold is the default; vuln-intel :4008 honors
+   `VULN_INTEL_AUTO_ACTION_EPSS_MIN` for tunability. Note: a 9.8 CVSS
+   CVE with no in-the-wild exploitation and no EPSS data is NOT
+   auto_actionable — the gate is about likelihood, not raw severity.
+3. **Fix available.** `length(fixed_in) > 0 AND has_reachable_fix(fixed_in, package)`.
+   A fix exists upstream AND a version satisfying `vulnerable_range`
+   is reachable in our upgrade path (security-service :4003 evaluates
+   the reachable-fix predicate against dependency-intel :4009).
 
-4. **In our dependency graph.** The package is **reachable from the
-   root of the scanned repo**, not a phantom transitive that we don't
-   ship. The `dependency-intel :4009` service provides the
-   `in_graph: bool` flag at projection time.
+**Projection (security-service :4003 ANDs the upstream data with condition 4):**
+
+4. **In our dependency graph.** `in_graph == true`. The package is
+   **reachable from the root of the scanned repo**, not a phantom
+   transitive that we don't ship. The `dependency-intel :4009` service
+   provides the `in_graph: bool` flag at projection time. Security-service
+   ANDs this with the upstream 3-condition result and publishes the
+   final `auto_actionable` on the wire.
 
 If any of the 4 conditions is false, `auto_actionable: false`. This
 is the gate that determines whether the GitOps consumer
 (`.github/workflows/security-issue.yml`) opens a Critical-CVE issue.
 See [`docs/runbooks/security-automation.md`](../../docs/runbooks/security-automation.md#triage-a-critical-cve-issue)
 for the issue-triage runbook.
+
+> **Producer contract:** vuln-intel :4008 MUST NOT publish
+> `auto_actionable` directly on the rich schema (call it
+> `vuln_intel_pre_actionable` internally if needed for your own
+> alerting). The wire `auto_actionable` is owned by security-service
+> :4003 `vuln-projection.ts`. This is the LOCKED projection boundary.
+
+### Projection contract (LOCKED 2026-06-12, O-3.7 cross-team sign-off)
+
+```text
+                       ┌─────────────────────────┐
+   vuln-intel :4008 ──▶│ security.vulnerability. │
+   (rich event, 1 per  │ detected.v1             │──▶ security-service :4003
+   CVE×package×source) │ (Redis Streams topic)   │     (vuln-projection.ts)
+                       └─────────────────────────┘            │
+                                                                │ 4-condition AND
+                                                                ▼
+                                                ┌──────────────────────────────┐
+                                                │ security/vulns/<date>.json   │
+                                                │ (NDJSON, per CVE×package)    │
+                                                └──────────────────────────────┘
+                                                                │
+                                                                ▼
+                                                ┌──────────────────────────────┐
+                                                │ .github/workflows/security.yml│
+                                                │  ├─ vuln-report (NDJSON)     │
+                                                │  └─ security-issue.yml       │
+                                                └──────────────────────────────┘
+```
+
+1. **vuln-intel :4008** (Python) subscribes to NVD/GHSA/OSV/Snyk feeds,
+   normalizes into the rich `VulnerabilitySchema` (per-CVE with
+   `affected: Array<{...}>`), evaluates conditions 1-3 internally,
+   and publishes one `security.vulnerability.detected.v1` event per
+   `(CVE, package, source)` tuple. The event carries the raw upstream
+   fields (`kev`, `epss_score`, `severity`, `consensus_sources`, `fixed_in`).
+2. **security-service :4003** (Node.js) subscribes to the event bus,
+   dedups by `(id, package)` aggregating across sources, evaluates
+   condition 4 (`in_graph`) via dependency-intel :4009, and writes ONE
+   aggregated record to `security/vulns/<YYYY-MM-DD>.json` with the
+   wire `auto_actionable` set as the 4-condition AND. The wire `auto_actionable`
+   is **never** published by vuln-intel; the projection is the single
+   source of truth.
+3. **GitHub Actions** (`.github/workflows/security.yml`) reads the NDJSON,
+   triggers the weekly digest, and (for `auto_actionable && severity == 'critical'`)
+   dispatches `critical-cve-detected` to the `security-issue.yml` workflow.
+
+### Downstream routing (LOCKED 2026-06-12, O-3.7 cross-team sign-off)
+
+The 4-condition `auto_actionable` gate determines which downstream
+consumer processes a finding. The 3 routing paths are MUTUALLY
+EXCLUSIVE based on `(auto_actionable, severity)`:
+
+| `auto_actionable` | `severity` | Downstream consumer | Output | Status flag |
+| --- | --- | --- | --- | --- |
+| `true` | `critical` | `.github/workflows/security-issue.yml` (via security.yml dispatch) | GitHub issue with labels `security`, `automated`, `cve`, `severity:critical` | `auto_actioned` |
+| `false` | `critical` or `high` | **ComplianceOfficer S2.9 POA&M auto-mapping** (via scan-listener.ts subscription to `security.vulnerability.detected.v1`) | POA&M item with `status: 'verification-pending'` | `tracked` |
+| any | any | security-service :4003 NDJSON appender | `security/vulns/<YYYY-MM-DD>.json` line | `recorded` |
+
+The second row is the **POA&M cross-ref** that SecurityArchitect's
+S2.8 mitigation § 3.6 calls out: a HIGH/CRITICAL with
+`auto_actionable == false` MUST still be tracked in the compliance
+evidence chain as a "verification-pending" item, not be silently
+dropped. The compliance service subscribes to the full event bus (not
+filtered by `auto_actionable`) to receive these. Records with
+`auto_actionable == false && severity in {low, medium, unknown}` fall
+to the third row only — they are recorded in the NDJSON for the audit
+log but are not subject to the POA&M auto-mapping rule.
 
 ### JSON Schema
 
