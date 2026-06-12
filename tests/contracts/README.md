@@ -82,6 +82,19 @@ The contract tests MUST be updated when:
 - `sbom-generated.contract.spec.ts`: covers the O-3.7 13-required-field schema, the new `sbom_fingerprint_algorithm` and `sbom_fingerprint_format` enums, the loosened `sbom_fingerprint` regex (sha256 | sha512 | blake3).
 - **Known drift:** the FullstackEngineer-owned Zod schema `VulnerabilityGitOpsRecordSchema` in `backend/models/security/vulnerability.model.ts` is at the O-3.5 3-condition state. FullstackEngineer plans to align it with O-3.7 in Sprint 2.1. The contract tests fail on the O-3.5 Zod schema by design; they will pass once Sprint 2.1 lands.
 
+## Cross-references
+
+- `docs/security/s2-test-plan.md` §3.6 — the Sprint 2.8 test plan cases
+  (DC-01..DC-04, OWASP ASVS / NIST SSDF mapped). When the GitOps
+  contract surface changes, port the affected test cases here so the
+  trail `test-case → contract fixture → Sprint 2 deliverable` is
+  auditable. The DC-04 (T-09 canary emission) case in particular
+  will be re-anchored against the O-3.7 `canary_test_run_id` contract
+  in Sprint 3. **Owner of the S2.8 test plan: SecurityArchitect.**
+  Co-review offer standing for S3 (when FullstackEngineer ports the
+  S2.8 test plan cases into the contract suite, SecurityArchitect
+  will co-sign the canary + mapping-engine cases).
+
 ## See also
 
 - `security/README.md` — operator-facing mirror of the wire format
