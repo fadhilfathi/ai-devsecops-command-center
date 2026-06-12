@@ -39,9 +39,10 @@ Multi-agent AI DevSecOps platform powered by AionUi.
 
 ## Sprint 1 Outcome
 
-**2 commits · 237 files · 16,990 insertions**
+**3 commits · 239 files · 17,246 insertions**
 - `269aa9e` — initial skeleton (232 files, 16,889 insertions)
 - `19235ef` — follow-up ADRs + memory index (6 files, 101 insertions)
+- `fd2f09d` — GitOpsManager integration follow-ups (6 files, 256 insertions, 7 deletions)
 
 10/10 success criteria met. See [sprint-1-status.md](./sprint-1-status.md).
 
