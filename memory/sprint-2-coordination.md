@@ -2,10 +2,17 @@
 name: Sprint 2 coordination — backend package split
 description: FullstackEngineer and GitOpsManager commitments for the Sprint 2 backend package split + port renumber + Turborepo migration
 type: project
+status: LOCKED
 ---
 
 # Sprint 2 coordination — backend package split
 
+> **Status: LOCKED 2026-06-12.** Three-party contract (Lead /
+> FullstackEngineer as Driver / GitOpsManager as Reviewer), pnpm +
+> Turborepo ratified, file scope clean, trigger signal defined.
+> Do not edit this memo's "Contract clarifications" section without
+> Lead approval; additions to "Open items" are fine.
+>
 > Date: 2026-06-12
 > Owners: FullstackEngineer (code), GitOpsManager (docs/tooling)
 > Trigger: Sprint 2 kickoff (awaiting Lead)
