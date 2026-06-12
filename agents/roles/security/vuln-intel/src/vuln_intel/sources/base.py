@@ -5,7 +5,7 @@ import abc
 from collections.abc import AsyncIterator
 from datetime import datetime
 
-from .models.cve import CveRecord
+from ..models.cve import CveRecord
 
 
 class VulnerabilitySource(abc.ABC):

@@ -37,16 +37,13 @@ logger = logging.getLogger(__name__)
 _PRIMARY_METRICS = ("CVSS:3.1", "CVSS:3.0", "CVSS:4.0", "CVSS:2.0")
 
 
-def _parse_nvd_published(raw: list[dict[str, str]] | None) -> datetime | None:
-    if not raw:
+def _parse_nvd_published(raw: str | None) -> datetime | None:
+    if not raw or not isinstance(raw, str):
         return None
-    for entry in raw:
-        if entry.get("lang") in (None, "en"):
-            try:
-                return datetime.fromisoformat(entry["value"].replace("Z", "+00:00"))
-            except (KeyError, ValueError):
-                continue
-    return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _select_cvss(metrics: dict[str, list[dict[str, Any]]]) -> tuple[CvssScore | None, CvssScore | None, CvssScore | None]:
@@ -171,10 +168,19 @@ def _affected_packages_from_nvd(configurations: list[dict[str, Any]] | None) -> 
             # criteria looks like:
             # cpe:2.3:a:openssl:openssl:1.0.1:*:*:*:*:*:*:*
             parts = crit.split(":")
-            if len(parts) >= 5 and parts[2] in ("a", "o", "h"):
-                vendor = parts[3] or "*"
-                product = parts[4] or "*"
-                name = f"{vendor}:{product}" if vendor not in ("*",) and product not in ("*",) else product
+            if len(parts) >= 6 and parts[2] in ("a", "o", "h"):
+                vendor = parts[3]
+                product = parts[4]
+                version = parts[5]
+                if vendor in ("*",) and product in ("*",):
+                    # Fall back to version-only
+                    name = version if version not in ("*",) else crit
+                elif product in ("*",):
+                    name = vendor
+                elif vendor in ("*",):
+                    name = product
+                else:
+                    name = f"{vendor}:{product}"
                 ap = AffectedPackage(
                     name=name,
                     ecosystem=parts[2],
@@ -188,10 +194,14 @@ def _affected_packages_from_nvd(configurations: list[dict[str, Any]] | None) -> 
                     ],
                 )
                 pkgs.append(ap)
+        # NVD nests CPE matches inside a "nodes" list
+        for child_node in node.get("nodes", []) or []:
+            _walk(child_node)
         for child in node.get("children", []) or []:
             _walk(child)
 
     for cfg in configurations:
+        # Configurations can either be a "cpeMatch" container or a "nodes" container
         _walk(cfg)
     return pkgs
 

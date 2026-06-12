@@ -122,17 +122,32 @@ def _affected_from_ghsa(payload: dict[str, Any]) -> list[AffectedPackage]:
         if not name:
             continue
         vulnerable_ranges: list[AffectedVersionRange] = []
-        for vr in vuln.get("vulnerable_version_range") or []:
-            vulnerable_ranges.append(
-                AffectedVersionRange(
-                    introduced=vr.get("introduced"),
-                    fixed=vr.get("fixed"),
+        # ``vulnerable_version_range`` is a *string* (e.g. ">= 1.0, < 1.2.4")
+        vrange = vuln.get("vulnerable_version_range")
+        if isinstance(vrange, str):
+            # Best-effort parse: ">= X, < Y" or ">= X, <= Y"
+            introduced = None
+            fixed = None
+            for token in vrange.split(","):
+                token = token.strip()
+                if token.startswith(">="):
+                    introduced = token[2:].strip()
+                elif token.startswith(">"):
+                    introduced = token[1:].strip()
+                elif token.startswith("<="):
+                    fixed = token[2:].strip()
+                elif token.startswith("<"):
+                    fixed = token[1:].strip()
+            if introduced or fixed:
+                vulnerable_ranges.append(AffectedVersionRange(introduced=introduced, fixed=fixed))
+        elif isinstance(vrange, list):
+            for vr in vrange:
+                vulnerable_ranges.append(
+                    AffectedVersionRange(
+                        introduced=vr.get("introduced"),
+                        fixed=vr.get("fixed"),
+                    )
                 )
-            )
-        for va in vuln.get("vulnerable_functions") or []:
-            # First-class version ranges take priority; functions are
-            # captured as an empty range with a note via purl instead.
-            pass
         out.append(
             AffectedPackage(
                 purl=pkg.get("purl"),
@@ -140,7 +155,7 @@ def _affected_from_ghsa(payload: dict[str, Any]) -> list[AffectedPackage]:
                 name=name,
                 package_manager=ecosystem,
                 versions=vulnerable_ranges,
-                default_status="affected" if vuln.get("vulnerable_version_range") else "unknown",
+                default_status="affected" if vrange else "unknown",
             )
         )
     return out

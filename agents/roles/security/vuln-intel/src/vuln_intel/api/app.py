@@ -43,6 +43,7 @@ from ..scoring import aggregate_severity
 from ..sources import EpssClient, GhsaSource, KevClient, NvdSource, OsvSource, VulnerabilitySource
 from ..store import CveStore
 from ..telemetry import (
+    REGISTRY,
     configure_logging,
     get_logger,
     vuln_intel_http_request_duration_seconds,
@@ -50,6 +51,7 @@ from ..telemetry import (
     vuln_intel_ingest_duration_seconds,
     vuln_intel_ingest_total,
     vuln_intel_match_findings,
+    vuln_intel_records_stored,
     vuln_intel_score_requests_total,
     vuln_intel_source_up,
 )
@@ -81,7 +83,7 @@ class Service:
         try:
             await self.kev.refresh()
         except httpx.HTTPError as exc:
-            logger.warning("startup_kev_refresh_failed", error=str(exc))
+            logger.warning("startup_kev_refresh_failed: %s", exc)
         self._refresh_source_gauge()
 
     async def stop(self) -> None:
@@ -92,7 +94,7 @@ class Service:
                 try:
                     await close()
                 except Exception as exc:  # noqa: BLE001
-                    logger.warning("source_close_failed", source=getattr(s, "name", "?"), error=str(exc))
+                    logger.warning("source_close_failed source=%s: %s", getattr(s, "name", "?"), exc)
         await self.epss.aclose()
         await self.kev.aclose()
         await self.store.close()
@@ -101,12 +103,7 @@ class Service:
     async def ingest(self, req: IngestRequest) -> IngestResponse:
         job_id = uuid.uuid4().hex
         started = datetime.utcnow()
-        logger.info(
-            "ingest_start",
-            job_id=job_id,
-            sources=[s.value for s in req.sources],
-            full=req.full,
-        )
+        logger.info("ingest_start job_id=%s sources=%s full=%s", job_id, [s.value for s in req.sources], req.full)
         results: dict[SourceName, int] = {}
         errors: dict[SourceName, str] = {}
         merged_total = 0
@@ -142,7 +139,7 @@ class Service:
             except (httpx.HTTPError, ValueError) as exc:
                 errors[src] = str(exc)
                 self._last_ingest_error[src] = str(exc)
-                logger.error("ingest_source_failed", source=src.value, error=str(exc))
+                logger.error("ingest_source_failed source=%s: %s", src.value, exc)
 
         # Enrich with EPSS + KEV in the background
         asyncio.create_task(self._enrich_all())
@@ -150,7 +147,7 @@ class Service:
         self._refresh_source_gauge()
         finished = datetime.utcnow()
         duration = (finished - started).total_seconds()
-        logger.info("ingest_done", job_id=job_id, duration_s=duration, fetched=results)
+        logger.info("ingest_done job_id=%s duration_s=%s fetched=%s", job_id, duration, results)
         return IngestResponse(
             job_id=job_id,
             started_at=started,
@@ -179,9 +176,9 @@ class Service:
                 rec.kev = kev_map.get(cid)
                 await self.store.upsert(rec)
                 updated += 1
-            logger.info("enrich_done", updated=updated)
+            logger.info("enrich_done updated=%s", updated)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("enrich_failed", error=str(exc))
+            logger.warning("enrich_failed: %s", exc)
 
     # ---------------------------------------------------------------- lookup
     async def lookup(self, req: CveLookupRequest) -> CveLookupResponse:
@@ -195,7 +192,7 @@ class Service:
                     try:
                         rec = await source.fetch_one(cid)
                     except httpx.HTTPError as exc:
-                        logger.warning("upstream_lookup_failed", source=source.name, id=cid, error=str(exc))
+                        logger.warning("upstream_lookup_failed source=%s id=%s: %s", source.name, cid, exc)
                         continue
                     if rec is not None:
                         await self.store.upsert(rec)
@@ -216,7 +213,7 @@ class Service:
             try:
                 rec = await source.fetch_one(cve_id)
             except httpx.HTTPError as exc:
-                logger.warning("upstream_get_failed", source=source.name, id=cve_id, error=str(exc))
+                logger.warning("upstream_get_failed source=%s id=%s: %s", source.name, cve_id, exc)
                 continue
             if rec is not None:
                 await self.store.upsert(rec)
@@ -238,7 +235,7 @@ class Service:
             try:
                 epss_map = await self.epss.fetch(ids[:10_000])
             except httpx.HTTPError as exc:
-                logger.warning("epss_fetch_failed", error=str(exc))
+                logger.warning("epss_fetch_failed: %s", exc)
                 epss_map = {}
         else:
             epss_map = {}
@@ -247,7 +244,7 @@ class Service:
             try:
                 await self.kev.refresh()
             except httpx.HTTPError as exc:
-                logger.warning("kev_refresh_failed", error=str(exc))
+                logger.warning("kev_refresh_failed: %s", exc)
         for cid in ids:
             rec = self.store.get(cid)
             if rec is None:
@@ -305,11 +302,10 @@ class Service:
         kev_count = sum(1 for r in records if r.kev and r.kev.exploited)
         epss_scored = sum(1 for r in records if r.epss is not None)
         sev = summarise_records(records)
-        cache_hit = sum(s.hit_ratio for s in self.sources.values()) / max(1, len(self.sources))
         return StatsResponse(
             total_records=len(records),
             by_source=per_source,
-            cache_hit_ratio=cache_hit,
+            cache_hit_ratio=0.0,
             kev_count=kev_count,
             epss_scored=epss_scored,
             severity_distribution=sev,
@@ -431,7 +427,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/metrics", include_in_schema=False)
     async def metrics() -> Response:
-        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
     # ---------------------------------------------------------------- routes — API
     @app.post("/vuln-intel/ingest", response_model=IngestResponse)

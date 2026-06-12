@@ -162,9 +162,9 @@ event interfaces** live in
 
 | Constant                | Subject                                       | Producer        | Consumers                                              | Schema path                                                          |
 | ----------------------- | --------------------------------------------- | --------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
-| `SBOM_TOPIC`            | `security.sbom.generated`                     | sbom-pipeline   | dependency-intel, security-service, security-automation | `backend/models/security/sbom.model.ts`                              |
-| `VULN_TOPIC`            | `security.vulnerability.detected`             | vuln-intel      | dependency-intel, security-service, security-automation | `backend/models/security/vulnerability.model.ts`                     |
-| `RISK_TOPIC`            | `security.risk.calculated`                    | dependency-intel| security-service, security-automation                  | `backend/models/security/risk-score.model.ts`                        |
+| `SBOM_TOPIC`            | `security.sbom.generated.v1`                  | sbom-pipeline   | dependency-intel, security-service, security-automation | `backend/models/security/sbom.model.ts`                              |
+| `VULN_TOPIC`            | `security.vulnerability.detected.v1`          | vuln-intel      | dependency-intel, security-service, security-automation | `backend/models/security/vulnerability.model.ts`                     |
+| `RISK_TOPIC`            | `security.risk.calculated.v1`                 | dependency-intel| security-service, security-automation                  | `backend/models/security/risk-score.model.ts`                        |
 
 Versions follow the subject (`…v1`, `…v2`); a breaking payload change
 requires a new subject version. See
@@ -185,6 +185,15 @@ await bus.subscribe(
   }
 );
 ```
+
+> **GitOps wire format:** the rich per-CVE `VulnerabilitySchema` is
+> **projected** to a per-finding wire format (one event per
+> `(CVE, affected)` pair) at the security-service :4003 boundary.
+> The wire format is locked in
+> [`security/wire-format/vulnerability-gitops-record.schema.json`](../../security/wire-format/vulnerability-gitops-record.schema.json)
+> and documented in [`security/README.md`](../../security/README.md#vulnerability-ndjson-record-schema-gitops-wire-format-locked).
+> The `.v1` subjects in the table above carry the rich schema; the
+> wire format is a **superset payload**, not a different subject.
 
 The full Zod schema (validator) and TypeScript type are exported **per
 model** from `backend/models/security/`:

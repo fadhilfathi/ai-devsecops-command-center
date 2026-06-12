@@ -16,13 +16,7 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     logger = get_logger("vuln_intel")
-    logger.info(
-        "service_starting",
-        host=settings.host,
-        port=settings.port,
-        tenant=settings.tenant_id,
-        data_dir=str(settings.data_dir),
-    )
+    logger.info("service_starting host=%s port=%s tenant=%s data_dir=%s", settings.host, settings.port, settings.tenant_id, str(settings.data_dir))
 
     config = uvicorn.Config(
         app=create_app(settings),
@@ -36,7 +30,7 @@ def main() -> None:
 
     # Graceful shutdown
     def _shutdown(signum: int, _frame: Any) -> None:
-        logger.info("shutdown_signal_received", signum=signum)
+        logger.info("shutdown_signal_received signum=%s", signum)
         server.should_exit = True
 
     for sig in (signal.SIGTERM, signal.SIGINT):

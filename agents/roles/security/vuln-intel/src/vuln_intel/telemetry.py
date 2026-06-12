@@ -123,7 +123,5 @@ def configure_logging(level: str = "INFO") -> None:
 
 
 def get_logger(name: str) -> Any:
-    """Return a structlog logger bound to the given name."""
-    import structlog
-
-    return structlog.get_logger(name)
+    """Return a stdlib logger — structlog is only used to format output."""
+    return logging.getLogger(name)

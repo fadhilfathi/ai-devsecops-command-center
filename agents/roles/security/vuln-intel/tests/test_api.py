@@ -35,22 +35,19 @@ async def test_get_cve_404(app_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_lookup_finds_stored(app_client: AsyncClient, settings: Settings, tmp_path: Path) -> None:
-    # pre-seed the store via the service object
-    from vuln_intel.api.app import Service  # local import to avoid circulars
+async def test_lookup_finds_stored(app_client: AsyncClient) -> None:
+    # Seed the store via the fixture's own service object
+    service: Any = app_client._transport.app.state.service  # type: ignore[attr-defined]
     from vuln_intel.models.cve import CveRecord, SeverityAggregate, SeverityQualitative, SourceName
 
-    app = create_app(settings)
-    async with app.router.lifespan_context(app):
-        service: Service = app.state.service
-        await service.store.upsert(
-            CveRecord(
-                id="CVE-2024-00042",
-                source=[SourceName.NVD],
-                summary="Stored",
-                severity=SeverityAggregate(qualitative=SeverityQualitative.HIGH, primary_source="nvd:primary"),
-            )
+    await service.store.upsert(
+        CveRecord(
+            id="CVE-2024-00042",
+            source=[SourceName.NVD],
+            summary="Stored",
+            severity=SeverityAggregate(qualitative=SeverityQualitative.HIGH, primary_source="nvd:primary"),
         )
+    )
     r = await app_client.post(
         "/vuln-intel/cve/lookup", json={"ids": ["CVE-2024-00042"]}
     )
@@ -64,7 +61,6 @@ async def test_lookup_finds_stored(app_client: AsyncClient, settings: Settings, 
 @pytest.mark.asyncio
 async def test_match_endpoint(app_client: AsyncClient) -> None:
     # Seed a vuln and a component
-    from vuln_intel.api.app import Service, create_app
     from vuln_intel.models.cve import (
         AffectedPackage,
         AffectedVersionRange,
@@ -76,9 +72,6 @@ async def test_match_endpoint(app_client: AsyncClient) -> None:
         SourceName,
     )
 
-    app = create_app.__wrapped__  # type: ignore[attr-defined]
-    # We can't easily call the inner factory without settings — use the fixture
-    # app_client is bound to a service; seed via upsert
     service: Any = app_client._transport.app.state.service  # type: ignore[attr-defined]
     await service.store.upsert(
         CveRecord(

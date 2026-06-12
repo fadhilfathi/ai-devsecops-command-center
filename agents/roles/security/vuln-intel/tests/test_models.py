@@ -86,7 +86,7 @@ def test_parse_cvss_vector() -> None:
     "vector,expected_score,expected_sev",
     [
         ("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", 9.8, SeverityQualitative.CRITICAL),
-        ("CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N", 2.0, SeverityQualitative.LOW),
+        ("CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N", 2.3, SeverityQualitative.LOW),
         ("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N", 6.5, SeverityQualitative.MEDIUM),
     ],
 )

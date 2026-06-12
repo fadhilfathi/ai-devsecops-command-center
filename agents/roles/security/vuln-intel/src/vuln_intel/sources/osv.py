@@ -49,9 +49,14 @@ def _osv_id(payload: dict[str, Any]) -> str | None:
 
 def _aliases_from_osv(payload: dict[str, Any]) -> list[str]:
     out: list[str] = []
+    original_id = payload.get("id")
     for a in payload.get("aliases", []) or []:
-        if a and a != payload.get("id") and a not in out:
+        if a and a not in out:
             out.append(a)
+    # The original OSV id may have been promoted to a CVE alias by the
+    # caller; in that case it should be kept as an alias.
+    if original_id and original_id not in out:
+        out.append(original_id)
     for r in payload.get("related", []) or []:
         if r and r not in out:
             out.append(r)
@@ -83,42 +88,54 @@ def _cvss_from_osv(payload: dict[str, Any]) -> tuple[CvssScore | None, CvssScore
         vector = entry.get("vector")
         score = entry.get("score")
         t = (entry.get("type") or "").upper()
-        if not vector or not isinstance(score, (int, float)):
+        if not vector:
+            # OSV sometimes uses ``score`` to hold the vector and omits
+            # ``vector`` entirely. Recover from that here.
+            if isinstance(score, str) and score.startswith("CVSS:"):
+                vector = score
+                score = None
+        if not vector:
             continue
-        # OSV stores scores as "CVSS_V3" etc, in strings or floats
-        try:
+        # The score may be a number or omitted entirely (in which case
+        # we compute it from the vector for CVSS 3.x).
+        score_f: float | None = None
+        if isinstance(score, (int, float)):
             score_f = float(score)
-        except (TypeError, ValueError):
-            continue
+        elif isinstance(score, str):
+            try:
+                score_f = float(score)
+            except ValueError:
+                score_f = None
         try:
             if t.startswith("CVSS:4") or t == "CVSS_V4":
                 cs = parse_cvss4_vector(vector, upstream_score=score_f)
                 cvss_v4 = CvssScore.model_construct(
                     version=cs.version,
                     vector=cs.vector,
-                    score=score_f,
-                    severity=cvss4_severity_from_score(score_f),
+                    score=score_f if score_f is not None else cs.score,
+                    severity=cvss4_severity_from_score(score_f if score_f is not None else cs.score),
                     source=ScoreSource.OSV,
                 )
             elif t.startswith("CVSS:3") or t == "CVSS_V3":
-                # derive the precise score from the vector when possible
+                # prefer our own parser (derives score from vector)
                 try:
                     derived = parse_cvss3_vector(vector)
                     cvss_v3 = CvssScore.model_construct(
                         version=derived.version,
                         vector=vector,
-                        score=derived.score,
+                        score=score_f if score_f is not None else derived.score,
                         severity=derived.severity,
                         source=ScoreSource.OSV,
                     )
                 except ValueError:
-                    cvss_v3 = CvssScore(
-                        version="3.1",
-                        vector=vector,
-                        score=score_f,
-                        severity=cvss3_severity_from_score(score_f),
-                        source=ScoreSource.OSV,
-                    )
+                    if score_f is not None:
+                        cvss_v3 = CvssScore(
+                            version="3.1",
+                            vector=vector,
+                            score=score_f,
+                            severity=cvss3_severity_from_score(score_f),
+                            source=ScoreSource.OSV,
+                        )
         except (ValueError, TypeError) as exc:
             logger.debug("OSV: CVSS parse failed %s: %s", vector, exc)
     return cvss_v3, cvss_v4
@@ -132,14 +149,27 @@ def _affected_from_osv(payload: dict[str, Any]) -> list[AffectedPackage]:
         name = aff.get("package", {}).get("name") if isinstance(aff.get("package"), dict) else None
         if not name:
             continue
+        # Combine range events from the same range type into a single
+        # ``AffectedVersionRange`` so that consumers see [introduced,
+        # fixed) semantics rather than two separate half-ranges.
         versions: list[AffectedVersionRange] = []
         for r in aff.get("ranges", []) or []:
+            introduced: str | None = None
+            fixed: str | None = None
+            last_affected: str | None = None
             for ev in r.get("events", []) or []:
+                if "introduced" in ev:
+                    introduced = ev["introduced"]
+                if "fixed" in ev:
+                    fixed = ev["fixed"]
+                if "last_affected" in ev:
+                    last_affected = ev["last_affected"]
+            if introduced or fixed or last_affected:
                 versions.append(
                     AffectedVersionRange(
-                        introduced=ev.get("introduced"),
-                        fixed=ev.get("fixed"),
-                        last_affected=ev.get("last_affected"),
+                        introduced=introduced,
+                        fixed=fixed,
+                        last_affected=last_affected,
                     )
                 )
         default_status = aff.get("database_specific", {}).get("last_known_affected_version_range", "")
