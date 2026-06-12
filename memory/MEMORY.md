@@ -1,5 +1,13 @@
 # Memory Index — MiniMax Command Center Team
 
+> **Memory layout convention (2026-06-12):** Per-agent working state lives in
+> aionrs auto-memory (path: `%APPDATA%\aionrs\projects\.../memory/`) as
+> per-agent MEMORY files (`MEMORY-<role>.md`). **DO NOT** use the shared
+> `MEMORY.md` in that dir — it has no concurrent-write isolation. This file
+> (in git) is the team-level index, owned by GitOpsManager + Lead. See
+> `spec-vs-review-drift-pattern.md` for the spec-vs-review pattern that
+> motivated the per-agent file split.
+
 ## Decisions
 - [decision-pnpm-turborepo.md](./decision-pnpm-turborepo.md) — Sprint 2 toolchain: pnpm + Turborepo (no npm migration)
 
