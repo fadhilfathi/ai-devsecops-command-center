@@ -150,7 +150,7 @@ def test_cve_record_consensus_sources_default_empty() -> None:
         severity=SeverityAggregate(
             qualitative=SeverityQualitative.HIGH,
             max_score=7.5,
-            primary_source=ScoreSource.NVD,
+            primary_source=ScoreSource.NVD_PRIMARY,
         ),
     )
     assert hasattr(rec, "consensus_sources")
@@ -168,7 +168,7 @@ def test_cve_record_pre_actionable_default_none() -> None:
         severity=SeverityAggregate(
             qualitative=SeverityQualitative.HIGH,
             max_score=7.5,
-            primary_source=ScoreSource.NVD,
+            primary_source=ScoreSource.NVD_PRIMARY,
         ),
     )
     assert hasattr(rec, "vuln_intel_pre_actionable")

@@ -2,8 +2,8 @@
 
 > **Owner:** SREEngineer
 > **Sprint:** 2 — Security Stack
-> **Status:** **Locked v1.2** (PlatformArchitect round-1 sign-off 2026-06-12, round-2 sign-off 2026-06-12 with B1–B4 + C1–C3, round-3 sign-off 2026-06-12 with D1–D5 + §3.7 + §5.1.1, **round-6 closure 2026-06-12 with D7 5-bucket scheme + §3.11 gauge + §3.8 over-cap resolved by `tenant_id_hash` drop**; D6 `tenant_tier` addition still pending PlatformArchitect final verdict)
-> **Last Updated:** 2026-06-12 (round 6 closure)
+> **Status:** **Locked v1.3** (PlatformArchitect round-1 sign-off 2026-06-12, round-2 sign-off 2026-06-12 with B1–B4 + C1–C3, round-3 sign-off 2026-06-12 with D1–D5 + §3.7 + §5.1.1, round-6 closure 2026-06-12 with D7 5-bucket scheme + §3.11 gauge + §3.8 over-cap resolved by `tenant_id_hash` drop + D6 `tenant_tier` APPROVED option 1 with mandatory Sprint 3 recording-rule pre-agg, **round-8 closure 2026-06-12 with VulnerabilityIntelligenceAgent §3.11 env var contract landed in §5.6 and the GHSA 60×→1× headroom prose corrected**)
+> **Last Updated:** 2026-06-12 (round 8: §5.6 env var contract + GHSA headroom correction)
 > **Sign-off message:** from PlatformArchitect, slot 019ebae2-9df9-7db0-a45b-c36d235b811e
 > **Companions:** `slo-sli-definitions.md`, `alerting-runbooks.md`, `metrics-spec.md` (PlatformArchitect — cross-link target)
 > **Sign-off deadline:** 2026-06-13 12:00 UTC — **MET** (2026-06-12)
@@ -449,6 +449,15 @@ don't regress it.
   added to metrics-spec.md; §5.6 VulnIngestionLag SLO targets added
   (provisional, S2.11 re-validation queued); §5.1.1 Node.js helper
   footnote added; `repo_shape` label added to spec §3.1.
+  **Round 8:** §3.8.1/3.8.2/3.8.4/3.8.5/3.8.6 spec body rewritten to
+  match the LANDED runtime refactor (spec-vs-runtime drift correction —
+  `tenant_id_hash` removed from labels on all 5 tenant-bearing metrics,
+  §3.8.4 renamed + new `route,bucket` labels, ~109,400 → ~3,717 active
+  series for security-service :4003, no Sprint 3 recording-rule
+  pre-aggregation needed for §3.8). `metrics-spec.md` bumped to v1.0.5.
+  §5.6 env var contract (`VULN_INTEL_INGEST_SCHEDULE_<SOURCE>_MINUTES`)
+  added to lock cadence + SLO burn math. GHSA headroom prose corrected
+  (60× → 1×) to match the §5.6 table.
 - [x] **FullstackEngineer** — `metrics.ts` helper LANDED at
   `backend/common/observability/metrics.ts` (sets `service` label from
   `OTEL_SERVICE_NAME`). **Round 6:** `tenant_id_hash` label DROPPED from
@@ -477,9 +486,15 @@ don't regress it.
   (round 6): NVD=60min, GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h.
   SLO targets in §5.6 are now **anchored to the real cadence** (NVD/OSV
   have 2× headroom; GHSA has 1× headroom — intentional, security-driven).
-  `vuln_feed_last_refresh_timestamp_seconds` gauge spec added to
-  `metrics-spec.md` §3.11 — pending emission from `vulnerability-service`
-  (port 4008). GHSA-headroom note added in §5.6.
+  `vuln_feed_last_refresh_timestamp_seconds{source}` gauge spec added to
+  `metrics-spec.md` §3.11. **Round 8: emission DELIVERED from
+  `vulnerability-service` (port 4008)** — 5 source labels
+  (nvd|ghsa|osv|epss|kev) → ~5 active series, 82/82 unit tests pass.
+  5 other metrics shipped (sliding-window dedup counters, batch-size
+  histograms, KEV-event total). **Polling cadence env var contract
+  (`VULN_INTEL_INGEST_SCHEDULE_<SOURCE>_MINUTES`) added to SLO doc
+  §5.6 in round 8** so the cadence + SLO burn math stay in lockstep
+  and a re-anchor note is appended here on any future cadence change.
 - [x] **ComplianceOfficer (S2.9 owner) + SREEngineer (Sprint 2.5/2.11)** —
   ✅ **DONE 2026-06-12.** ComplianceOfficer shipped path (b) audit
   emission in compliance-service (4 files modified, 1 new `audit.ts` at
