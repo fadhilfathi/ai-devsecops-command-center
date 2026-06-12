@@ -194,3 +194,51 @@ model** from `backend/models/security/`:
   (CVSSv3, EPSS, KEV, aliases, severity)
 - `DependencyGraphSchema` / `DependencyGraph` — nodes/edges with risk weights
 - `RiskScoreSchema` / `RiskScore` — composite 0–100 + per-axis scores + dashboard types
+
+## REST API surface (security-service, port 3003)
+
+Five endpoints are added in Sprint 2 (S2.5) and are the public HTTP
+surface of the security stack. All endpoints are OpenAPI-documented at
+runtime via `@fastify/swagger` + `@fastify/swagger-ui` and rate-limited
+at 10 req/s per route.
+
+| Method | Path                          | Purpose                                    | RBAC                                | Idempotency key header | Status codes                            |
+| ------ | ----------------------------- | ------------------------------------------ | ----------------------------------- | ---------------------- | --------------------------------------- |
+| `POST` | `/sbom/generate`              | Kick off a SBOM generation job             | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
+| `POST` | `/sbom/analyze`               | Analyse an existing SBOM (no regen)        | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
+| `POST` | `/vulnerabilities/ingest`     | Bulk-ingest CVE feed (NVD/GHSA/OSV)        | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
+| `POST` | `/risk/calculate`             | Recompute risk for a tenant / scope        | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
+| `GET`  | `/security/dashboard`         | Aggregate view (scores, top vulns, trend)  | any authenticated role             | n/a                    | `200`, `401`, `429`                     |
+
+**Auth:** HS256 or RS256 JWT (`Authorization: Bearer <jwt>`). The
+HS256/RS256 selection is per-tenant (configured in tenant settings).
+The middleware is `backend/services/security/src/middleware/auth.ts`.
+
+**RBAC roles** (built-in, in `backend/services/security/src/middleware/rbac.ts`):
+
+| Canonical role          | Aliases (in middleware)           | Can call POSTs         | Can call GETs |
+| ----------------------- | --------------------------------- | ---------------------- | ------------- |
+| `security_engineer`     | `sec_eng`, `security-engineer`    | ✅                     | ✅            |
+| `platform_admin`        | `admin`, `platform-admin`         | ✅                     | ✅            |
+| `tenant_admin`          | `tenant-admin`                    | ❌                     | ✅            |
+| `security_lead`         | `sec_lead`, `security-lead`       | ❌ (read-only triage)  | ✅            |
+| `operator`              | `ops`                             | ❌                     | ✅            |
+| `auditor`               | `audit`                           | ❌                     | ✅            |
+| `developer`             | `dev`                             | ❌                     | ✅            |
+| `viewer`                | `view`                            | ❌                     | ✅            |
+
+> **Tenant match:** All endpoints enforce `requireTenantMatch` — the
+> JWT's `tenant_id` claim must match the request's `X-Tenant-Id` header
+> (or the path's `:tenantId` param). Cross-tenant calls are 403'd and
+> audit-logged.
+
+**Idempotency:** POSTs accept an `Idempotency-Key` header (UUIDv4). The
+service stores `{key, request_hash, response, expires_at}` for 24h.
+Replays return the stored response (200) without re-running the work.
+
+**Error envelope:** `application/problem+json` (RFC 7807) with `type`,
+`title`, `status`, `detail`, `instance`, `traceId`, and a `code` (one
+of `validation_failed`, `unauthorized`, `forbidden`, `not_found`,
+`conflict`, `rate_limited`, `internal_error`). The
+`backend/services/security/src/services/proxy.ts` file maps upstream
+service errors to this envelope.
