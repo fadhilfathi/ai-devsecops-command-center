@@ -11,7 +11,65 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
+
+
+# Default git-host allowlist for dev_input SSRF defense (T-07 / S2.8).
+# Operators can override via SBOM_GENERATOR_GIT_HOST_ALLOWLIST.
+# When non-empty AND a host is not in the allowlist, the request is rejected
+# (default-deny). When empty, the blocklist alone is used (default-allow
+# with WARN-level log + metric emission).
+DEFAULT_GIT_HOST_ALLOWLIST: tuple[str, ...] = (
+    "github.com",
+    "*.github.com",
+    "gitlab.com",
+    "*.gitlab.com",
+    "bitbucket.org",
+    "*.bitbucket.org",
+    "git.example.internal",  # placeholder for tenant-internal hosts
+)
+
+
+def _env_list(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+@dataclass(frozen=True)
+class SsrfConfig:
+    """SSRF defense configuration (T-07 / S2.8).
+
+    `git_host_allowlist` and `default_deny` work together:
+      - allowlist non-empty + default_deny=True (default) -> reject anything
+        not in the allowlist (recommended posture).
+      - allowlist empty -> blocklist-only, no allowlist enforcement.
+    """
+    git_host_allowlist: tuple[str, ...] = DEFAULT_GIT_HOST_ALLOWLIST
+    default_deny: bool = True
+    dns_timeout_seconds: float = 5.0
+
+    @classmethod
+    def from_env(cls) -> "SsrfConfig":
+        allowlist = _env_list(
+            "SBOM_GENERATOR_GIT_HOST_ALLOWLIST", DEFAULT_GIT_HOST_ALLOWLIST
+        )
+        default_deny_raw = os.environ.get(
+            "SBOM_GENERATOR_SSRF_DEFAULT_DENY", "true"
+        ).strip().lower()
+        default_deny = default_deny_raw not in {"false", "0", "no", "off"}
+        try:
+            timeout = float(
+                os.environ.get("SBOM_GENERATOR_SSRF_DNS_TIMEOUT_SECONDS", "5.0")
+            )
+        except ValueError:
+            timeout = 5.0
+        return cls(
+            git_host_allowlist=allowlist,
+            default_deny=default_deny,
+            dns_timeout_seconds=timeout,
+        )
 
 
 @dataclass(frozen=True)

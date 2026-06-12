@@ -165,6 +165,10 @@ with `compliance_service_` prefix). Well under the 50k cap.
 
 **Runbook:** `docs/runbooks/compliance-audit-log.md` (**created 2026-06-12** by ComplianceOfficer; alert annotation `{{ $labels.runbook_base_url }}/compliance-audit-log` resolves correctly via the standard runbook_base_url pattern). 130 lines; 3-step decision tree (bus connection → schema validation → structured log filter) with the `event.type` vs `audit_kind` confusion callout.
 
+**Related decisions:**
+- **F-14 (audit log store wiring, 2026-06-12, SREEngineer):** option B — direct `AUDIT_LOG_TOPIC` subscriber → PostgreSQL `audit_log` table (append-only role, 7-year retention, WORM-style backup). Rejected option A (OpenSearch) — wrong storage tier for transactional/regulator-readable records. Rejected option C (S3 → PG) — over-engineered, deferred. Rejected option D (Debezium CDC) — over-engineered, deferred. Action items: ComplianceOfficer files F-14 ADR (slot 0011 or 0012); SRE adds `AuditLogPostgresWriteError` + `AuditLogPostgresConnectionDrop` alerts in S3.1; GitOpsManager provisions PG schema + retention + WORM backup.
+- **S2.9 ↔ S2.7 ACK (2026-06-12, ComplianceOfficer):** both scopes closed end-to-end on the SRE side; metrics-spec v1.0.5 + SLO doc v1.3 Locked.
+
 **Why a separate group from §3.10 S2.8 controls:** audit emission is a
 S2.9 deliverable, not S2.8. The `security_stack.audit_emission` group
 keeps the alert routing and runbook cross-link clean. If Sprint 3
