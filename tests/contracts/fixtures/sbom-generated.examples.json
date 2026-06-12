@@ -1,0 +1,179 @@
+{
+  "$schema": "https://aicc.local/schemas/fixtures/sbom-generated.v1.json",
+  "description": "Positive and negative examples for the security.sbom.generated.v1 contract test (tests/contracts/sbom-generated.contract.spec.ts). Mirrors the O-3.7 schema: 13 required fields including the new sbom_fingerprint_algorithm and sbom_fingerprint_format.",
+  "examples": [
+    {
+      "description": "Baseline O-3.7 SBOM event: monorepo, sha256 + cyclonedx-json+canonicalized-jcs",
+      "expected": "valid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+        "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+        "sbom_fingerprint_algorithm": "sha256",
+        "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+        "provenance_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo/provenance.intoto.jsonl",
+        "scope": "monorepo",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 1842,
+        "labels": { "team": "platform", "tier": "1" }
+      }
+    },
+    {
+      "description": "ACCEPT: sha512 with longer hex string (algorithm future-proofing)",
+      "expected": "valid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-deadbe-container",
+        "sbom_fingerprint": "sha512:" + "f".repeat(128),
+        "sbom_fingerprint_algorithm": "sha512",
+        "sbom_fingerprint_format": "cyclonedx-json+raw",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-deadbe-container.cyclonedx-json",
+        "scope": "container",
+        "subject": "image:ghcr.io/aicc/agent:1.2.3",
+        "subject_fingerprint": "sha256:" + "a".repeat(64),
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 87
+      }
+    },
+    {
+      "description": "ACCEPT: minimal record (only required fields, no optional)",
+      "expected": "valid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-1234567-package",
+        "sbom_fingerprint": "blake3:" + "b".repeat(64),
+        "sbom_fingerprint_algorithm": "blake3",
+        "sbom_fingerprint_format": "spdx-json+canonicalized-jcs",
+        "sbom_format": "spdx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-1234567-package.spdx-json",
+        "scope": "package",
+        "subject": "path:packages/auth/package.json",
+        "subject_fingerprint": "1234567890abcdef",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "cdxgen:10.10.2",
+        "components_count": 12
+      }
+    },
+    {
+      "description": "REJECT: missing required field (no sbom_fingerprint_algorithm)",
+      "expected": "invalid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+        "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+        "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+        "scope": "monorepo",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 1842
+      }
+    },
+    {
+      "description": "REJECT: sbom_fingerprint_algorithm not in the enum (md5 is not allowed)",
+      "expected": "invalid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+        "sbom_fingerprint": "md5:5d41402abc4b2a76b9719d911017c592",
+        "sbom_fingerprint_algorithm": "md5",
+        "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+        "scope": "monorepo",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 1842
+      }
+    },
+    {
+      "description": "REJECT: sbom_fingerprint_format not in the enum",
+      "expected": "invalid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+        "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+        "sbom_fingerprint_algorithm": "sha256",
+        "sbom_fingerprint_format": "spdx-tagvalue",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+        "scope": "monorepo",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 1842
+      }
+    },
+    {
+      "description": "REJECT: sbom_id has bad scope (not in {monorepo, service, package, container, fs, git-tree})",
+      "expected": "invalid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-other",
+        "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+        "sbom_fingerprint_algorithm": "sha256",
+        "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-other.cyclonedx-json",
+        "scope": "other",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 1842
+      }
+    },
+    {
+      "description": "REJECT: components_count is negative",
+      "expected": "invalid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+        "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+        "sbom_fingerprint_algorithm": "sha256",
+        "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+        "scope": "monorepo",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": -1
+      }
+    },
+    {
+      "description": "REJECT: additional properties not allowed (the schema is closed)",
+      "expected": "invalid",
+      "record": {
+        "schema": "security.sbom.generated.v1",
+        "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+        "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+        "sbom_fingerprint_algorithm": "sha256",
+        "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+        "scope": "monorepo",
+        "subject": "repo:aicc/command-center",
+        "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+        "generated_at": "2026-06-12T18:42:11.420Z",
+        "generator": "syft:1.18.0",
+        "components_count": 1842,
+        "rogue_field": "should be rejected"
+      }
+    }
+  ]
+}
