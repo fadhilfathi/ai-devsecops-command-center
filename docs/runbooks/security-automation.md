@@ -27,8 +27,9 @@ rollback when it misbehaves.
    - [Disable the workflows in an incident](#disable-the-workflows-in-an-incident)
    - [Run from a fork (security researcher flow)](#run-from-a-fork-security-researcher-flow)
 5. [Common failure modes](#common-failure-modes)
-6. [Debugging](#debugging)
-7. [Contact](#contact)
+6. [Canary tests (T-09) — treat canary matches as P0](#canary-tests-t-09--treat-canary-matches-as-p0)
+7. [Debugging](#debugging)
+8. [Contact](#contact)
 
 ---
 
@@ -248,6 +249,97 @@ automation:
 | Critical CVE issue never opens                                          | `auto_actionable` field missing from payload         | Verify `vuln-report` step `parse` includes `auto_actionable` from the event       |
 | Bot PRs are stuck in a rebase loop                                      | Force-push on a shared branch                         | Ensure bot only pushes to `security/automated/*` branches                          |
 | Weekly digest has wrong date range                                      | Cron runs in wrong timezone                           | Cron is UTC; confirm via `date -u` in the run log                                  |
+| A `__CANARY__` marker appears in `security/vulns/<date>.json` or in any security API response | **P0 SECURITY INCIDENT** — SecurityArchitect T-09 canary test fired in production | See [Canary tests (T-09)](#canary-tests-t-09--treat-canary-matches-as-p0) below. Page `@security-architect` and `@gitops-manager` immediately. **Do not** attempt to silently remove the line. |
+
+---
+
+## Canary tests (T-09) — treat canary matches as P0
+
+> **Why this section exists:** SecurityArchitect's S2.8 mitigations (T-09,
+> test plan § 3.6, cases DC-01..DC-04) include a canary test that
+> deliberately submits a SBOM / vulnerability payload containing the
+> literal marker `__CANARY__`. The canary asserts that the marker
+> **never** appears in any response body, in any committed artifact, or
+> in any GitOps-emitted record. The canary is a tripwire: its presence
+> in any output means a control failed.
+
+### Detection signals
+
+The S2.10 auto-committer and security-service :4003 projection are
+**expected** to see the canary land in the following locations **only
+when the canary test itself is running**:
+
+| Location                                                                                            | Expected if canary fired                                                                                              | Page as P0?                                          |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `security/vulns/<YYYY-MM-DD>.json` (NDJSON) — any line whose `id` or `summary` contains `__CANARY__` | **YES** — this is what the canary test does (DC-01). The bot WILL commit a line that matches the canary regex.        | **Yes** — unless the canary owner (`@security-architect`) posted a `#sec-canary-armed` notice in `#sec-automation` within the last 6 hours. |
+| `.github/issues` (Critical CVE issue body) — title or body contains `__CANARY__`                    | **YES** — `security-issue.yml` opens issues for every `auto_actionable && severity == 'critical'`. The canary deliberately triggers this (DC-02). | **Yes** — same gating rule. |
+| Security-service :4003 REST response bodies — any field containing `__CANARY__`                     | **NO** — the canary asserts this string never reaches an API consumer (DC-03).                                         | **Yes — P0 always.**                                |
+| `security/sboms/<sbom_id>.<format>` (CycloneDX / SPDX JSON) — any component or property contains `__CANARY__` | **NO** — the canary asserts the SBOM bytes are sanitized before commit (DC-04).                                       | **Yes — P0 always.**                                |
+| `docs/SECURITY.md` rendered HTML — any occurrence of `__CANARY__`                                   | **NO** — the sync-sla job redacts the canary marker, but if you see it on `main`, the redaction step regressed.        | **Yes — P0 always.**                                |
+| `CHANGELOG.md` security changelog section — any occurrence                                          | **NO** — the changelog generator must skip records whose `id` or `summary` matches the canary regex.                   | **Yes — P0 always.**                                |
+
+### Triage procedure
+
+1. **Stop the auto-committer.** In an active canary-fire, every new
+   run will produce more poisoned artifacts. The fastest way is to
+   close the source: revoke the `repository_dispatch` trigger in
+   [`.github/workflows/security.yml`](../.github/workflows/security.yml)
+   by setting `workflow_dispatch` only, OR disable the workflow
+   entirely (Settings → Actions → Disable). See
+   [Disable the workflows in an incident](#disable-the-workflows-in-an-incident).
+2. **Confirm it is a canary, not a real attack.** Check `#sec-automation`
+   for a recent `#sec-canary-armed` post by `@security-architect` or
+   `@platform-architect`. The canary owner is the **only** team
+   authorized to arm the canary. If no such post exists within 6h,
+   treat the match as a real intrusion (P0) and follow the standard
+   incident response runbook (`docs/runbooks/incident-response.md`).
+3. **Snapshot, do not delete.** If the canary owner confirms it was
+   theirs, **do not** `git reset` or `git revert` the canary
+   artifacts in place. Take a tarball of the affected files and the
+   `Actions` run log first — the canary test asserts on the *committed*
+   state, and rolling back will re-trigger the canary.
+4. **Notify the canary owner.** Page `@security-architect` in
+   `#sec-automation` with: (a) the canary marker, (b) the file path
+   and line where it appeared, (c) the run URL, (d) the timestamp
+   of the `#sec-canary-armed` post (or confirmation that there was
+   none).
+5. **Wait for the all-clear.** Do not re-enable the auto-committer
+   until `@security-architect` posts a `#sec-canary-disarmed` notice
+   in `#sec-automation` AND any in-flight canary artifacts have been
+   recorded in the canary test ledger
+   (`docs/security/canary-fires.md` — to be created in Sprint 3
+   as part of the T-09 canary framework).
+6. **Postmortem.** Within 48h of disarm, the canary owner opens a
+   P0 postmortem tracking the failure that allowed the marker to
+   reach a non-test sink. Root cause categories: (a) input
+   sanitization regression in vuln-intel :4008 / sbom-pipeline :4007,
+   (b) projection logic in security-service :4003 vuln-projection.ts
+   failing to redact, (c) GitOps automation (security.yml,
+   security-issue.yml, release.yml) failing to gate on the canary
+   regex.
+
+### Canary regex (Sprint 2)
+
+```text
+__CANARY__
+```
+
+The marker is matched **case-sensitively** as a literal substring. Any
+record, line, or response containing this exact 10-character string
+in any field is a canary hit. (Substring-only by design — a real
+attacker will not pick this exact token.)
+
+### What this section is NOT
+
+- It is not a recipe for running the canary. The canary is owned by
+  `@security-architect`; the test plan is in
+  `docs/security/canary-test-plan.md` (T-09 deliverable, Sprint 3).
+- It is not authorization to ignore `__CANARY__` matches. There is
+  no "expected" channel. If you see it, page.
+- It is not a substitute for the standard
+  [Disable the workflows in an incident](#disable-the-workflows-in-an-incident)
+  procedure. Use that runbook to stop the bleed; come back here for
+  the canary-specific follow-up.
 
 ---
 
