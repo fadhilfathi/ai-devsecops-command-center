@@ -48,3 +48,4 @@
 - [feedback-coordination.md](./feedback-coordination.md) — lessons from Sprint 1 parallel-work coordination
 - [observability-layout.md](./observability-layout.md) — dev/prod observability file layout, open items (Loki, runbook templating)
 - [sprint-2-coordination.md](./sprint-2-coordination.md) — backend package split + Turborepo migration commitments
+- [spec-vs-review-drift-pattern.md](./spec-vs-review-drift-pattern.md) — Sprint 2 closeout pattern: spec amendments land after agent code; cross-metric lock + spec-ratified docstring + Lead follow-up fix
