@@ -406,12 +406,9 @@ class Service:
                 # inside the scorer; mirror it to structlog here for
                 # operators tailing the container.
                 logger.info(
-                    "llm_score_attached",
-                    cve_id=rec.id,
-                    score=llm_result.score,
-                    source=llm_result.source,
-                    confidence=llm_result.confidence,
-                    call_id=llm_result.call_id,
+                    "llm_score_attached cve_id=%s score=%s source=%s confidence=%s call_id=%s",
+                    rec.id, llm_result.score, llm_result.source,
+                    llm_result.confidence, llm_result.call_id,
                 )
 
             scored.append(rec)
@@ -706,7 +703,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _ = claims
         events = service._audit_log.read()[-limit:]
         return {
-            "events": [event.to_dict() if hasattr(event, "to_dict") else event.__dict__ for event in events],
+            "events": [event.to_dict() for event in events],
             "count": len(events),
             "log_path": str(service._audit_log.path),
         }

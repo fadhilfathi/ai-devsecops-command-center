@@ -2,8 +2,8 @@
 
 > **Owner:** SREEngineer
 > **Sprint:** 2 — Security Stack
-> **Status:** **Locked v1.2** (PlatformArchitect round-1 sign-off 2026-06-12, round-2 sign-off 2026-06-12 with B1–B4 + C1–C3, round-3 sign-off 2026-06-12 with D1–D5 + §3.7 + §5.1.1)
-> **Last Updated:** 2026-06-12 (post round-3 sign-off)
+> **Status:** **Locked v1.2** (PlatformArchitect round-1 sign-off 2026-06-12, round-2 sign-off 2026-06-12 with B1–B4 + C1–C3, round-3 sign-off 2026-06-12 with D1–D5 + §3.7 + §5.1.1, **round-6 closure 2026-06-12 with D7 5-bucket scheme + §3.11 gauge + §3.8 over-cap resolved by `tenant_id_hash` drop**; D6 `tenant_tier` addition still pending PlatformArchitect final verdict)
+> **Last Updated:** 2026-06-12 (round 6 closure)
 > **Sign-off message:** from PlatformArchitect, slot 019ebae2-9df9-7db0-a45b-c36d235b811e
 > **Companions:** `slo-sli-definitions.md`, `alerting-runbooks.md`, `metrics-spec.md` (PlatformArchitect — cross-link target)
 > **Sign-off deadline:** 2026-06-13 12:00 UTC — **MET** (2026-06-12)
@@ -131,6 +131,48 @@ deliberately tighter than the SLO contract to give 2–5× headroom:
 > thresholds; doing so creates alert noise and breaks the burn-rate
 > SLO model.
 
+### 4.2 `devsecops_audit_log_emission_total` SLO (round 6 closure, ComplianceOfficer path (b))
+
+> **Owner spec:** ComplianceOfficer (S2.9 owner, 2026-06-12)
+> **Added:** 2026-06-12 (round 6 closure; not in original S2.7 hand-in)
+> **Purpose:** close the observability gap for the S2.9 POA&M audit log
+> emission. This SLO is an **integrity guardrail**, not a runtime SLI:
+> audit emission failures mean security-relevant events are silently
+> lost, which is a compliance regression (CIS 8.11, NIST AU-2/AU-3).
+
+**Per-result 99% emission-success SLO:**
+
+| `result` | Emission success rate target | Window | Page threshold |
+|---|---|---|---|
+| `success` | **99%** of all audit_log emissions (i.e. error rate ≤ 1%) | 30d | error rate > 1% over 5m |
+| `error`   | (the inverse — should be ≤ 1%) | 30d | rate > 0.1/s for 5m → ticket; > 1/s for 5m → page |
+
+**Why 99% (not 95%):** the 1% error budget is for genuine record-keep
+failures (write contention, schema validation errors, bus-disconnected
+edge cases), not for legitimate business rule violations. A 1% error
+rate over 30d means **at most 1 audit record in 100 is silently lost**,
+which is the upper bound of "acceptable" for compliance. Going below
+99% (i.e. higher success rate) is a stretch goal but not required.
+
+**Alert:** `AuditLogEmissionErrorRate` (added in `alert-rules.yml`
+under the new `security_stack.audit_emission` group, severity **P2
+(ticket) + page on >1/s for 5m**).
+
+**Cardinality:** the metric is `audit_log_emission_total{service, result}`
+with `result in {success, error}` = **2 series per service**. Compliance-
+service emits ~22 series total (2 audit + ~20 default process metrics
+with `compliance_service_` prefix). Well under the 50k cap.
+
+**Runbook:** `docs/runbooks/compliance-audit-log.md` (ComplianceOfficer
+to create; cross-link from the alert annotation).
+
+**Why a separate group from §3.10 S2.8 controls:** audit emission is a
+S2.9 deliverable, not S2.8. The `security_stack.audit_emission` group
+keeps the alert routing and runbook cross-link clean. If Sprint 3
+introduces audit emission from other services (security-service, agent-
+service), the alert pattern generalizes — just add a new alert rule
+with the same PromQL and a different `service` label.
+
 ## 5. SLO summary table
 
 | Metric                                              | SLO (95% within) | Window  | Page threshold |
@@ -150,6 +192,7 @@ deliberately tighter than the SLO contract to give 2–5× headroom:
 | `devsecops_vulnerability_ingestion_lag_seconds` (ghsa) | 900 s (15m)  | 30d     | p95 > 15m, 5m |
 | `devsecops_vulnerability_ingestion_lag_seconds` (osv)  | 3,600 s (1h)  | 30d     | p95 > 1h, 5m |
 | `devsecops_vulnerability_ingestion_lag_seconds` (all)   | 3,600 s (1h)  | 30d     | p95 > 1h, 5m |
+| `devsecops_audit_log_emission_total{result="error"}`     | ≤ 1% of all emissions | 30d     | rate > 0.1/s for 5m (ticket), > 1/s for 5m (page) |
 
 ### 5.6 `devsecops_vulnerability_ingestion_lag_seconds` targets (B2)
 
@@ -417,14 +460,21 @@ don't regress it.
   `vuln_feed_last_refresh_timestamp_seconds` gauge spec added to
   `metrics-spec.md` §3.11 — pending emission from `vulnerability-service`
   (port 4008). GHSA-headroom note added in §5.6.
-- [ ] **ComplianceOfficer (S2.9 owner) + SREEngineer (Sprint 2.5/2.11)** —
-  ComplianceOfficer to emit `audit_log_emission_total{service=
-  "compliance-service", result}` from `poam.service.ts` and
-  `evidence-attacher.ts` via `prom-client` (path (b) per SREEngineer
-  2026-06-12 review). SREEngineer to add §4.2 "Audit log emission SLO"
-  to this SLO doc (target: 95% of emissions succeed, i.e. `result="error"`
-  rate ≤ 0.1 over 5m) and an `AuditLogEmissionErrorRate` alert to
-  `alert-rules.yml`. Tracked in `metrics-spec.md` §9 as Sprint 2.5/2.11
+- [x] **ComplianceOfficer (S2.9 owner) + SREEngineer (Sprint 2.5/2.11)** —
+  ✅ **DONE 2026-06-12.** ComplianceOfficer shipped path (b) audit
+  emission in compliance-service (4 files modified, 1 new `audit.ts` at
+  `backend/services/compliance/src/observability/audit.ts`). Counter
+  name: `audit_log_emission_total{service, result}` (2 series per
+  service; 11 `AuditKind` values enumerated). SREEngineer added §4.2
+  (99% emission-success SLO over 30d) and 2 alerts to
+  `alert-rules.yml` (`AuditLogEmissionErrorRate` ticket at error rate
+  >1% over 5m, `AuditLogEmissionErrorRatePage` page at error rate
+  >1/s for 5m). 30 rules total, lint exit 0. Cardinality well under
+  cap (~22 series for compliance-service). **Out of scope (next
+  follow-up):** ComplianceOfficer to create
+  `docs/runbooks/compliance-audit-log.md` (Sprint 2.5/2.11 task
+  `019ebc0f-ab38` filed on team board). Tracked in `metrics-spec.md` §9
+  as Sprint 2.5/2.11.
   deferred work.
 - [ ] **Lead / S2.11 E2E validation owner** — confirm the SLOs are achievable
   in production over the 30d baseline; tune targets if real telemetry shows

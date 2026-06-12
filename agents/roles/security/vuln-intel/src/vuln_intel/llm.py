@@ -72,8 +72,11 @@ LLM_RESPONSE_SCHEMA: Final[dict[str, Any]] = {
 }
 
 # Lock-step validator used on every LLM response.
+# ``format_checker=None`` skips RFC 3339 / URI validation at the schema
+# layer — the LLM prompt template guarantees the structure, and the
+# downstream code is the source of truth for date / URL shape.
 _llm_response_validator: Final[Any] = Draft202012Validator(
-    LLM_RESPONSE_SCHEMA, format_check=False
+    LLM_RESPONSE_SCHEMA, format_checker=None
 )
 
 # Strict, immutable prompt template. CVE id and CVSS vector are
@@ -95,8 +98,8 @@ USER_PROMPT_TEMPLATE: Final[str] = (
     "Vendor / product: {vendor}\n"
     "Description (truncated to 600 chars):\n{description}\n\n"
     "Respond with JSON only, matching this schema:\n"
-    '{ "cve_id": "CVE-...","exploit_likelihood": 0.0-1.0,'
-    ' "rationale": "<= 2000 chars","confidence": "low|medium|high" }'
+    '   {{ "cve_id": "CVE-...","exploit_likelihood": 0.0-1.0,'
+    ' "rationale": "<= 2000 chars","confidence": "low|medium|high" }}'
 )
 
 
@@ -516,10 +519,8 @@ class LlmExploitScorer:
             except LlmTransportError as exc:
                 last_error = str(exc)
                 logger.warning(
-                    "llm_transport_error",
-                    attempt=attempt,
-                    error=last_error,
-                    cve_id=cve_id,
+                    "llm_transport_error attempt=%s error=%s cve_id=%s",
+                    attempt, last_error, cve_id,
                 )
                 # Refund the reservation so a transient failure does
                 # not consume the budget.
@@ -589,10 +590,8 @@ class LlmExploitScorer:
             # reservation was already accepted, so we just log the
             # delta and continue.
             logger.info(
-                "llm_usage_above_estimate",
-                cve_id=cve_id,
-                reserved=est_tokens,
-                actual=actual,
+                "llm_usage_above_estimate cve_id=%s reserved=%s actual=%s",
+                cve_id, est_tokens, actual,
             )
 
         self._audit(
@@ -674,19 +673,21 @@ class LlmExploitScorer:
         # captured by the platform's log shipper. The per-tenant
         # budget is reported alongside for capacity planning.
         logger.info(
-            "llm_audit",
-            call_id=event.call_id,
-            tenant_id=event.tenant_id,
-            cve_id=event.cve_id,
-            model=event.model,
-            prompt_tokens=event.prompt_tokens,
-            completion_tokens=event.completion_tokens,
-            total_tokens=event.total_tokens,
-            duration_ms=event.duration_ms,
-            status=event.status,
-            error=event.error,
-            fallback_used=event.fallback_used,
-            timestamp=event.timestamp,
+            "llm_audit call_id=%s tenant_id=%s cve_id=%s model=%s "
+            "prompt_tokens=%s completion_tokens=%s total_tokens=%s "
+            "duration_ms=%s status=%s error=%s fallback_used=%s timestamp=%s",
+            event.call_id,
+            event.tenant_id,
+            event.cve_id,
+            event.model,
+            event.prompt_tokens,
+            event.completion_tokens,
+            event.total_tokens,
+            event.duration_ms,
+            event.status,
+            event.error,
+            event.fallback_used,
+            event.timestamp,
         )
 
 

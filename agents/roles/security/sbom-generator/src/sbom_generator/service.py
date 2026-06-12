@@ -152,36 +152,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             ).model_dump(),
         )
 
-
-def _sanitize_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Coerce Pydantic ``ValidationError.errors()`` output to JSON.
-
-    Pydantic v2 includes the original ``ValueError`` instance (or any
-    other exception) in the ``ctx`` field of a validation error when
-    a field validator raised it explicitly. Starlette's
-    ``JSONResponse`` cannot serialise that — it raises a
-    ``TypeError: Object of type ValueError is not JSON serializable``
-    when the response is rendered. We strip non-primitive values
-    from ``ctx`` and ``input`` here.
-
-    This is a copy of the helper used in v2 of the service at
-    ``backend/services/sbom-pipeline-service/src/sbom_pipeline/main.py``
-    and is needed because the v1 service was authored before the
-    Pydantic v2 ``ctx`` change was rolled out across the team.
-    """
-    sanitized: List[Dict[str, Any]] = []
-    for err in errors:
-        cleaned: Dict[str, Any] = {}
-        for k, v in err.items():
-            if k == "ctx" and isinstance(v, dict):
-                cleaned[k] = {ck: str(cv) for ck, cv in v.items()}
-            elif k == "input" and isinstance(v, (bytes, bytearray)):
-                cleaned[k] = f"<{len(v)} bytes>"
-            else:
-                cleaned[k] = v
-        sanitized.append(cleaned)
-    return sanitized
-
     # ---- Auth ---------------------------------------------------------
 
     async def _check_auth(
@@ -425,3 +395,33 @@ def _infer_source_kind(value: str) -> str:
     if value.startswith(("./", "/", "~")) or value in (".", ".."):
         return SourceType.DIRECTORY
     return SourceType.DOCKER_IMAGE
+
+
+def _sanitize_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Coerce Pydantic ``ValidationError.errors()`` output to JSON.
+
+    Pydantic v2 includes the original ``ValueError`` instance (or any
+    other exception) in the ``ctx`` field of a validation error when
+    a field validator raised it explicitly. Starlette's
+    ``JSONResponse`` cannot serialise that — it raises a
+    ``TypeError: Object of type ValueError is not JSON serializable``
+    when the response is rendered. We strip non-primitive values
+    from ``ctx`` and ``input`` here.
+
+    This is a copy of the helper used in v2 of the service at
+    ``backend/services/sbom-pipeline-service/src/sbom_pipeline/main.py``
+    and is needed because the v1 service was authored before the
+    Pydantic v2 ``ctx`` change was rolled out across the team.
+    """
+    sanitized: List[Dict[str, Any]] = []
+    for err in errors:
+        cleaned: Dict[str, Any] = {}
+        for k, v in err.items():
+            if k == "ctx" and isinstance(v, dict):
+                cleaned[k] = {ck: str(cv) for ck, cv in v.items()}
+            elif k == "input" and isinstance(v, (bytes, bytearray)):
+                cleaned[k] = f"<{len(v)} bytes>"
+            else:
+                cleaned[k] = v
+        sanitized.append(cleaned)
+    return sanitized

@@ -58,6 +58,10 @@ class FeedAuditEvent:
         """Render the event as a single-line JSON string."""
         return json.dumps(asdict(self), separators=(",", ":"), sort_keys=True)
 
+    def to_dict(self) -> dict[str, Any]:
+        """Render the event as a plain dict (e.g. for the audit endpoint)."""
+        return asdict(self)
+
 
 class FeedAuditLog:
     """Append-only JSONL audit log with per-process locking.
@@ -94,9 +98,9 @@ class FeedAuditLog:
             rotated = self._path.with_name(f"{self._path.name}.{ts}")
             try:
                 os.replace(self._path, rotated)
-                logger.info("audit_rotated", rotated=str(rotated), prior_bytes=size)
+                logger.info("audit_rotated rotated=%s prior_bytes=%s", str(rotated), size)
             except OSError as exc:  # pragma: no cover — disk failure
-                logger.warning("audit_rotate_failed", error=str(exc))
+                logger.warning("audit_rotate_failed error=%s", str(exc))
 
     def append(self, event: FeedAuditEvent) -> None:
         """Write a single event to the log (atomic per-line via the lock)."""
@@ -107,11 +111,11 @@ class FeedAuditLog:
             with self._path.open("ab") as fh:
                 fh.write(line.encode("utf-8"))
         logger.debug(
-            "audit_written",
-            feed=event.feed,
-            accepted=event.accepted_count,
-            rejected=event.rejected_count,
-            run_id=event.ingest_run_id,
+            "audit_written feed=%s accepted=%s rejected=%s run_id=%s",
+            event.feed,
+            event.accepted_count,
+            event.rejected_count,
+            event.ingest_run_id,
         )
 
     def read(self) -> list[FeedAuditEvent]:

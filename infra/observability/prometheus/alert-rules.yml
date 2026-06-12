@@ -428,3 +428,47 @@ groups:
           summary: "LLM token budget < 20% remaining"
           description: "T-03 cost guardrail: vuln-intel LLM summarization budget is below 20%. Throttle non-essential LLM calls or expand budget before next cycle."
           runbook: "{{ $labels.runbook_base_url }}/LlmTokenBudgetLow"
+
+  # ---------------------------------------------------------------------------
+  # Sprint 2.9 — Compliance audit log emission integrity alerts
+  #
+  # Added 2026-06-12 (S2.9 follow-up; ComplianceOfficer spec, path (b)).
+  # These are compliance-integrity signals, NOT runtime SLI. They page on
+  # audit emission failures (silent loss of security-relevant events) which
+  # is a compliance regression (CIS 8.11, NIST AU-2/AU-3).
+  # ---------------------------------------------------------------------------
+  - name: security_stack.audit_emission
+    rules:
+
+      - alert: AuditLogEmissionErrorRate
+        # Two-tier alerting: ticket on >0.1/s for 5m (steady-state handle),
+        # page on >1/s for 5m (acute regression). The page threshold aligns
+        # with the SLO doc §4.2 success rate target (99% over 30d).
+        expr: |
+          (
+            sum(rate(devsecops_audit_log_emission_total{result="error"}[5m]))
+            /
+            sum(rate(devsecops_audit_log_emission_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: ticket
+          s2_9_control: audit_log_emission
+        annotations:
+          summary: "audit log emission error rate > 1%"
+          description: "More than 1% of audit log emissions are failing. This is a compliance regression (CIS 8.11, NIST AU-2/AU-3). Investigate bus connection, schema validation, or write contention."
+          runbook: "{{ $labels.runbook_base_url }}/compliance-audit-log"
+
+      # Page-only alert: 10x the steady-state error rate. Fires when the
+      # SLO is in acute violation (>=10% of audit records being lost).
+      - alert: AuditLogEmissionErrorRatePage
+        expr: |
+          sum(rate(devsecops_audit_log_emission_total{result="error"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: page
+          s2_9_control: audit_log_emission
+        annotations:
+          summary: "audit log emission error rate > 1/s (acute)"
+          description: "Audit log emission is failing at a rate of >1 per second for 5+ minutes. This is a critical compliance regression — security-relevant events are being silently lost. Page on-call immediately."
+          runbook: "{{ $labels.runbook_base_url }}/compliance-audit-log"

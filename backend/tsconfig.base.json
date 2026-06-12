@@ -26,6 +26,8 @@
     "paths": {
       "@aicc/shared": ["packages/shared/src/index.ts"],
       "@aicc/shared/*": ["packages/shared/src/*"],
+      "@aicc/models": ["../models/index.ts"],
+      "@aicc/models/*": ["../models/*"],
       "@aicc/observability": ["common/observability/index.ts"],
       "@aicc/observability/*": ["common/observability/*"]
     }

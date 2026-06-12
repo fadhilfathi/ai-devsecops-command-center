@@ -453,10 +453,10 @@ class FeedValidator:
                 "jsonschema is required for feed validation — "
                 "add 'jsonschema' to vuln-intel dependencies."
             )
-        # ``format_check=False`` — we don't need full RFC 3339 / URI
+        # ``format_checker=None`` — we don't need full RFC 3339 / URI
         # validation at the schema layer; downstream code is the source
         # of truth on date and URL shape.
-        self._validator = Draft202012Validator(self.schema, format_check=False)
+        self._validator = Draft202012Validator(self.schema, format_checker=None)
 
     def validate_record(self, record: Mapping[str, Any]) -> ValidationResult:
         """Validate a single record. Subclasses may override for record-id extraction."""

@@ -7,6 +7,8 @@
  */
 
 import type { BaseEntity, Severity, TenantScoped, UUID } from './common.js';
+import { z } from 'zod';
+import { VulnerabilityKindSchema } from '@aicc/models/security/vulnerability.model.js';
 
 export type UserRole =
   | 'platform_admin'
@@ -57,27 +59,35 @@ export type FindingSeverity = Severity;
 export type VulnSeverity = Severity;
 
 /**
- * Shared `VulnKind` enum — the **finding-class** taxonomy, distinct from
- * the SCAN_TOPIC `scanner` enum (trivy/grype/etc.) and from the
- * `VulnerabilityKindSchema` Zod enum in
- * `backend/models/security/vulnerability.model.ts` (which is the wire
- * format's 5-value subset used for GitOps routing).
+ * Shared `VulnKind` enum — the **finding-class** taxonomy.
  *
- * **Sprint 2 wire format** uses `VulnerabilityKindSchema` with values
- * `'sca' | 'sast' | 'runtime' | 'container' | 'iac'`.
- * **Shared domain type** uses this broader 6-value enum to accommodate
- * future extension (`dast`, `manual`). Python agents and the compliance
- * mapping engine import `VulnKind` from `@aicc/shared/types`.
+ * **Single source of truth**: this type is `z.infer`-derived from
+ * `VulnerabilityKindSchema` in `backend/models/security/vulnerability.model.ts`.
+ * Any change to the wire format (5 values: `'sca' | 'sast' | 'runtime' | 'container' | 'iac'`)
+ * ripples through this type automatically. **No drift possible.**
  *
- * Part of the F-1 build-breaking bug fix (ComplianceOfficer turn-3).
+ * The trailing `'unknown'` is a **consumer-side runtime normalization
+ * fallback**, not part of the wire format. When a wire payload omits
+ * `kind` (legacy emitters) or specifies an invalid value, the consumer
+ * normalizes to `'unknown'`. The compliance mapping engine
+ * (`compliance-service`) accepts `VulnKind` with this fallback so it
+ * never has to cast.
+ *
+ * **Distinct from** the SCAN_TOPIC `scanner` enum (trivy/grype/etc.),
+ * which is the **scanner identification** and lives in
+ * `backend/packages/shared/src/security/topics.ts:SecurityScanCompletedEvent`.
+ *
+ * **Distinct from** the broader 6-value union previously declared here
+ * manually (which included `'dast'` and `'manual'`). Those values are
+ * reserved for a future wire-format extension; the TS type now tracks
+ * the wire format exactly.
+ *
+ * Part of the F-1 build-breaking bug fix (ComplianceOfficer turn-3)
+ * plus the F-1 follow-up (turn-4): swap manual union for `z.infer`-derived
+ * type. The wire Zod schema is the single source of truth.
  */
-export type VulnKind =
-  | 'sca'
-  | 'sast'
-  | 'dast'
-  | 'runtime'
-  | 'manual'
-  | 'unknown';
+export const VulnKindSchema = VulnerabilityKindSchema;
+export type VulnKind = z.infer<typeof VulnKindSchema> | 'unknown';
 
 export interface VulnerabilityFinding extends BaseEntity, TenantScoped {
   scanId: UUID;

@@ -22,7 +22,8 @@
 - [s2-vuln-schema-handoff.md](./s2-vuln-schema-handoff.md) — FullstackEngineer → ComplianceOfficer: CloudEvents envelope + vulnerability shape + `kind`/`introducedAt` proposal (S2.9)
 - [s2-gitops-wire-format-alignment.md](./s2-gitops-wire-format-alignment.md) — FullstackEngineer ↔ GitOpsManager: 3 gaps between security-service :4003 emit code and S2.10 NDJSON contract; holding code changes pending sign-off
 - [s2-sbom-v2-spec-alignment.md](./s2-sbom-v2-spec-alignment.md) — FullstackEngineer ↔ SBOMPipelineAgent: Lead's v2 spec (URN bom-ref + prefix-string target) — code changes landed
-- [s2-sbom-pipeline-v2-completion.md](./s2-sbom-pipeline-v2-completion.md) — S2.1 v2 service: missing `syft_wrapper.py` written, 12 test failures fixed, 69/69 pass
+- [s2-sbom-pipeline-v2-completion.md](./s2-sbom-pipeline-v2-completion.md) — S2.1 v2 service: missing `syft_wrapper.py` written, 12 test failures fixed, 69/69 pass (parked by Lead 2026-06-12 for Sprint 3 cutover)
+- [s2-sbom-pipeline-v1-hotfix.md](./s2-sbom-pipeline-v1-hotfix.md) — S2.1 v1 service at `agents/roles/security/sbom-generator/`: 15 test failures + 1 startup crash fixed; S2.7/S2.10/S2.8 contract refinements applied; 73/73 pass
 - [monitoring-architecture.md](./monitoring-architecture.md) — SREEngineer: monitoring, logging, metrics architecture
 - [gitops-manager-sprint-1.md](./gitops-manager-sprint-1.md) — GitOpsManager: repo, CI/CD, contributor docs, ADRs 0005-0007
 
@@ -38,6 +39,7 @@
 
 ## Sprint 2 — Security Intelligence Core (IN PROGRESS)
 - [sprint-2-task-board.md](./sprint-2-task-board.md) — 11 tasks, agent assignments, tech stack, dependencies
+- [project-sprint2-vulnerability-intelligence.md](./project-sprint2-vulnerability-intelligence.md) — VulnerabilityIntelligenceAgent: S2.2 (vuln-intel :4008) + S2.3 (dep-intel :4009) + S2.8 hardening (validators, consensus, audit, LLM)
 - Repo: https://github.com/fadhilfathi/ai-devsecops-command-center
 
 All Sprint 1 follow-up items (Loki config, runbook templating, stale paths, dev/prod split) are resolved — see `observability-layout.md` "Closed items (historical)" section.

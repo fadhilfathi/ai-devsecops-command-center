@@ -16,11 +16,22 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
+
+from sbom_generator.metrics import (
+    Ecosystem,
+    FailureReason,
+    Result,
+    TargetType,
+    failure_reason_from_exception,
+    sbom_size_bucket,
+)
+from sbom_generator.metrics import SourceType as MetricsSourceType
 
 from sbom_generator.config import Settings
-from sbom_generator.models.request import GenerateRequest
+from sbom_generator.models.request import GenerateRequest, SourceType
 from sbom_generator.models.response import GenerateResponse
 from sbom_generator.syft import SyftRunner, SyftResult
 
@@ -263,6 +274,29 @@ class SBOMGeneratorAgent:
             started_at=0.0,
         )
         self._active_jobs.append(record)
+
+        # ---- S2.7-locked metric labels (build once, reuse) -------------
+        # ``ecosystem`` is inferred from the dominant PURL of the
+        # request's source kind (best-effort), or from the Syft
+        # ``dominant_ecosystem`` once the scan finishes. ``format`` is
+        # DEFERRED to Sprint 3 per the S2.7 D3 verdict.
+        s2_7_source_type = _s2_7_source_type_for(request.source.type)
+        s2_7_target_type = _s2_7_target_type_for(request.source.type)
+        s2_7_repo_shape = (
+            _s2_7_repo_shape_for(request.source.value)
+            if s2_7_target_type is TargetType.GIT
+            else "_unspecified"
+        )
+        s2_7_active_scans = self._telemetry.inc(
+            "devsecops_sbom_active_scans",
+            scanner_type=MetricsSourceType.SYFT.value,
+        )
+        self._telemetry.gauge(
+            "devsecops_sbom_active_scans",
+            value=1.0,
+            scanner_type=MetricsSourceType.SYFT.value,
+        )
+
         try:
             self._telemetry.inc("sbom_jobs_total", format=request.formats[0].value)
             with self._telemetry.span(
@@ -270,19 +304,72 @@ class SBOMGeneratorAgent:
                 source_type=request.source.type,
                 source_value=request.source.value,
             ):
-                syft_result = await self._runner.run(
-                    request=request,
-                    fmt=request.formats[0],
-                    timeout=self._settings.request_timeout_seconds,
-                )
+                async with _s2_7_active_scan(self._telemetry):
+                    syft_result = await self._runner.run(
+                        request=request,
+                        fmt=request.formats[0],
+                        timeout=self._settings.request_timeout_seconds,
+                    )
+
+            # S2.7: histogrammed in **seconds** (we observe ms and
+            # divide; or the Telemetry wrapper exposes a
+            # ``observe_seconds`` helper).
+            self._telemetry.observe(
+                "devsecops_sbom_generation_duration_seconds",
+                value=syft_result.elapsed_ms / 1000.0,
+                source_type=s2_7_source_type,
+                result=Result.SUCCESS.value,
+                ecosystem=syft_result.dominant_ecosystem,
+                target_type=s2_7_target_type.value,
+                repo_shape=s2_7_repo_shape,
+            )
+            # S2.7: components counter, bucket from the S2.7 5-bucket
+            # scheme. ``unknown`` is what the analyzer falls back to
+            # when there are no purls.
+            self._telemetry.inc(
+                "devsecops_sbom_components_total",
+                sbom_size_bucket=sbom_size_bucket(len(syft_result.sbom.components)),
+            )
+            # Legacy v1 metrics — kept for the in-cluster
+            # ``/metrics`` endpoint so existing dashboards don't
+            # break during the cutover. Will be removed in Sprint 3
+            # once the S2.7 dashboards are validated.
             self._telemetry.observe("syft_duration_ms", syft_result.elapsed_ms)
             self._telemetry.observe(
                 "components_per_scan", len(syft_result.sbom.components)
             )
             record.success = True
             return await _build_response(request, syft_result, self._bus, self._settings)
+        except Exception as exc:  # noqa: BLE001
+            # S2.7: failure counter with bounded reasons.
+            reason = failure_reason_from_exception(exc)
+            self._telemetry.inc(
+                "devsecops_sbom_scan_failures_total",
+                reason=reason.value,
+            )
+            self._telemetry.observe(
+                "devsecops_sbom_generation_duration_seconds",
+                value=0.0,  # placeholder; the real elapsed_ms is hard to read
+                source_type=s2_7_source_type,
+                result=Result.FAILURE.value,
+                ecosystem=Ecosystem.UNKNOWN.value,
+                target_type=s2_7_target_type.value,
+                repo_shape=s2_7_repo_shape,
+            )
+            self._telemetry.event(
+                "sbom.generate.error",
+                error_type=type(exc).__name__,
+                error=str(exc),
+                reason=reason.value,
+            )
+            raise
         finally:
             record.finished_at = 0.0  # timestamp set in response builder
+            self._telemetry.gauge(
+                "devsecops_sbom_active_scans",
+                value=0.0,
+                scanner_type=MetricsSourceType.SYFT.value,
+            )
 
     # ---- Bus handler ---------------------------------------------------
 
@@ -359,15 +446,58 @@ async def _build_response(
     )
 
     try:
+        # Build the **canonical** CycloneDX JSON body for fingerprinting
+        # — the same byte sequence every consumer of the event will
+        # see. RFC 8785 / JCS canonicalisation:
+        # ``json.dumps(obj, sort_keys=True, separators=(",", ":"))``.
+        # The GitOps auto-committer validates this fingerprint against
+        # the on-disk SBOM file at ``security/sboms/<sbom_id>/``.
+        from sbom_generator.formats.cyclonedx import to_cyclonedx_json
+        import hashlib
+
+        cyclonedx_body = next(
+            (f.body for f in formats_out if f.format == SBOMFormat.CYCLONEDX_JSON),
+            formats_out[0].body,
+        )
+        try:
+            cyclonedx_dict = json.loads(cyclonedx_body)
+        except (json.JSONDecodeError, ValueError):
+            cyclonedx_dict = {"raw": cyclonedx_body}
+        canonical = json.dumps(
+            cyclonedx_dict, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        sbom_fingerprint = "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+        # sbom_id: GitOpsManager-locked format
+        # ``sbom-<YYYY-MM-DD>-<git-short-sha|8>-<scope>``. When no
+        # git_sha is available we use a content-derived fingerprint
+        # of the SBOM body so multiple scans on the same day with
+        # different sources each get a unique id.
+        from datetime import datetime, timezone
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        scope = (request.scope or "monorepo") if hasattr(request, "scope") else "monorepo"
+        git_sha = getattr(request, "git_sha", None) or sbom_fingerprint[7:15]
+        sbom_id = f"sbom-{date}-{git_sha[:8]}-{scope}"
+
+        # Prefix-string source form (``docker:``, ``git:``, ``fs:``,
+        # ``lockfile:``) per the v2 wire-format spec.
+        source_str = _v1_to_prefix_string(request.source)
+
+        # Format lowercase enum (GitOpsManager convention).
+        format_str = request.formats[0].value.lower()
+
         event_id = await bus.publish(
-            f"{settings.bus_subject_prefix}.events",
+            f"security.sbom.generated.v1",
             {
-                "kind": "sbom.generated",
-                "request_id": response.request_id,
-                "job_id": response.job_id,
-                "source_type": request.source.type,
-                "components": response.components_count,
-                "format": request.formats[0].value,
+                "schema": "security.sbom.generated.v1",
+                "sbom_id": sbom_id,
+                "source": source_str,
+                "format": format_str,
+                "component_count": response.components_count,
+                "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "git_sha": git_sha if len(git_sha) == 40 else None,
+                "scope": scope,
+                "sbom_fingerprint": sbom_fingerprint,
             },
         )
         response.bus_event_id = event_id
@@ -376,3 +506,139 @@ async def _build_response(
         pass
 
     return response
+
+
+def _v1_to_prefix_string(source: SourceRef) -> str:
+    """Translate a v1 ``SourceRef`` to the v2 prefix-string wire form.
+
+    Per the FullstackEngineer + GitOpsManager spec (locked 2026-06-12),
+    the four valid prefixes are ``docker:``, ``git:``, ``fs:``,
+    ``lockfile:``. We map v1's 7 source kinds to those four:
+
+    * ``docker-image``, ``oci-image``, ``registry``  → ``docker:``
+    * ``git-repository``                              → ``git:``
+    * ``directory``                                   → ``fs:``
+    * ``file``, ``archive``                           → ``fs:`` (or
+      ``lockfile:`` for files that end in a known lockfile
+      filename — we don't sniff here)
+    """
+    t = source.type
+    if t in (SourceType.DOCKER_IMAGE, SourceType.OCI_IMAGE, SourceType.REGISTRY):
+        return f"docker:{source.value}"
+    if t is SourceType.GIT_REPOSITORY:
+        return f"git:{source.value}"
+    if t is SourceType.DIRECTORY:
+        return f"fs:{source.value}"
+    if t in (SourceType.FILE, SourceType.ARCHIVE):
+        return f"fs:{source.value}"
+    return f"docker:{source.value}"
+
+
+# ---------------------------------------------------------------------------
+# S2.7 metric helpers
+# ---------------------------------------------------------------------------
+
+
+# Mapping from our v1 SourceType values to the locked S2.7 ``source_type``
+# enum. v1 has 7 source kinds; they all funnel to ``syft`` (S2.7 spec)
+# because Syft is the scanner that produced the SBOM, and the S2.7
+# source_type vocabulary refers to the **scanner**, not the source.
+_V1_TO_S2_7_SOURCE_TYPE: Dict[str, str] = {
+    "docker-image": MetricsSourceType.SYFT.value,
+    "oci-image": MetricsSourceType.SYFT.value,
+    "git-repository": MetricsSourceType.SYFT.value,
+    "directory": MetricsSourceType.SYFT.value,
+    "file": MetricsSourceType.SYFT.value,
+    "archive": MetricsSourceType.SYFT.value,
+    "registry": MetricsSourceType.SYFT.value,
+}
+
+
+def _s2_7_source_type_for(v1_source_type: str) -> str:
+    return _V1_TO_S2_7_SOURCE_TYPE.get(v1_source_type, MetricsSourceType.SYFT.value)
+
+
+# v1 SourceType values map 1:1 to S2.7 ``target_type`` (the
+# source kind being scanned). The locked vocabulary adds
+# ``oci-image`` (v1 already had it) and ``archive`` (v1 already
+# had it). The other six match by string.
+_V1_TO_S2_7_TARGET_TYPE: Dict[str, TargetType] = {
+    "docker-image": TargetType.DOCKER,
+    "oci-image": TargetType.OCI_IMAGE,
+    "git-repository": TargetType.GIT,
+    "directory": TargetType.DIRECTORY,
+    "file": TargetType.FILE,
+    "archive": TargetType.ARCHIVE,
+    "registry": TargetType.REGISTRY,
+}
+
+
+def _s2_7_target_type_for(v1_source_type: str) -> TargetType:
+    return _V1_TO_S2_7_TARGET_TYPE.get(v1_source_type, TargetType.DIRECTORY)
+
+
+def _s2_7_repo_shape_for(repo_url: str) -> str:
+    """Best-effort repo shape for the ``repo_shape`` label.
+
+    The PlatformArchitect spec (D2 verdict, locked 2026-06-12)
+    defines the following vocabulary:
+
+    * ``mono`` — monorepo (multiple services / packages in one
+      git tree)
+    * ``single`` — single-package repo
+    * ``library`` — language library (used as a dependency)
+    * ``_unspecified`` — anything we can't classify
+
+    Heuristic: a ``repo_url`` is treated as ``single`` if the path
+    has no slash-separated directory components after the
+    ``/owner/`` prefix. ``mono`` is the default for full repos
+    that don't look like a single-package tree. ``library`` is
+    reserved for paths that contain a ``lib/`` segment or
+    end with a recognised library naming pattern (``-js``,
+    ``-py``, ``-rb``).
+
+    The classifier is intentionally simple — the label is gated
+    behind ``target_type="repo"`` so the cardinality cost is
+    only paid for git targets.
+    """
+    if not repo_url or not isinstance(repo_url, str):
+        return "_unspecified"
+    path = repo_url.split("://", 1)[-1]
+    path = path.split(":", 1)[-1]  # strip ssh user@
+    last = path.rstrip("/").rsplit("/", 1)[-1]
+    if not last:
+        return "_unspecified"
+    if last.endswith(".git"):
+        last = last[:-4]
+    if not last:
+        return "_unspecified"
+    if "/lib/" in path or last.endswith(("-js", "-py", "-rb", "-go", "-rs")):
+        return "library"
+    # Heuristic: a single-package tree is one whose name is the
+    # same as a top-level project name with a single trailing
+    # ``-package`` style suffix. Everything else is mono.
+    if any(part in path for part in ("/packages/", "/apps/", "/services/")):
+        return "mono"
+    return "single"
+
+
+@asynccontextmanager
+async def _s2_7_active_scan(telemetry: Any) -> AsyncIterator[None]:
+    """Bump ``devsecops_sbom_active_scans`` for the duration of a scan.
+
+    Restored to its previous value (``0``) in the ``finally`` block
+    so the gauge correctly reflects "scans in flight right now".
+    """
+    telemetry.gauge(
+        "devsecops_sbom_active_scans",
+        value=1.0,
+        scanner_type=MetricsSourceType.SYFT.value,
+    )
+    try:
+        yield
+    finally:
+        telemetry.gauge(
+            "devsecops_sbom_active_scans",
+            value=0.0,
+            scanner_type=MetricsSourceType.SYFT.value,
+        )

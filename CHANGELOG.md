@@ -104,6 +104,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     OTel-ready; structlog JSON logs; non-root Docker image; multi-tenant
   - **36 unit + integration tests passing** (`pytest`, ASGI in-process)
 
+- **`vuln-intel` S2.8 hardening** (single commit, 46 new tests)
+  - **Per-feed JSON-Schema validators** (`validators.py`): NVD CVE 5.0 (envelope + per-item), GHSA, OSV, EPSS, KEV. Range-checked numeric fields (CVSS 0–10, EPSS 0–1), severity enum whitelist, port of the AJV schemas from § 3.5. Validators run on every record yielded by the source layer; rejections increment `vuln_intel_validation_rejected_total{source,reason}` and are surfaced in the per-feed audit log.
+  - **Safe JSON parsing**: hard `max_depth=20` enforcement, `defusedxml.ElementTree` available for upstream XML feeds. No coerce-on-error — invalid records are rejected, never silently dropped.
+  - **Cross-source consensus** (`consensus.py`): HIGH/CRITICAL severity requires corroboration by **≥2 of {NVD, GHSA, OSV}**. Single-source HIGH/CRITICAL is tagged `unofficial` for human review; multi-source gets the `corroborated` tag. Decision class carries `reason ∈ {consensus_ok, single_source_high_critical, below_high}` for metrics/audit labelling.
+  - **Per-feed audit log** (`audit.py`): append-only JSONL with file-size-based rotation, thread-safe writes. Every ingest run emits one event: `feed, fetched_at, record_count, accepted_count, rejected_count, signature_valid, validator_version, tenant_id, ingest_run_id, rejected_reasons`. Exposed at `GET /vuln-intel/audit`.
+  - **Opt-in LLM exploit scoring** (`llm.py`): `VULN_INTEL_LLM_ENABLED` gate; per-tenant and global token budgets with reservation + refund; OpenAI-compatible `/chat/completions` HTTP client; offline `FakeLlmClient` for tests. Strict `LLM_RESPONSE_SCHEMA` (with `additionalProperties: false`); transport / schema / budget-violation errors all fall back to EPSS. Every call emits an `LlmCallAudit` event. Hooked into the `/vuln-intel/score` flow when `use_llm=true` is passed; default is off.
+  - **New metrics** (Prometheus):
+    - `vuln_feed_last_refresh_timestamp_seconds{source}` (S2.7 lag-SLO gauge)
+    - `vuln_intel_validation_rejected_total{source,reason}`
+    - `vuln_intel_consensus_unofficial_total`
+    - `vuln_intel_llm_calls_total{status}` (ok / schema_violation / budget_exceeded / transport_error / disabled)
+    - `vuln_intel_llm_tokens_total{tenant,kind}`
+    - `vuln_intel_llm_budget_remaining{tenant}`
+  - **New endpoints**: `GET /vuln-intel/audit`, `GET /vuln-intel/llm/status`
+  - **New env vars** (all in `config.py`): `VULN_INTEL_INGEST_SCHEDULE_NVD|GHSA|OSV|EPSS|KEV_MINUTES`, `VULN_INTEL_LLM_*` (model, base_url, api_key, timeout_seconds, max_retries, tenant_budget_tokens, global_budget_tokens, cost_per_1k_micros), `VULN_INTEL_AUDIT_LOG_FILENAME`, `VULN_INTEL_AUDIT_LOG_MAX_BYTES`, `VULN_INTEL_CONSENSUS_MIN_SOURCES_HIGH_CRITICAL`, `VULN_INTEL_FEED_SIGNATURE_REQUIRED`, `VULN_INTEL_VALIDATION_MAX_JSON_DEPTH`
+  - **Test coverage** (`test_validators.py`, `test_consensus.py`, `test_audit.py`, `test_llm.py`): 46 new tests covering CF-01..CF-07 (feed validation + consensus) and LP-01..LP-09 (LLM scoring). Full suite **82/82 passing**.
+
 - **`dependency-intel` service** (S2.3, port 4009) — dependency graph + risk
   - CycloneDX/SPDX-compatible SBOM ingest (per-component + per-dependency)
   - Graph builder with PURL-keyed nodes, dedupe across SBOMs, workspace merge

@@ -1,41 +1,80 @@
-# =============================================================================
-# CODEOWNERS
-# Auto-assigns reviewers based on paths. The default rule is platform; specific
-# teams own specific areas.
-# =============================================================================
+# AICC CODEOWNERS — Sprint 2.1
+#
+# Pattern syntax: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# The LAST matching pattern wins. Patterns are relative to the repository root.
+#
+# Team handles (to be created on GitHub before this file takes effect):
+#   @aicc/security   — Security team (SecurityArchitect + SREEngineer delegates)
+#   @aicc/compliance — Compliance team (ComplianceOfficer + delegates)
+#   @aicc/devsecops  — DevSecOps team (FullstackEngineer + GitOpsManager + PlatformArchitect delegates)
+#
+# Sprint 2 baseline (Sprint 2 closeout 2026-06-12): every Node.js service's `package.json` and
+# the shared `common/observability/*` helpers are devsecops-owned.
 
-# Default owners — every PR needs at least one of these
-*                                       @aionrs/platform
+# --- Default ownership for top-level repo files ---
+/.github/                                          @aicc/devsecops
+/.github/CODEOWNERS                                @aicc/devsecops
+/.gitignore                                        @aicc/devsecops
+/CHANGELOG.md                                      @aicc/devsecops
+/README.md                                         @aicc/devsecops
+/pnpm-workspace.yaml                               @aicc/devsecops
+/security/                                         @aicc/devsecops
+/security/wire-format/                             @aicc/devsecops
+/security/wire-format/sbom-generated.schema.json   @aicc/devsecops
+/security/wire-format/vulnerability-gitops-record.schema.json @aicc/devsecops
 
-# Architecture & high-level design
-/docs/architecture/                     @aionrs/platform @aionrs/architects
-/docs/adr/                              @aionrs/platform @aionrs/architects
-/agents/                                @aionrs/architects
+# --- Architecture & design docs ---
+/docs/architecture/                                @aicc/devsecops
+/docs/architecture/security-model.md               @aicc/security
+/docs/architecture/event-bus.md                    @aicc/devsecops
 
-# Backend services
-/backend/services/auth/                 @aionrs/auth @aionrs/security
-/backend/services/security/             @aionrs/security
-/backend/services/agent/                @aionrs/architects
-/backend/services/incident/             @aionrs/sre @aionrs/security
-/backend/services/compliance/           @aionrs/compliance @aionrs/security
-/backend/services/integration/          @aionrs/integrations
-/backend/shared/                        @aionrs/backend
+# --- Observability spec, SLOs, alert rules, runbooks ---
+/docs/observability/                               @aicc/security
+/docs/observability/metrics-spec.md                @aicc/security
+/docs/observability/slos-security-stack.md         @aicc/security
+/docs/runbooks/                                    @aicc/security
 
-# Frontend
-/frontend/                              @aionrs/frontend
+# --- Sprint 2.1 entry: compliance-owned mapping adapter (ComplianceOfficer F-17) ---
+# This file is created in ComplianceOfficer's F-17 PR. The CODEOWNERS entry is
+# pre-registered so the PR review is correctly routed from the moment the file
+# lands. Pattern is forward-compatible: the entry is a no-op if the file
+# doesn't exist yet.
+/backend/services/compliance/src/control-mapper/vulnerability-adapter.ts @aicc/compliance
+/backend/services/compliance/test/vulnerability-adapter.test.ts        @aicc/compliance
 
-# Infrastructure & deployment
-/infra/                                 @aionrs/sre
-/.github/workflows/                     @aionrs/sre
-/docker-compose.yml                     @aionrs/sre
-/Makefile                               @aionrs/sre
+# --- Shared types (security, observability) ---
+/backend/packages/shared/                          @aicc/devsecops
+/backend/packages/shared/src/security/             @aicc/devsecops
+/backend/packages/shared/src/types/                @aicc/devsecops
 
-# Compliance
-/docs/compliance/                       @aionrs/compliance
+# --- Shared models (Zod schemas) ---
+/backend/models/                                   @aicc/devsecops
+/backend/models/security/vulnerability.model.ts    @aicc/devsecops
+/backend/models/security/sbom.model.ts             @aicc/devsecops
+/backend/models/security/risk-score.model.ts       @aicc/devsecops
+/backend/models/security/dependency-graph.model.ts @aicc/devsecops
 
-# Security-sensitive files (always require security review)
-/SECURITY.md                            @aionrs/security
-/docs/security/                         @aionrs/security
-*.pem                                   @aionrs/security
-*.key                                   @aionrs/security
-*.p12                                   @aionrs/security
+# --- Common observability helper (S2.7) ---
+/backend/common/observability/                     @aicc/devsecops
+/backend/common/observability/metrics.ts           @aicc/devsecops
+
+# --- Per-service ownership ---
+/backend/services/auth/                            @aicc/security
+/backend/services/agent/                           @aicc/devsecops
+/backend/services/security/                        @aicc/devsecops
+/backend/services/security/src/services/vuln-projection.ts @aicc/devsecops
+/backend/services/security/src/routes/vulnerabilities-ingest.ts @aicc/devsecops
+/backend/services/incident/                        @aicc/devsecops
+/backend/services/compliance/                      @aicc/compliance
+/backend/services/compliance/src/control-mapper/   @aicc/compliance
+/backend/services/compliance/src/evidence/         @aicc/compliance
+/backend/services/compliance/src/observability/    @aicc/compliance
+/backend/services/integration/                     @aicc/devsecops
+
+# --- Python agents (S2.1 / S2.2 / S2.3) ---
+/agents/roles/security/sbom-generator/             @aicc/devsecops
+/agents/roles/security/vulnerability-intel/        @aicc/devsecops
+
+# --- Tests ---
+/tests/                                            @aicc/devsecops
+/tests/contracts/                                  @aicc/devsecops

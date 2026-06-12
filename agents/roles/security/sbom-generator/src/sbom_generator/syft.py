@@ -31,6 +31,7 @@ from sbom_generator.errors import (
     SyftTimeoutError,
     ValidationError,
 )
+from sbom_generator.metrics import Ecosystem
 from sbom_generator.models.request import GenerateRequest, SourceRef, SourceType
 from sbom_generator.models.sbom import SBOM, SBOMFormat, normalize_syft_output
 
@@ -52,6 +53,11 @@ class SyftResult:
     command: List[str]
     warnings: List[str] = field(default_factory=list)
     exit_code: int = 0
+    # Best-effort ecosystem label inferred from the dominant purl
+    # prefix in the Syft ``artifacts`` array. Used as the
+    # ``ecosystem`` label value on the S2.7-locked
+    # ``devsecops_sbom_generation_duration_seconds`` histogram.
+    dominant_ecosystem: str = "unknown"
 
 
 def resolve_syft(binary: str = "syft") -> str:
@@ -312,7 +318,36 @@ class SyftRunner:
             command=cmd,
             warnings=warnings,
             exit_code=proc.returncode or 0,
+            dominant_ecosystem=_infer_dominant_ecosystem(raw),
         )
+
+
+def _infer_dominant_ecosystem(raw: Dict[str, Any]) -> str:
+    """Pick the most-common purl-type from Syft's ``artifacts`` array.
+
+    Returns ``"unknown"`` for empty / unparseable payloads. The
+    return value is constrained to the PlatformArchitect-locked
+    ecosystem enum (``npm``, ``pypi``, ``maven``, ``nuget``,
+    ``go``, ``cargo``, ``rubygems``, ``composer``, ``conan``,
+    ``apk``, ``deb``, ``rpm``, ``generic``, ``unknown``).
+    """
+    from sbom_generator.metrics import ecosystem_from_purl
+
+    counts: Dict[str, int] = {}
+    artifacts = raw.get("artifacts") if isinstance(raw, dict) else None
+    if not artifacts:
+        return Ecosystem.UNKNOWN.value
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            continue
+        purl = artifact.get("purl")
+        eco = ecosystem_from_purl(purl)
+        if eco is Ecosystem.UNKNOWN:
+            continue
+        counts[eco.value] = counts.get(eco.value, 0) + 1
+    if not counts:
+        return Ecosystem.UNKNOWN.value
+    return max(counts.items(), key=lambda kv: kv[1])[0]
 
 
 def _extract_warnings(stderr_text: str) -> List[str]:
