@@ -1,6 +1,21 @@
 # =============================================================================
 # Dependabot configuration
 # Keeps dependencies, container images, and GitHub Actions up to date.
+#
+# Dependabot SECURITY updates (separate from version updates) must also be
+# enabled at the repo level:
+#   Settings → Code security and analysis → Dependabot security updates → ON
+# When enabled, GitHub auto-opens PRs for any published security advisory
+# affecting this repo's dependency graph. The labels below (security,
+# automated) ensure those PRs show up in the same view as version updates.
+# =============================================================================
+# Label correlation with .github/labeler.yml:
+#   - "dependencies"   → every Dependabot PR
+#   - "automated"      → bot-generated
+#   - "security"       → security-related (applied to vuln-fix PRs and to
+#                        the Critical CVE issues opened by
+#                        .github/workflows/security-issue.yml)
+#   - "<area>"         → scope label (e.g. backend, frontend, ci, docker)
 # =============================================================================
 
 version: 2
@@ -19,6 +34,8 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+      - "automated"
+      - "security"
       - "npm"
     groups:
       production:
@@ -43,6 +60,8 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+      - "automated"
+      - "security"
       - "frontend"
     rebase-strategy: "auto"
 
@@ -55,42 +74,42 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    labels: ["dependencies", "backend", "auth"]
+    labels: ["dependencies", "automated", "security", "backend", "auth"]
   - package-ecosystem: "npm"
     directory: "/backend/services/agent"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    labels: ["dependencies", "backend", "agents"]
+    labels: ["dependencies", "automated", "security", "backend", "agents"]
   - package-ecosystem: "npm"
     directory: "/backend/services/security"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    labels: ["dependencies", "backend", "security"]
+    labels: ["dependencies", "automated", "security", "backend", "security"]
   - package-ecosystem: "npm"
     directory: "/backend/services/incident"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    labels: ["dependencies", "backend", "incidents"]
+    labels: ["dependencies", "automated", "security", "backend", "incidents"]
   - package-ecosystem: "npm"
     directory: "/backend/services/compliance"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    labels: ["dependencies", "backend", "compliance"]
+    labels: ["dependencies", "automated", "security", "backend", "compliance"]
   - package-ecosystem: "npm"
     directory: "/backend/services/integration"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    labels: ["dependencies", "backend", "integrations"]
+    labels: ["dependencies", "automated", "security", "backend", "integrations"]
 
   # ---------------------------------------------------------------------------
   # GitHub Actions
@@ -104,6 +123,8 @@ updates:
       timezone: "Etc/UTC"
     labels:
       - "dependencies"
+      - "automated"
+      - "security"
       - "ci"
     open-pull-requests-limit: 5
 
@@ -119,5 +140,7 @@ updates:
       timezone: "Etc/UTC"
     labels:
       - "dependencies"
+      - "automated"
+      - "security"
       - "docker"
     open-pull-requests-limit: 5
