@@ -125,12 +125,12 @@ with their **canonical string constants** exported from
 
 | Constant        | Subject                              | Producer          | Consumers                                                     |
 | --------------- | ------------------------------------ | ----------------- | ------------------------------------------------------------- |
-| `SBOM_TOPIC`    | `security.sbom.generated`            | `sbom-pipeline`   | `dependency-intel`, `security-service`, `security-automation` |
-| `VULN_TOPIC`    | `security.vulnerability.detected`    | `vuln-intel`      | `dependency-intel`, `security-service`, `security-automation` |
-| `RISK_TOPIC`    | `security.risk.calculated`           | `dependency-intel`| `security-service`, `security-automation`                     |
+| `SBOM_TOPIC`    | `security.sbom.generated.v1`         | `sbom-pipeline`   | `dependency-intel`, `security-service`, `security-automation` |
+| `VULN_TOPIC`    | `security.vulnerability.detected.v1` | `vuln-intel`      | `dependency-intel`, `security-service`, `security-automation` |
+| `RISK_TOPIC`    | `security.risk.calculated.v1`        | `dependency-intel`| `security-service`, `security-automation`                     |
 
 > **Hard rule:** service code **must not** hardcode the string
-> `"security.sbom.generated"` (or any of the others). It must
+> `"security.sbom.generated.v1"` (or any of the others). It must
 > `import { SBOM_TOPIC } from "@aicc/shared/security"`. The
 > sub-path export is the single source of truth and is locked in
 > ADR 0008. The strings above are documentation mirrors only.
