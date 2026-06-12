@@ -14,3 +14,4 @@
 ## Cross-cutting
 - [project-conventions.md](./project-conventions.md) — locked naming, layout, stack, ownership
 - [feedback-coordination.md](./feedback-coordination.md) — lessons from Sprint 1 parallel-work coordination
+- [observability-layout.md](./observability-layout.md) — dev/prod observability file layout, open items (Loki, runbook templating)
