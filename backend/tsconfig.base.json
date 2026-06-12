@@ -25,7 +25,9 @@
     "baseUrl": ".",
     "paths": {
       "@aicc/shared": ["packages/shared/src/index.ts"],
-      "@aicc/shared/*": ["packages/shared/src/*"]
+      "@aicc/shared/*": ["packages/shared/src/*"],
+      "@aicc/observability": ["common/observability/index.ts"],
+      "@aicc/observability/*": ["common/observability/*"]
     }
   }
 }

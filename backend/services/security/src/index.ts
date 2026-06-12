@@ -49,6 +49,13 @@ import { buildScanRepository } from './repositories/scan.repository.js';
 import { buildFindingRepository } from './repositories/finding.repository.js';
 import { buildSbomRepository } from './repositories/sbom.repository.js';
 import { InMemoryEventLog } from './services/event-log.js';
+import {
+  renderMetrics,
+  serviceName,
+  withService,
+  metricsRegistry,
+  rateLimitTriggeredTotal,
+} from './services/metrics.js';
 
 const SERVICE_NAME = 'security-service';
 const SERVICE_VERSION = '0.2.0';
@@ -76,12 +83,17 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
   });
 
+  // S2.7 — service name is resolved by the @aicc/observability helper
+  // at module-load time from OTEL_SERVICE_NAME. Log it for visibility.
+  logger.info({ service: serviceName, otel: !!process.env.OTEL_SERVICE_NAME }, 'metrics service name resolved');
+
   // ---------- Plugins ----------
   await server.register(helmet, { contentSecurityPolicy: false });
   await server.register(cors, { origin: true, credentials: true });
   await server.register(sensible);
 
   // Global rate limit (10 req/s) — overridden per route where needed.
+  // onExceeded hook increments devsecops_rate_limit_triggered_total{route, tenant_id_hash}.
   await server.register(rateLimit, {
     global: true,
     max: env.RATE_LIMIT_MAX,
@@ -89,6 +101,11 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true, 'x-ratelimit-reset': true },
     addHeaders: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true, 'x-ratelimit-reset': true },
     keyGenerator: (req) => req.user?.sub ?? req.ip,
+    onExceeded: (req) => {
+      const route = req.routeOptions?.url ?? req.url ?? 'unknown';
+      // tenantId deliberately NOT a metric label per metrics-spec.md §5.1.
+      rateLimitTriggeredTotal.inc(withService({ route }));
+    },
   });
 
   // OpenAPI / Swagger
@@ -141,6 +158,16 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
 
   // ---------- Routes ----------
   await server.register(buildHealthRoutes, { logger, cfg });
+
+  // Prometheus metrics endpoint (S2.7) — gated by env flag for tests.
+  // Uses the @aicc/observability renderMetrics helper (content-type, body).
+  if (env.METRICS_ENABLED && env.METRICS_EXPOSE_ENDPOINT) {
+    server.get('/metrics', async (_req, reply) => {
+      const { body, contentType } = await renderMetrics(metricsRegistry);
+      reply.header('Content-Type', contentType);
+      return body;
+    });
+  }
 
   // Sprint 1 routes
   await server.register(buildAssetRoutes, { logger, assets });

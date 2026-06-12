@@ -17,6 +17,12 @@
  */
 import { randomUUID } from 'node:crypto';
 import { AppError, type Logger } from '@aicc/shared';
+import {
+  proxyRequestDuration,
+  proxyRequestTotal,
+  withService,
+  classifyProxyResult,
+} from './metrics.js';
 
 export interface ProxyOptions {
   url: string;
@@ -27,6 +33,18 @@ export interface ProxyOptions {
   timeoutMs?: number;
   requestId?: string;
   serviceVersion?: string;
+  /**
+   * S2.7 observability labels — required for emitting
+   * `devsecops_proxy_request_duration_seconds` and
+   * `devsecops_proxy_request_total` for this proxy hop.
+   *   - `route`: the API path that initiated this call (e.g. `/sbom/generate`)
+   *   - `targetService`: the upstream service id (e.g. `sbom-pipeline`)
+   *   - `tenantId`: the caller's tenant; logged but NOT used as a metric label
+   *     (per metrics-spec.md §5.1, tenant_id is forbidden on metrics).
+   */
+  route?: string;
+  targetService?: string;
+  tenantId?: string;
 }
 
 export interface ProxyResult<T> {
@@ -42,9 +60,18 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
   const requestId = opts.requestId ?? (randomUUID() as string);
   const timeoutMs = opts.timeoutMs ?? 30_000;
 
+  // S2.7 observability — pre-compute the labels that don't depend on the outcome.
+  // Note: `tenantId` is deliberately NOT a metric label (metrics-spec.md §5.1).
+  const route = opts.route ?? 'unknown';
+  const targetService = opts.targetService ?? 'unknown';
+  // startTimer returns a function that, when called, observes the elapsed seconds.
+  const endTimer = proxyRequestDuration.startTimer(withService({ route, target_service: targetService }));
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const start = Date.now();
+  let outcomeStatus: number | null = null;
+  let outcomeResult: 'success' | 'error' = 'error';
 
   try {
     const headers: Record<string, string> = {
@@ -70,6 +97,9 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
       parsed = text as unknown as T;
     }
 
+    outcomeStatus = res.status;
+    outcomeResult = classifyProxyResult(res.status);
+
     if (!res.ok) {
       opts.logger?.warn(
         { url: opts.url, method, status: res.status, requestId, durationMs: Date.now() - start },
@@ -90,6 +120,15 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
       durationMs: Date.now() - start,
     };
   } catch (err) {
+    if (outcomeStatus === null) {
+      // We never got a response; classify based on the error type.
+      if ((err as { name?: string }).name === 'AbortError') outcomeStatus = 504;
+      else outcomeStatus = 502;
+    }
+    if (err instanceof AppError && typeof (err.details as { statusCode?: number })?.statusCode === 'number') {
+      outcomeStatus = (err.details as { statusCode?: number }).statusCode ?? 502;
+    }
+    outcomeResult = 'error';
     if ((err as { name?: string }).name === 'AbortError') {
       throw new AppError('UPSTREAM_FAILURE', `Upstream ${opts.url} timed out after ${timeoutMs}ms`, {
         statusCode: 504,
@@ -103,5 +142,12 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
     });
   } finally {
     clearTimeout(timer);
+    // Observe the latency with the now-known result label, then increment the counter.
+    endTimer({ result: outcomeResult });
+    proxyRequestTotal.inc(withService({
+      route,
+      target_service: targetService,
+      status_code: String(outcomeStatus ?? 'unknown'),
+    }));
   }
 }

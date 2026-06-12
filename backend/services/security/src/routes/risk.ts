@@ -22,6 +22,7 @@ import {
 } from '@aicc/shared/security';
 import { requireRole, requireTenantMatch } from '../middleware/rbac.js';
 import { proxyRequest } from '../services/proxy.js';
+import { publishInstrumented } from '../services/metrics.js';
 
 interface Deps {
   logger: Logger;
@@ -69,6 +70,10 @@ export const buildRiskCalculateRoute: FastifyPluginAsync<Deps> = async (
         logger,
         requestId: (req.headers['x-request-id'] as string) ?? undefined,
         serviceVersion,
+        // S2.7 observability labels
+        route: '/risk/calculate',
+        targetService: 'dependency-intel',
+        tenantId,
       });
 
       const validated = RiskCalculateResponseSchema.safeParse(proxyResult.body);
@@ -87,7 +92,7 @@ export const buildRiskCalculateRoute: FastifyPluginAsync<Deps> = async (
             computedAt: new Date().toISOString(),
             source: 'security-service',
           };
-          await bus.publish({
+          await publishInstrumented(bus, {
             type: RISK_TOPIC,
             version: 1,
             source: 'security-service',

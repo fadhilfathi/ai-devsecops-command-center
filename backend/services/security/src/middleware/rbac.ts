@@ -20,6 +20,7 @@
  */
 import type { FastifyRequest, preHandlerHookHandler } from 'fastify';
 import { AppError, type UserRole } from '@aicc/shared';
+import { authFailureTotal, withService } from '../services/metrics.js';
 
 const ROLE_ALIASES: Record<string, UserRole> = {
   admin: 'platform_admin',
@@ -52,10 +53,13 @@ export function normaliseRole(input: string): UserRole {
 export function requireRole(...allowed: UserRole[]): preHandlerHookHandler {
   const allowedSet = new Set<UserRole>(allowed);
   return async (req: FastifyRequest) => {
+    const route = req.routeOptions?.url ?? req.url ?? 'unknown';
     if (!req.user) {
+      authFailureTotal.inc(withService({ route, reason: 'missing_token' }));
       throw new AppError('UNAUTHENTICATED', 'Authentication required');
     }
     if (!allowedSet.has(req.user.role)) {
+      authFailureTotal.inc(withService({ route, reason: 'forbidden_role' }));
       throw new AppError(
         'FORBIDDEN',
         `Requires one of [${Array.from(allowedSet).join(', ')}]; got '${req.user.role}'`,
@@ -71,9 +75,14 @@ export function requireRole(...allowed: UserRole[]): preHandlerHookHandler {
  * a token issued for tenant A from operating on tenant B's data.
  */
 export const requireTenantMatch: preHandlerHookHandler = async (req: FastifyRequest) => {
-  if (!req.user) throw new AppError('UNAUTHENTICATED', 'Authentication required');
+  const route = req.routeOptions?.url ?? req.url ?? 'unknown';
+  if (!req.user) {
+    authFailureTotal.inc(withService({ route, reason: 'missing_token' }));
+    throw new AppError('UNAUTHENTICATED', 'Authentication required');
+  }
   const headerTenant = req.headers['x-tenant-id'] as string | undefined;
   if (headerTenant && headerTenant !== req.user.tenantId) {
+    authFailureTotal.inc(withService({ route, reason: 'tenant_mismatch' }));
     throw new AppError(
       'FORBIDDEN',
       'Token tenantId does not match x-tenant-id header',

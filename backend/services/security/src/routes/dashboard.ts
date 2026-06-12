@@ -34,6 +34,7 @@ import {
   toJSONSchema,
 } from '@aicc/shared/security';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
+import { dashboardQueryDuration, withService } from '../services/metrics.js';
 import type { SbomRepository } from '../repositories/sbom.repository.js';
 import type { ScanRepository } from '../repositories/scan.repository.js';
 import type { FindingRepository } from '../repositories/finding.repository.js';
@@ -82,6 +83,12 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
     async (req, reply) => {
       const q = QuerySchema.parse(req.query ?? {});
       const tenantId = q.tenantId ?? req.user?.tenantId ?? '00000000-0000-4000-8000-000000000000';
+      // S2.7 — start the dashboard query duration timer; observe at the end
+      // (the histogram label set is fixed at start to avoid cardinality bloat).
+      // Note: tenantId is NOT a metric label per metrics-spec.md §5.1.
+      const endDashboardTimer = dashboardQueryDuration.startTimer(
+        withService({ endpoint: '/security/dashboard' }),
+      );
 
       // ---------- SBOM count ----------
       const sbomCount = (await sboms.list(tenantId)).length;
@@ -192,6 +199,9 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
         reply.code(500);
         return { code: 'INTERNAL_ERROR', message: 'Dashboard response failed schema validation' };
       }
+
+      // S2.7 — observe the dashboard query duration before returning
+      endDashboardTimer();
 
       return verified.data;
     },

@@ -12,6 +12,7 @@
  */
 import type { FastifyInstance, FastifyRequest, onRequestHookHandler } from 'fastify';
 import { AppError, type UserRole } from '@aicc/shared';
+import { authFailureTotal, withService } from '../services/metrics.js';
 
 export interface AuthUser {
   sub: string;
@@ -116,14 +117,18 @@ export function buildAuthHook(opts: {
 }): onRequestHookHandler {
   return async (req: FastifyRequest) => {
     const header = req.headers.authorization;
+    const route = req.routeOptions?.url ?? req.url ?? 'unknown';
     if (!header || !header.toLowerCase().startsWith('bearer ')) return;
     const token = header.slice(7).trim();
     if (!token) return;
     try {
       req.user = verifyJwt(token, opts);
-    } catch {
-      // Token present but invalid — leave `req.user` unset. The
-      // route's `requireAuth` middleware will reject it.
+    } catch (err) {
+      // Token present but invalid — record the failure for S2.7 observability
+      // and leave `req.user` unset. The route's `requireAuth` middleware will reject.
+      const msg = (err as Error).message?.toLowerCase() ?? '';
+      const reason = msg.includes('expired') ? 'expired' : 'invalid_signature';
+      authFailureTotal.inc({ route, reason, tenant_id_hash: hashTenantId(undefined) });
     }
   };
 }
@@ -134,6 +139,8 @@ export function buildAuthHook(opts: {
  */
 export async function requireAuth(req: FastifyRequest): Promise<void> {
   if (!req.user) {
+    const route = req.routeOptions?.url ?? req.url ?? 'unknown';
+    authFailureTotal.inc(withService({ route, reason: 'missing_token' }));
     throw new AppError('UNAUTHENTICATED', 'Authentication required');
   }
 }

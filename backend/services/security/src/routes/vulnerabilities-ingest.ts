@@ -22,6 +22,7 @@ import {
 } from '@aicc/shared/security';
 import { requireRole, requireTenantMatch } from '../middleware/rbac.js';
 import { proxyRequest } from '../services/proxy.js';
+import { publishInstrumented } from '../services/metrics.js';
 
 interface Deps {
   logger: Logger;
@@ -69,6 +70,10 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
         logger,
         requestId: (req.headers['x-request-id'] as string) ?? undefined,
         serviceVersion,
+        // S2.7 observability labels
+        route: '/vulnerabilities/ingest',
+        targetService: 'vuln-intel',
+        tenantId,
       });
 
       const validated = VulnerabilityIngestResponseSchema.safeParse(proxyResult.body);
@@ -86,7 +91,7 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
             detectedAt: new Date().toISOString(),
             source: 'security-service',
           };
-          await bus.publish({
+          await publishInstrumented(bus, {
             type: VULN_TOPIC,
             version: 1,
             source: 'security-service',

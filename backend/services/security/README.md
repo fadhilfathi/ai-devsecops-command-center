@@ -41,6 +41,81 @@ HTTP client
    - security.risk.calculated
 ```
 
+## Observability (S2.7)
+
+Prometheus metrics for the security-service :4003 proxy layer. The service
+exposes a Prometheus scrape endpoint at **`GET /metrics`** (content type
+`text/plain; version=0.0.4`) and emits **6 custom metrics** in addition to
+the default Node.js process metrics (prefixed `devsecops_node_`).
+
+### Metrics owned by security-service :4003
+
+All metrics follow `devsecops_{domain}_{noun}_{unit_suffix}` per
+PlatformArchitect Decision #11 (locked by SRE 2026-06-12). Cardinality is
+bounded by #tenants × #routes × #targets; well under the 50k-series
+per-service budget for the expected Sprint 2 scale (≤50 tenants).
+
+| Metric | Type | Labels | Purpose |
+|---|---|---|---|
+| `devsecops_proxy_request_duration_seconds` | Histogram | `service`, `route`, `target_service`, `result` | security-service → Python service proxy hop latency |
+| `devsecops_proxy_request_total` | Counter | `service`, `route`, `target_service`, `status_code` | All proxy requests (success + 4xx + 5xx + timeout) |
+| `devsecops_eventbus_publish_total` | Counter | `service`, `topic`, `result` | Event-bus publish attempts (`success` \| `error`) |
+| `devsecops_rate_limit_triggered_total` | Counter | `service`, `route` | 429 responses from per-route/global rate limiting |
+| `devsecops_auth_failure_total` | Counter | `service`, `route`, `reason` | Auth/authz failures (`reason` = `missing_token` \| `invalid_signature` \| `expired` \| `forbidden_role` \| `tenant_mismatch`) |
+| `devsecops_dashboard_query_duration_seconds` | Histogram | `service`, `endpoint` | GET /security/dashboard aggregation latency |
+
+**Ownership map (S2.7 locked):** security-service :4003 owns these 6
+metrics. The 3 Python services own their own metrics
+(`devsecops_sbom_generation_duration_seconds`, etc.) and the
+platform-wide `devsecops_eventbus_lag_seconds` (PlatformArchitect SLI).
+
+**Service label:** the `service` label is auto-injected by the
+`@aicc/observability` helper (from `OTEL_SERVICE_NAME`, fallback
+`'unknown'`) per `docs/observability/metrics-spec.md` §5.1.1. Consumers
+do not need to supply it; the helper prepends it on every `inc()` /
+`observe()` call via `withService({ ... })`.
+
+**No `tenant_id`-style labels:** per `metrics-spec.md` §5.1, high-cardinality
+or PII labels (`tenant_id`, `user_id`, `request_id`, `agent_id`, `worker_id`,
+`trace_id`, and any form of them) are **forbidden on metrics**. Use logs
+(the standard logger requires `tenant_id`) for per-tenant forensics, and
+tracing (OTel `trace_id` / `span_id` are natural there) for request flow.
+The `@aicc/observability` helper exports `assertNoForbiddenLabels()` to
+catch violations at metric-construction time.
+
+### Scrape configuration
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: aicc-security-service
+    metrics_path: /metrics
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['security-service:4003']
+```
+
+### Useful queries (PromQL)
+
+```promql
+# 99th-percentile proxy latency per route+target (SLO)
+histogram_quantile(0.99, sum by (le, route, target_service) (rate(devsecops_proxy_request_duration_seconds_bucket[5m])))
+
+# Error rate (4xx + 5xx + timeouts) by route
+sum by (route) (rate(devsecops_proxy_request_total{status_code!~"2.."}[5m]))
+  / sum by (route) (rate(devsecops_proxy_request_total[5m]))
+
+# Auth failure rate by reason
+sum by (reason) (rate(devsecops_auth_failure_total[5m]))
+
+# Top-N tenants triggering rate limits (security forensics)
+# Top-N tenants triggering rate limits (security forensics — NOTE: tenant_id
+# is forbidden on metrics, so aggregate from logs instead, e.g. Loki/Grafana
+# on the `tenant_id` field, or use a recording rule over the auth_failure
+# series if you need rate-limit correlation).
+# topk(10, sum by (tenant_id) (rate({kind="rate_limit_triggered"} | json | __error__="" [5m])))
+```
+
 ## Endpoints (S2.5)
 
 All endpoints require `Authorization: Bearer <JWT>` unless noted.
@@ -369,6 +444,9 @@ See `.env.example`. Critical vars for S2.5:
 | `DEPENDENCY_INTEL_URL` | `http://localhost:4009`            | Downstream dep intel |
 | `RATE_LIMIT_MAX`       | `10`                               | Per-route req/s cap |
 | `RATE_LIMIT_WINDOW_MS` | `1000`                             | Per-route window |
+| `METRICS_ENABLED`      | `true`                             | Master switch for prom-client metrics (S2.7) |
+| `OTEL_SERVICE_NAME`   | `security-service`                 | Injected as the `service` label on every metric (per metrics-spec.md §5.1.1) |
+| `METRICS_EXPOSE_ENDPOINT` | `true`                          | Expose `GET /metrics` for Prometheus scrape |
 | `JWT_ALG`              | `HS256`                            | `RS256` in prod via `@aicc/auth` |
 | `JWT_SECRET`           | dev-only                           | HS256 dev secret (Sprint 2 stub) |
 | `JWT_PUBLIC_KEY`       | unset                              | RS256 public key (Sprint 2.1) |
