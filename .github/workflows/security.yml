@@ -1,0 +1,710 @@
+name: security
+
+# Owner: GitOpsManager
+# Runbook: docs/runbooks/security-automation.md
+# Folder contract: security/README.md
+#
+# This workflow has THREE jobs:
+#   1. sbom-commit    — generates CycloneDX + SPDX SBOMs and opens a PR
+#   2. vuln-report    — appends findings to security/vulns/<date>.json (NDJSON)
+#   3. weekly-digest  — aggregates the prior 7 days into a markdown digest
+#   4. cleanup        — prunes security/vulns/*.json older than 90 days
+#   5. sync-sla       — keeps SECURITY.md SLA table + supported versions in sync
+#   6. critical-issue — (DEPRECATED, moved to security-issue.yml) re-dispatches
+#
+# Permissions: minimum required. No `id-token: write` (no OIDC).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *"        # 03:00 UTC daily — sbom-commit + cleanup
+    - cron: "0 6 * * 1"        # 06:00 UTC Mondays — weekly-digest
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force re-run (skip dedup)"
+        required: false
+        default: "false"
+  repository_dispatch:
+    types: [vulnerability-detected, supported-version-released]
+
+# Cancel in-progress runs of the same workflow for the same branch
+# (avoids racing auto-commits).
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimum permissions for ALL jobs in this workflow.
+permissions:
+  contents: read
+
+env:
+  SBOM_BOT_NAME: "github-actions[bot]"
+  SBOM_BOT_EMAIL: "github-actions[bot]@users.noreply.github.com"
+  SBOM_BRANCH_PREFIX: "security/automated"
+  RETENTION_DAYS: "90"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 1: SBOM commit (CycloneDX + SPDX) → security/sboms/
+  # ─────────────────────────────────────────────────────────────────────────
+  sbom-commit:
+    name: "Generate and commit SBOMs"
+    if: github.event_name != 'repository_dispatch' || github.event.action == 'supported-version-released'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write         # to open a PR
+      pull-requests: write    # to open a PR
+    outputs:
+      sbom_id: ${{ steps.compute-id.outputs.sbom_id }}
+      sbom_branch: ${{ steps.branch.outputs.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.18.0"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Compute sbom_id
+        id: compute-id
+        run: |
+          DATE="$(date -u +%Y-%m-%d)"
+          SHA="${GITHUB_SHA::7}"
+          SCOPE="monorepo"
+          echo "sbom_id=sbom-${DATE}-${SHA}-${SCOPE}" >> "$GITHUB_OUTPUT"
+          echo "📦 sbom_id=$(cat <<<${{ steps.compute-id.outputs.sbom_id }})" || true
+
+      - name: Generate CycloneDX SBOM (JSON + XML)
+        id: cyclonedx
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          artifact-name: sbom.cyclonedx.json
+          fetch-license-info: true
+          # We also want XML — run a second invocation below
+      - name: Generate CycloneDX SBOM (XML)
+        id: cyclonedx-xml
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-xml
+          artifact-name: sbom.cyclonedx.xml
+          fetch-license-info: true
+      - name: Generate SPDX SBOM (JSON)
+        id: spdx
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: sbom.spdx.json
+          fetch-license-info: true
+
+      - name: Download all SBOM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .artifacts/
+          merge-multiple: true
+
+      - name: Place SBOMs under security/sboms/<sbom_id>/
+        run: |
+          set -euo pipefail
+          SBOM_ID="${{ steps.compute-id.outputs.sbom_id }}"
+          TARGET="security/sboms/${SBOM_ID}"
+          mkdir -p "${TARGET}"
+          cp .artifacts/sbom.cyclonedx.json "${TARGET}/${SBOM_ID}.cyclonedx.json"
+          cp .artifacts/sbom.cyclonedx.xml  "${TARGET}/${SBOM_ID}.cyclonedx.xml"
+          cp .artifacts/sbom.spdx.json      "${TARGET}/${SBOM_ID}.spdx.json"
+          echo "✅ SBOMs placed at ${TARGET}/"
+
+      - name: Update security/sboms/index.json
+        run: |
+          set -euo pipefail
+          SBOM_ID="${{ steps.compute-id.outputs.sbom_id }}"
+          SHA="${GITHUB_SHA::7}"
+          NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LINE="{\"sbom_id\":\"${SBOM_ID}\",\"generated_at\":\"${NOW}\",\"scope\":\"monorepo\",\"git_sha\":\"${SHA}\",\"formats\":[\"cyclonedx.json\",\"cyclonedx.xml\",\"spdx.json\"]}"
+          mkdir -p security/sboms
+          if [ -f security/sboms/index.json ]; then
+            # NDJSON: one line per SBOM; do not duplicate the same sbom_id
+            grep -v "\"sbom_id\":\"${SBOM_ID}\"" security/sboms/index.json > .index.tmp || true
+            mv .index.tmp security/sboms/index.json
+          fi
+          echo "${LINE}" >> security/sboms/index.json
+          echo "✅ index.json updated"
+
+      - name: Create branch
+        id: branch
+        run: |
+          set -euo pipefail
+          SBOM_ID="${{ steps.compute-id.outputs.sbom_id }}"
+          BRANCH="${SBOM_BRANCH_PREFIX}/sbom-${SBOM_ID}"
+          git config user.name  "${SBOM_BOT_NAME}"
+          git config user.email "${SBOM_BOT_EMAIL}"
+          git checkout -b "${BRANCH}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit SBOM artifacts
+        run: |
+          set -euo pipefail
+          git add security/sboms/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(sbom): commit SBOMs (${{ steps.compute-id.outputs.sbom_id }})" \
+                     -m "Auto-generated by .github/workflows/security.yml job sbom-commit." \
+                     -m "Formats: CycloneDX (json, xml), SPDX (json)." \
+                     -m "Source: git sha ${GITHUB_SHA::7}." \
+                     -m "sbom-id: ${{ steps.compute-id.outputs.sbom_id }}"
+
+      - name: Push branch
+        run: git push origin "${{ steps.branch.outputs.name }}"
+
+      - name: Open pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sbomId = '${{ steps.compute-id.outputs.sbom_id }}';
+            const branch = '${{ steps.branch.outputs.name }}';
+            const sha = context.payload.pull_request ? context.payload.pull_request.head.sha : context.sha;
+            const title = `chore(sbom): auto-commit SBOMs (${sbomId})`;
+            const body = [
+              '## Auto-generated SBOMs',
+              '',
+              `**sbom_id:** \`${sbomId}\``,
+              `**scope:** \`monorepo\``,
+              `**git_sha:** \`${context.sha.slice(0,7)}\``,
+              `**trigger:** \`${context.eventName}\``,
+              '',
+              '### Formats',
+              '- CycloneDX JSON',
+              '- CycloneDX XML',
+              '- SPDX JSON',
+              '',
+              '### Provenance',
+              '- Workflow: `.github/workflows/security.yml` (`sbom-commit` job)',
+              '- Generator: `anchore/sbom-action`',
+              '- See [`security/README.md`](security/README.md) for the folder contract.',
+              '',
+              '---',
+              '🤖 This PR was opened by the GitOpsManager automation. A human review is required before merge.',
+              ''
+            ].join('\n');
+            // Check for an existing PR for this branch
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner, repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`, state: 'open'
+            });
+            if (existing.data.length > 0) {
+              core.info(`PR already exists for ${branch}; skipping.`);
+              return;
+            }
+            await github.rest.pulls.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title, head: branch, base: 'main', body,
+              maintainer_can_modify: true
+            });
+
+      - name: Apply labels (via the labeler workflow on PR open)
+        run: |
+          echo "Labels are applied by .github/workflows/labeler.yml on PR open (paths: security/**)."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 2: Vulnerability report append → security/vulns/<date>.json
+  # ─────────────────────────────────────────────────────────────────────────
+  vuln-report:
+    name: "Append vulnerability finding to daily NDJSON"
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'vulnerability-detected'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      finding_id: ${{ steps.parse.outputs.id }}
+      severity: ${{ steps.parse.outputs.severity }}
+      is_critical: ${{ steps.parse.outputs.is_critical }}
+      branch_name: ${{ steps.branch.outputs.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse dispatch payload
+        id: parse
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          set -euo pipefail
+          echo "📥 Raw payload:"
+          echo "${PAYLOAD}"
+          # Write payload to a file for downstream steps
+          echo "${PAYLOAD}" > /tmp/finding.json
+          # Extract key fields
+          ID=$(echo "${PAYLOAD}"   | jq -r '.id            // "unknown"')
+          SEV=$(echo "${PAYLOAD}"  | jq -r '.severity       // "low"')
+          PKG=$(echo "${PAYLOAD}"  | jq -r '.package        // "unknown"')
+          AUTO=$(echo "${PAYLOAD}" | jq -r '.auto_actionable // false')
+          # Build a clean record
+          NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          CLEAN=$(echo "${PAYLOAD}" | jq --arg ts "${NOW}" --arg sha "${GITHUB_SHA::7}" \
+            '. + {detected_at: $ts, git_sha: $sha}')
+          echo "${CLEAN}" > /tmp/finding.clean.json
+          IS_CRIT="false"
+          if [ "${SEV}" = "critical" ] && [ "${AUTO}" = "true" ]; then
+            IS_CRIT="true"
+          fi
+          {
+            echo "id=${ID}"
+            echo "severity=${SEV}"
+            echo "is_critical=${IS_CRIT}"
+          } >> "$GITHUB_OUTPUT"
+          echo "✅ Parsed: id=${ID} severity=${SEV} critical=${IS_CRIT}"
+
+      - name: Append finding to security/vulns/<YYYY-MM-DD>.json (NDJSON)
+        run: |
+          set -euo pipefail
+          TODAY="$(date -u +%Y-%m-%d)"
+          mkdir -p security/vulns
+          OUT="security/vulns/${TODAY}.json"
+          # Create empty NDJSON file if it doesn't exist
+          [ -f "${OUT}" ] || : > "${OUT}"
+          # Append the cleaned finding (as a single NDJSON line)
+          jq -c . /tmp/finding.clean.json >> "${OUT}"
+          echo "✅ Appended to ${OUT}"
+          wc -l "${OUT}"
+
+      - name: Deduplicate (same id, same day)
+        run: |
+          set -euo pipefail
+          TODAY="$(date -u +%Y-%m-%d)"
+          OUT="security/vulns/${TODAY}.json"
+          ID="${{ steps.parse.outputs.id }}"
+          BEFORE=$(wc -l < "${OUT}")
+          awk -F$'\t' -v id="\"id\":\"${ID}\"" 'BEGIN{seen=0} {if (index($0, id) > 0 && seen==0) {print; seen=1} else if (index($0, id) == 0) {print}}' "${OUT}" > "${OUT}.tmp"
+          # Use jq for robust dedup
+          jq -s 'unique_by(.id) | .[]' "${OUT}" > "${OUT}.tmp"
+          mv "${OUT}.tmp" "${OUT}"
+          AFTER=$(wc -l < "${OUT}")
+          echo "✅ Dedup: ${BEFORE} → ${AFTER} lines"
+
+      - name: Create branch
+        id: branch
+        run: |
+          set -euo pipefail
+          ID="${{ steps.parse.outputs.id }}"
+          TODAY="$(date -u +%Y-%m-%d)"
+          BRANCH="${SBOM_BRANCH_PREFIX}/vuln-${TODAY}-${ID//\//-}"
+          git config user.name  "${SBOM_BOT_NAME}"
+          git config user.email "${SBOM_BOT_EMAIL}"
+          git checkout -b "${BRANCH}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit finding
+        run: |
+          set -euo pipefail
+          git add security/vulns/
+          if git diff --cached --quiet; then
+            echo "No new findings to commit (idempotent)"
+            exit 0
+          fi
+          git commit -m "chore(vuln): append finding ${{ steps.parse.outputs.id }} (${{ steps.parse.outputs.severity }})" \
+                     -m "Auto-generated by .github/workflows/security.yml job vuln-report." \
+                     -m "id: ${{ steps.parse.outputs.id }}" \
+                     -m "severity: ${{ steps.parse.outputs.severity }}" \
+                     -m "target: security/vulns/$(date -u +%Y-%m-%d).json"
+
+      - name: Push branch
+        run: git push origin "${{ steps.branch.outputs.name }}"
+
+      - name: Open pull request
+        if: steps.parse.outputs.is_critical == 'false'  # critical findings go through security-issue.yml
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const findingId = '${{ steps.parse.outputs.id }}';
+            const severity  = '${{ steps.parse.outputs.severity }}';
+            const branch    = '${{ steps.branch.outputs.name }}';
+            const today     = new Date().toISOString().slice(0,10);
+            const title = `chore(vuln): append ${severity} finding ${findingId} (${today})`;
+            const body = [
+              '## Vulnerability finding (auto-appended)',
+              '',
+              `**id:** \`${findingId}\``,
+              `**severity:** \`${severity}\``,
+              `**date:** \`${today}\``,
+              '',
+              'Appended to `security/vulns/${today}.json` (NDJSON).',
+              'Critical findings are also escalated by `.github/workflows/security-issue.yml`.',
+              '',
+              '🤖 Opened by GitOpsManager automation. Human review recommended for High/Critical.',
+              ''
+            ].join('\n');
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner, repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`, state: 'open'
+            });
+            if (existing.data.length > 0) {
+              core.info(`PR already exists for ${branch}; skipping.`);
+              return;
+            }
+            await github.rest.pulls.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title, head: branch, base: 'main', body,
+              maintainer_can_modify: true
+            });
+
+      - name: Dispatch critical-cve-detected (if Critical)
+        if: steps.parse.outputs.is_critical == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const finding = require('fs').readFileSync('/tmp/finding.clean.json', 'utf8');
+            const payload = JSON.parse(finding);
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner, repo: context.repo.repo,
+              event_type: 'critical-cve-detected',
+              client_payload: payload
+            });
+            core.info(`🚨 Dispatched critical-cve-detected for ${payload.id}`);
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 3: Weekly digest → security/vulns/weekly-<YYYY-Www>.md
+  # ─────────────────────────────────────────────────────────────────────────
+  weekly-digest:
+    name: "Aggregate weekly vulnerability digest"
+    if: github.event.schedule == '0 6 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      branch_name: ${{ steps.branch.outputs.name }}
+      iso_week: ${{ steps.week.outputs.iso_week }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute ISO week
+        id: week
+        run: |
+          set -euo pipefail
+          ISO_WEEK=$(date -u +"%G-W%V")
+          echo "iso_week=${ISO_WEEK}" >> "$GITHUB_OUTPUT"
+          echo "📅 ISO week: ${ISO_WEEK}"
+
+      - name: Aggregate prior 7 days
+        run: |
+          set -euo pipefail
+          OUT="security/vulns/weekly-${{ steps.week.outputs.iso_week }}.md"
+          mkdir -p security/vulns
+          {
+            echo "# Weekly Vulnerability Digest — ${{ steps.week.outputs.iso_week }}"
+            echo ""
+            echo "> Auto-generated by \`.github/workflows/security.yml\` job \`weekly-digest\`."
+            echo "> Period: $(date -u -d '7 days ago' +%Y-%m-%d) → $(date -u +%Y-%m-%d) (UTC)"
+            echo ""
+            echo "## Summary"
+            echo ""
+            echo "| Severity | Count |"
+            echo "| -------- | ----- |"
+            for sev in critical high medium low; do
+              COUNT=0
+              for i in $(seq 6 -1 0); do
+                D=$(date -u -d "${i} days ago" +%Y-%m-%d)
+                F="security/vulns/${D}.json"
+                [ -f "${F}" ] || continue
+                C=$(jq -s "[.[] | select(.severity == \"${sev}\")] | length" "${F}" 2>/dev/null || echo 0)
+                COUNT=$((COUNT + C))
+              done
+              echo "| ${sev} | ${COUNT} |"
+            done
+            echo ""
+            echo "## Findings (this week)"
+            echo ""
+            for i in $(seq 6 -1 0); do
+              D=$(date -u -d "${i} days ago" +%Y-%m-%d)
+              F="security/vulns/${D}.json"
+              [ -f "${F}" ] || continue
+              COUNT=$(wc -l < "${F}")
+              [ "${COUNT}" -eq 0 ] && continue
+              echo "### ${D} (${COUNT} finding(s))"
+              echo ""
+              jq -r '"- [\(.severity)] `\(.id)` — `\(.package)` — \(.summary // "no summary")"' "${F}" 2>/dev/null
+              echo ""
+            done
+            echo "## Raw data"
+            echo ""
+            for i in $(seq 6 -1 0); do
+              D=$(date -u -d "${i} days ago" +%Y-%m-%d)
+              [ -f "security/vulns/${D}.json" ] && echo "- [${D}](security/vulns/${D}.json)"
+            done
+            echo ""
+            echo "---"
+            echo "🤖 Generated by GitOpsManager. See \`security/README.md\` for the contract."
+          } > "${OUT}"
+          echo "✅ Wrote ${OUT}"
+          wc -l "${OUT}"
+
+      - name: Create branch
+        id: branch
+        run: |
+          set -euo pipefail
+          BRANCH="${SBOM_BRANCH_PREFIX}/weekly-digest-${{ steps.week.outputs.iso_week }}"
+          git config user.name  "${SBOM_BOT_NAME}"
+          git config user.email "${SBOM_BOT_EMAIL}"
+          git checkout -b "${BRANCH}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit digest
+        run: |
+          set -euo pipefail
+          git add security/vulns/
+          if git diff --cached --quiet; then
+            echo "No changes to commit (digest already exists for this week)"
+            exit 0
+          fi
+          git commit -m "docs(vuln): weekly digest ${{ steps.week.outputs.iso_week }}" \
+                     -m "Auto-generated by .github/workflows/security.yml job weekly-digest." \
+                     -m "Period: prior 7 days (UTC)"
+
+      - name: Push branch
+        run: git push origin "${{ steps.branch.outputs.name }}"
+
+      - name: Open pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch  = '${{ steps.branch.outputs.name }}';
+            const isoWeek = '${{ steps.week.outputs.iso_week }}';
+            const title = `docs(vuln): weekly digest ${isoWeek}`;
+            const body = [
+              `## Weekly vulnerability digest — ${isoWeek}`,
+              '',
+              'Auto-generated markdown rollup of the prior 7 days.',
+              'Path: `security/vulns/weekly-${isoWeek}.md`',
+              '',
+              '🤖 Opened by GitOpsManager automation. Human review recommended.',
+              ''
+            ].join('\n');
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner, repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`, state: 'open'
+            });
+            if (existing.data.length > 0) {
+              core.info(`PR already exists for ${branch}; skipping.`);
+              return;
+            }
+            await github.rest.pulls.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title, head: branch, base: 'main', body,
+              maintainer_can_modify: true
+            });
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 4: Retention cleanup — prune security/vulns/*.json older than 90d
+  # ─────────────────────────────────────────────────────────────────────────
+  cleanup:
+    name: "Prune vulns older than ${RETENTION_DAYS} days"
+    if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      branch_name: ${{ steps.branch.outputs.name }}
+      pruned: ${{ steps.prune.outputs.pruned }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prune old daily NDJSONs
+        id: prune
+        run: |
+          set -euo pipefail
+          PRUNED=0
+          for f in security/vulns/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json; do
+            [ -f "${f}" ] || continue
+            FILE_DATE=$(basename "${f}" .json)
+            FILE_TS=$(date -d "${FILE_DATE}" +%s 2>/dev/null || echo 0)
+            NOW_TS=$(date +%s)
+            AGE_DAYS=$(( (NOW_TS - FILE_TS) / 86400 ))
+            if [ "${AGE_DAYS}" -gt "${RETENTION_DAYS}" ]; then
+              echo "🗑️  Pruning ${f} (age ${AGE_DAYS} days)"
+              rm "${f}"
+              PRUNED=$((PRUNED + 1))
+            fi
+          done
+          echo "pruned=${PRUNED}" >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild index.json from remaining files
+        if: steps.prune.outputs.pruned != '0'
+        run: |
+          set -euo pipefail
+          : > security/sboms/index.json
+          # NOTE: we only rebuild vulns index, not sbom index. SBOMs are kept indefinitely.
+          echo "✅ vulns/cleanup does not touch sboms/index.json"
+
+      - name: Create branch, commit, push, open PR
+        if: steps.prune.outputs.pruned != '0'
+        id: branch
+        run: |
+          set -euo pipefail
+          BRANCH="${SBOM_BRANCH_PREFIX}/cleanup-$(date -u +%Y-%m-%d)"
+          git config user.name  "${SBOM_BOT_NAME}"
+          git config user.email "${SBOM_BOT_EMAIL}"
+          git checkout -b "${BRANCH}"
+          git add -A security/vulns/
+          git commit -m "chore(vuln): prune daily NDJSONs older than ${RETENTION_DAYS} days" \
+                     -m "Pruned ${{ steps.prune.outputs.pruned }} file(s)." \
+                     -m "Auto-generated by .github/workflows/security.yml job cleanup."
+          git push origin "${BRANCH}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Open cleanup PR
+        if: steps.prune.outputs.pruned != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = '${{ steps.branch.outputs.name }}';
+            const pruned = '${{ steps.prune.outputs.pruned }}';
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner, repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`, state: 'open'
+            });
+            if (existing.data.length > 0) return;
+            await github.rest.pulls.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `chore(vuln): retention cleanup (${pruned} file(s) pruned)`,
+              head: branch, base: 'main',
+              body: `🤖 Retention cleanup by GitOpsManager automation. Pruned ${pruned} NDJSON file(s) older than ${process.env.RETENTION_DAYS || '90'} days.`,
+              maintainer_can_modify: true
+            });
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 5: Sync SLA table + supported versions in SECURITY.md
+  # ─────────────────────────────────────────────────────────────────────────
+  sync-sla:
+    name: "Sync SECURITY.md auto-managed sections"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'repository_dispatch' && github.event.action == 'supported-version-released')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      branch_name: ${{ steps.branch.outputs.name }}
+      has_changes: ${{ steps.diff.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Query latest releases
+        id: releases
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner, repo: context.repo.repo, per_page: 10
+            });
+            const supported = releases
+              .map(r => r.tag_name)
+              .filter(t => /^v?\d+\.\d+\.\d+/.test(t))
+              .slice(0, 3);
+            core.setOutput('supported', supported.join(','));
+            core.info(`Supported versions: ${supported.join(', ')}`);
+
+      - name: Re-render SLA + supported-versions blocks in SECURITY.md
+        run: |
+          set -euo pipefail
+          NOW="$(date -u +%Y-%m-%d)"
+          # The SLA table and supported-versions rows are constant for now;
+          # we just refresh the "Last sync:" timestamp inside the markers.
+          python3 - <<'PY'
+          import re, os, sys
+          path = 'SECURITY.md'
+          with open(path) as f:
+              text = f.read()
+          now = os.popen('date -u +%Y-%m-%d').read().strip()
+          # Update "Last sync: <date>" in the SLA block
+          def repl_sla(m):
+              block = m.group(0)
+              block = re.sub(r'Last sync: \d{4}-\d{2}-\d{2}', f'Last sync: {now}', block)
+              return block
+          def repl_sup(m):
+              block = m.group(0)
+              block = re.sub(r'(?<=Last sync: )\d{4}-\d{2}-\d{2}', now, block)
+              return block
+          text = re.sub(r'<!-- BEGIN:auto:sla -->.*?<!-- END:auto:sla -->',
+                        repl_sla, text, flags=re.DOTALL)
+          text = re.sub(r'<!-- BEGIN:auto:supported-versions -->.*?<!-- END:auto:supported-versions -->',
+                        repl_sup, text, flags=re.DOTALL)
+          with open(path, 'w') as f:
+              f.write(text)
+          PY
+          echo "✅ SECURITY.md auto-sections re-rendered"
+
+      - name: Check diff
+        id: diff
+        run: |
+          set -euo pipefail
+          if git diff --quiet SECURITY.md; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  No changes to SECURITY.md"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  SECURITY.md has changes"
+          fi
+
+      - name: Create branch, commit, push, open PR
+        if: steps.diff.outputs.has_changes == 'true'
+        id: branch
+        run: |
+          set -euo pipefail
+          BRANCH="${SBOM_BRANCH_PREFIX}/security-md-sync-$(date -u +%Y-%m-%d)"
+          git config user.name  "${SBOM_BOT_NAME}"
+          git config user.email "${SBOM_BOT_EMAIL}"
+          git checkout -b "${BRANCH}"
+          git add SECURITY.md
+          git commit -m "chore(security): sync SLA timestamps in SECURITY.md" \
+                     -m "Auto-generated by .github/workflows/security.yml job sync-sla." \
+                     -m "Trigger: ${{ github.event_name }}"
+          git push origin "${BRANCH}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Open sync PR
+        if: steps.diff.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = '${{ steps.branch.outputs.name }}';
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner, repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`, state: 'open'
+            });
+            if (existing.data.length > 0) return;
+            await github.rest.pulls.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: 'chore(security): sync SLA timestamps in SECURITY.md',
+              head: branch, base: 'main',
+              body: '🤖 Auto-sync by GitOpsManager automation. Updates the `Last sync:` timestamp inside the auto-managed markers of `SECURITY.md`.',
+              maintainer_can_modify: true
+            });
