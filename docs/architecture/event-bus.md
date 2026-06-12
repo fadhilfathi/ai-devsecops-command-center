@@ -1,12 +1,14 @@
 # Event Bus & Agent Communication
 
-> **Status**: Sprint 1 draft (GitOpsManager). PlatformArchitect to publish
-> the canonical, detailed version.
-> **Owner**: PlatformArchitect (canonical) / GitOpsManager (this draft)
+> **Status**: Sprint 1 + Sprint 2 update (GitOpsManager).
+> **Canonical owner**: PlatformArchitect (subject naming, transport, schemas).
+> GitOpsManager owns the **Sprint 2 contract addendum** (S2.4/S2.5
+> security topics) below.
 >
 > See also: [`../adr/0001-event-bus-transport.md`](../adr/0001-event-bus-transport.md),
 > [`../adr/0002-agent-to-agent-communication.md`](../adr/0002-agent-to-agent-communication.md),
-> [`../adr/0003-event-schema-format.md`](../adr/0003-event-schema-format.md).
+> [`../adr/0003-event-schema-format.md`](../adr/0003-event-schema-format.md),
+> [`../adr/0008-shared-sub-paths.md`](../adr/0008-shared-sub-paths.md) (Sprint 2 — sub-path exports).
 
 ## Purpose
 
