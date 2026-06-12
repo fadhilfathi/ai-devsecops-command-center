@@ -23,10 +23,9 @@ from .models.cve import (
     AffectedPackage,
     AffectedVersionRange,
     CveRecord,
-    MatchFinding,
-    MatchRequestComponent,
     SeverityQualitative,
 )
+from .models.dto import MatchFinding, MatchRequestComponent
 from .scoring import is_minimum_severity
 
 logger = logging.getLogger(__name__)

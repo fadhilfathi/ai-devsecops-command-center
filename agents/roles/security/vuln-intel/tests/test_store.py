@@ -24,7 +24,7 @@ def _record(cid: str, severity: SeverityQualitative = SeverityQualitative.HIGH) 
         summary="x",
         severity=SeverityAggregate(
             qualitative=severity,
-            cvss_v3=CvssScore(version="3.1", vector="x", score=7.5, severity=severity, source=ScoreSource.NVD_PRIMARY),
+            cvss_v3=CvssScore(version="3.1", vector="CVSS:3.1/AV:N", score=7.5, severity=severity, source=ScoreSource.NVD_PRIMARY),
             primary_source=ScoreSource.NVD_PRIMARY,
         ),
     )

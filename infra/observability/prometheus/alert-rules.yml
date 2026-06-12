@@ -282,7 +282,7 @@ groups:
         annotations:
           summary: "risk calc p95 > 1s for small SBOMs"
           description: "p95 = {{ $value | humanizeDuration }}. Small SBOMs should be sub-second. Likely graph-DB issue or memory pressure."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencySmall"
 
       - alert: RiskCalcHighLatencyMedium
         expr: |
@@ -296,7 +296,7 @@ groups:
         annotations:
           summary: "risk calc p95 > 5s for medium SBOMs"
           description: "p95 = {{ $value | humanizeDuration }}. Cold cache or GC?"
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyMedium"
 
       - alert: RiskCalcHighLatencyLarge
         expr: |
@@ -310,7 +310,7 @@ groups:
         annotations:
           summary: "risk calc p95 > 15s for large SBOMs"
           description: "p95 = {{ $value | humanizeDuration }}. Check graph DB indices."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyLarge"
 
       - alert: RiskCalcHighLatencyXlarge
         expr: |
@@ -324,7 +324,7 @@ groups:
         annotations:
           summary: "risk calc p95 > 60s for xlarge SBOMs"
           description: "p95 = {{ $value | humanizeDuration }}. Likely deep transitive chains or N+1 graph queries."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXlarge"
 
       - alert: RiskCalcHighLatencyXxlarge
         expr: |
@@ -338,4 +338,4 @@ groups:
         annotations:
           summary: "risk calc p95 > 300s for xxlarge SBOMs"
           description: "p95 = {{ $value | humanizeDuration }}. OS image / monorepo. Check for runaway jobs."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXxlarge"

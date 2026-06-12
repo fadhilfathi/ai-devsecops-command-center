@@ -26,7 +26,7 @@ def _vuln(name: str, ecosystem: str, purl: str, versions: list[AffectedVersionRa
         summary="x",
         severity=SeverityAggregate(
             qualitative=SeverityQualitative.HIGH,
-            cvss_v3=CvssScore(version="3.1", vector="x", score=7.5, severity=SeverityQualitative.HIGH, source=ScoreSource.NVD_PRIMARY),
+            cvss_v3=CvssScore(version="3.1", vector="CVSS:3.1/AV:N", score=7.5, severity=SeverityQualitative.HIGH, source=ScoreSource.NVD_PRIMARY),
             primary_source=ScoreSource.OSV,
         ),
         affected=[AffectedPackage(name=name, ecosystem=ecosystem, purl=purl, versions=versions)],

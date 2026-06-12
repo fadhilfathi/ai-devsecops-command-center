@@ -106,8 +106,8 @@ def test_parse_cvss3_vector_returns_cvss_score() -> None:
 
 def test_aggregate_severity_prefers_v4() -> None:
     sev = aggregate_severity(
-        cvss_v3=CvssScore(version="3.1", vector="x", score=7.5, severity=SeverityQualitative.HIGH, source="nvd:primary"),
-        cvss_v4=CvssScore(version="4.0", vector="x", score=8.5, severity=SeverityQualitative.HIGH, source="nvd:primary"),
+        cvss_v3=CvssScore(version="3.1", vector="CVSS:3.1/AV:N", score=7.5, severity=SeverityQualitative.HIGH, source="nvd:primary"),
+        cvss_v4=CvssScore(version="4.0", vector="CVSS:4.0/AV:N", score=8.5, severity=SeverityQualitative.HIGH, source="nvd:primary"),
     )
     assert sev.cvss_v4 is not None
     assert sev.cvss_v3 is not None

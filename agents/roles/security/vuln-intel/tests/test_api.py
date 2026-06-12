@@ -87,7 +87,7 @@ async def test_match_endpoint(app_client: AsyncClient) -> None:
             summary="x",
             severity=SeverityAggregate(
                 qualitative=SeverityQualitative.HIGH,
-                cvss_v3=CvssScore(version="3.1", vector="x", score=7.5, severity=SeverityQualitative.HIGH, source=ScoreSource.OSV),
+                cvss_v3=CvssScore(version="3.1", vector="CVSS:3.1/AV:N", score=7.5, severity=SeverityQualitative.HIGH, source=ScoreSource.OSV),
                 primary_source=ScoreSource.OSV,
             ),
             affected=[AffectedPackage(name="foo", ecosystem="PyPI", purl="pkg:pypi/foo@1.0.0",
