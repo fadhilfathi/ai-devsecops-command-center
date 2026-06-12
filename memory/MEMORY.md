@@ -27,6 +27,7 @@
 - [s2-sbom-v2-spec-alignment.md](./s2-sbom-v2-spec-alignment.md) — FullstackEngineer ↔ SBOMPipelineAgent: Lead's v2 spec (URN bom-ref + prefix-string target) — code changes landed
 - [s2-sbom-pipeline-v2-completion.md](./s2-sbom-pipeline-v2-completion.md) — S2.1 v2 service: missing `syft_wrapper.py` written, 12 test failures fixed, 69/69 pass (parked by Lead 2026-06-12 for Sprint 3 cutover)
 - [s2-sbom-pipeline-v1-hotfix.md](./s2-sbom-pipeline-v1-hotfix.md) — S2.1 v1 service at `agents/roles/security/sbom-generator/`: 15 test failures + 1 startup crash fixed; S2.7/S2.10/S2.8 contract refinements applied; 73/73 pass
+- [s2-8-sbom-generator-hardening-hotfix.md](./s2-8-sbom-generator-hardening-hotfix.md) — S2.8 hardening hotfix on `agents/roles/security/sbom-generator/`: T-07 SSRF defense + Syft digest pin + cosign-verify initContainer + Pod hardening + NetworkPolicy + volumes + rotation script. Branch `hotfix/s2.8-sbom-generator-hardening`
 - [sprint-2-closeout.md](./sprint-2-closeout.md) — Sprint 2 (Security Intelligence Core) closed 2026-06-12: 11/11 main tasks, 37 commits, S3.1 (v2 cutover) is the Sprint 3 P0 owned by me
 - [monitoring-architecture.md](./monitoring-architecture.md) — SREEngineer: monitoring, logging, metrics architecture
 - [gitops-manager-sprint-1.md](./gitops-manager-sprint-1.md) — GitOpsManager: repo, CI/CD, contributor docs, ADRs 0005-0007

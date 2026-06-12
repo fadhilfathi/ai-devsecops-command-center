@@ -7,6 +7,19 @@ type: project
 Sprint 3 is planned to kick off 2026-06-15. Backlog lives at
 docs/sprint-3/backlog.md (created during Sprint 2 closeout).
 
+**Sprint 3 ceremonies (FullstackEngineer, confirmed 2026-06-12):**
+- **Planning:** 2026-06-15 (Mon) 1h, all agents
+- **Daily standup:** async via `team_send_message`
+- **Mid-sprint check-in:** 2026-06-19 (Fri)
+- **Review + retro:** 2026-06-26 (Fri)
+- **Mission brief:** Lead circulates Sunday 2026-06-14 evening
+
+**4 T-03 follow-up flags from SecurityArchitect (filed 2026-06-12, Sprint 3 candidates):**
+- T-03.1: clamp band math = T-04 attack surface (adversarial input floor)
+- T-03.2: decouple `clamp_applied` / `human_review_routed` flags (invariant)
+- T-03.3: `vuln_intel_pre_actionable` 3-state enum (not `bool | None` in Loki)
+- T-03.4: JSON Schema SSoT (with PlatformArchitect + VulnerabilityIntel)
+
 **P0 (must-have):**
 - S3.1: v2 SBOM pipeline cutover — the v2 service is COMPLETE at
   docs/drafts/sbom-pipeline-service-v2/sbom-pipeline-service/ (27
