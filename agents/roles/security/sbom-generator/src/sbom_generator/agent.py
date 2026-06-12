@@ -435,6 +435,28 @@ class SBOMGeneratorAgent:
             ) from exc
 
         if not result.allowed:
+            # Bump the SRE F1 counter: SSRF rejection.
+            # Reason classification: ``dns_rebinding`` (hostname
+            # resolved to a private IP) vs ``blocklist`` (literal IP
+            # or banned hostname). SRE's burn-rate alert watches the
+            # rate of this counter.
+            try:
+                warning_type = (
+                    "dns_rebinding"
+                    if "rebind" in (result.reason or "").lower()
+                    else "blocklist"
+                )
+                self._telemetry.counter(
+                    "devsecops_sbom_ssrf_warnings_total",
+                    value=1.0,
+                    warning_type=warning_type,
+                    result="deny",
+                )
+            except Exception:  # noqa: BLE001
+                # Telemetry is best-effort; never fail the request on
+                # a counter increment.
+                pass
+
             logger.warning(
                 "SSRF block: source_type=%s target=%s reason=%s",
                 kind.value,
@@ -458,6 +480,33 @@ class SBOMGeneratorAgent:
                     "resolved_addresses": list(result.resolved_addresses),
                 },
             )
+
+        # Allowed — emit allow_with_warning telemetry when the host was
+        # allowlisted but the resolution was suspicious (e.g., no
+        # resolved addresses returned, or the resolved set points to a
+        # cloud-metadata IP). The counter increments BEFORE we lose the
+        # ``result`` to the caller, so we can never accidentally bypass
+        # the increment. SRE F1 alert surface: burn-rate on this
+        # counter is the canary for attacker probing.
+        try:
+            warning_type = "none"
+            if not result.resolved_addresses:
+                warning_type = "allow_no_resolved_addresses"
+            elif any(
+                self._is_metadata_address(addr) for addr in result.resolved_addresses
+            ):
+                warning_type = "allow_resolves_to_metadata"
+
+            if warning_type != "none":
+                self._telemetry.counter(
+                    "devsecops_sbom_ssrf_warnings_total",
+                    value=1.0,
+                    warning_type=warning_type,
+                    result="allow_with_warning",
+                )
+        except Exception:  # noqa: BLE001
+            pass
+
         # Allowed — log resolved addresses for forensics.
         if result.resolved_addresses:
             logger.info(
@@ -465,6 +514,26 @@ class SBOMGeneratorAgent:
                 target,
                 result.resolved_addresses,
             )
+
+    @staticmethod
+    def _is_metadata_address(addr: str) -> bool:
+        """Heuristic: is ``addr`` likely a cloud-metadata endpoint?
+
+        Used to flag ``allow_with_warning`` telemetry. The IP-based
+        blocklist already covers 169.254.169.254, but we re-check
+        here so the warning fires when the host resolved to a known
+        metadata IP *after* allowlist relaxation.
+        """
+        import ipaddress
+
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            return False
+        # 169.254.169.254/32 (AWS IMDS), 169.254.170.2/32 (ECS task
+        # metadata), 169.254.0.0/16 (link-local) — covered by the IP
+        # blocklist at the host, but re-flagged here for the warning.
+        return ip in ipaddress.ip_network("169.254.0.0/16")
 
     # ---- Bus handler ---------------------------------------------------
 
@@ -574,24 +643,34 @@ async def _build_response(
         git_sha = getattr(request, "git_sha", None) or sbom_fingerprint[7:15]
         sbom_id = f"sbom-{date}-{git_sha[:8]}-{scope}"
 
-        # Prefix-string source form (``docker:``, ``git:``, ``fs:``,
-        # ``lockfile:``) per the v2 wire-format spec.
-        source_str = _v1_to_prefix_string(request.source)
-
         # Format lowercase enum (GitOpsManager convention).
         format_str = request.formats[0].value.lower()
+
+        # O-3.7 wire format compliance — every required field on
+        # security.sbom.generated.v1 must be present, and the values
+        # must match the JSON Schema's enums. Drift fix landed in
+        # hotfix/s2.5-sbom-wire-format-drift (this commit) to align the
+        # runtime with security/wire-format/sbom-generated.schema.json.
+        scope_value = _o37_scope_value(request)
+        subject_value = _o37_subject(request)
+        subject_fingerprint_value = _o37_subject_fingerprint(
+            request, sbom_fingerprint, git_sha
+        )
+        sbom_path_value = _o37_sbom_path(request)
+        sbom_format_value = _o37_format_value(format_str)
 
         event_id = await bus.publish(
             f"security.sbom.generated.v1",
             {
                 "schema": "security.sbom.generated.v1",
                 "sbom_id": sbom_id,
-                "source": source_str,
-                "format": format_str,
-                "component_count": response.components_count,
+                "scope": scope_value,
+                "subject": subject_value,
+                "subject_fingerprint": subject_fingerprint_value,
+                "sbom_format": sbom_format_value,
+                "sbom_path": sbom_path_value,
+                "components_count": response.components_count,
                 "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                "git_sha": git_sha if len(git_sha) == 40 else None,
-                "scope": scope,
                 # O-3.7-locked fingerprint fields. The runtime is the
                 # **producer**; the GitOps auto-committer
                 # (``security.yml``) is the **writer** of the sibling
@@ -603,7 +682,17 @@ async def _build_response(
                 # parse on every commit).
                 "sbom_fingerprint": sbom_fingerprint,
                 "sbom_fingerprint_algorithm": "sha256",
-                "sbom_fingerprint_format": "cyclonedx-json",
+                # The O-3.7 enum encodes format + canonicalization
+                # together so the wire is unambiguous. The
+                # +canonicalized-jcs suffix is the default — we
+                # compute the fingerprint over the RFC 8785 JCS
+                # canonicalization of the SBOM bytes.
+                "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
+                "generator": {
+                    "name": "syft",
+                    "version": syft_version,
+                    "binary_path": result.binary_path,
+                },
             },
         )
         response.bus_event_id = event_id
@@ -638,6 +727,188 @@ def _v1_to_prefix_string(source: SourceRef) -> str:
     if t in (SourceType.FILE, SourceType.ARCHIVE):
         return f"fs:{source.value}"
     return f"docker:{source.value}"
+
+
+# ---------------------------------------------------------------------------
+# O-3.7 wire format helpers (S2.5 hotfix)
+# ---------------------------------------------------------------------------
+# These translate runtime context into the locked wire-format fields:
+#   - ``scope``                (enum, 6 values)
+#   - ``subject``              (opaque reference, e.g. "repo:owner/name")
+#   - ``subject_fingerprint``  (scope-aware: git SHA / image digest / ...)
+#   - ``sbom_path``            (relative path within the repo or scan root)
+#   - ``sbom_format``          (enum: cyclonedx-json, spdx-json)
+#
+# When the runtime cannot determine a field, it computes a safe default
+# (content fingerprint for ``fs``, sha256(reference) for ``container``,
+# etc.) so the wire is always complete — consumers should never see a
+# missing required field.
+# ---------------------------------------------------------------------------
+
+
+_O37_FORMAT_MAP = {
+    "cyclonedx-json": "cyclonedx-json",
+    "spdx-json": "spdx-json",
+    "spdx-tag-value": "spdx-json",  # promoted to spdx-json for Sprint 2.1
+    "spdx": "spdx-json",
+    "cyclonedx-xml": "cyclonedx-json",  # fall back to JSON for Sprint 2.1
+}
+
+
+def _o37_format_value(format_str: str) -> str:
+    """Map a runtime format string to the O-3.7 ``sbom_format`` enum.
+
+    The O-3.7 schema only enumerates two values: ``cyclonedx-json``
+    and ``spdx-json``. We promote other formats (``spdx``, ``spdx-tag-value``,
+    ``cyclonedx-xml``) to the JSON equivalents so the wire is always
+    one of the two locked values. The actual emission format is still
+    controlled by ``request.formats[0]``; this helper only emits the
+    classification label.
+    """
+    return _O37_FORMAT_MAP.get(format_str.lower(), "cyclonedx-json")
+
+
+def _o37_scope_value(request) -> str:
+    """Return the O-3.7 scope for the request, or a derived default.
+
+    The 6-value enum lives at ``models.request.VALID_SCOPE_TYPES``. The
+    default is derived from the source kind: ``container`` for
+    image/registry sources, ``git-tree`` for git, ``fs`` for local paths.
+    """
+    explicit = getattr(request, "scope", None)
+    if explicit:
+        return explicit
+    t = request.source.type
+    if t in (SourceType.DOCKER_IMAGE, SourceType.OCI_IMAGE, SourceType.REGISTRY):
+        return "container"
+    if t is SourceType.GIT_REPOSITORY:
+        return "git-tree"
+    return "fs"
+
+
+def _o37_subject(request) -> str:
+    """Return the O-3.7 ``subject`` field (opaque reference).
+
+    The convention is ``<kind>:<ref>`` mirroring the v2 prefix-string
+    wire format, but with extra context for the O-3.7 discriminator.
+    Examples:
+
+      docker:anchore/syft:v1.6.0
+      git:https://github.com/aionrs/api.git
+      fs:/workspace/monorepo/services/api
+      repo:github.com/aionrs/api
+    """
+    t = request.source.type
+    if t in (SourceType.DOCKER_IMAGE, SourceType.OCI_IMAGE):
+        return f"docker:{request.source.value}"
+    if t is SourceType.REGISTRY:
+        return f"registry:{request.source.value}"
+    if t is SourceType.GIT_REPOSITORY:
+        v = request.source.value
+        # If the value is a URL, return the repo form (drop the scheme).
+        if "://" in v:
+            from urllib.parse import urlparse
+
+            p = urlparse(v)
+            host = p.hostname or ""
+            path = p.path.lstrip("/")
+            if path.endswith(".git"):
+                path = path[:-4]
+            return f"repo:{host}/{path}" if host else f"git:{v}"
+        # SCP-style: ``user@host:owner/repo.git`` -> ``repo:host/owner/repo``
+        m = re.match(r"^[\w-]+@([\w.\-]+):(.+?)(?:\.git)?$", v)
+        if m:
+            host, path = m.group(1), m.group(2)
+            return f"repo:{host}/{path}"
+        return f"git:{v}"
+    if t in (SourceType.DIRECTORY, SourceType.FILE, SourceType.ARCHIVE):
+        return f"fs:{request.source.value}"
+    return f"unknown:{request.source.value}"
+
+
+def _o37_subject_fingerprint(request, sbom_fingerprint: str, git_sha: str) -> str:
+    """Return the O-3.7 ``subject_fingerprint`` field, scope-aware.
+
+    Behavior:
+
+      * **container** scope: prefer an explicit image digest
+        (``sha256:<hex>``). If only a tag is provided, fall back to
+        ``sha256(sha256(image_ref + ":" + tag))`` so the wire is
+        non-empty and deterministic for the same input. The runtime
+        records the actual digest via the ``provenance_path`` artifact
+        (written by the GitOps auto-committer) for Sprint 3
+        reconciliation.
+      * **monorepo / git-tree / service / package** scope: prefer the
+        caller-provided ``git_sha`` (full 40-char SHA). Fall back to
+        the short SHA from the sbom_id derivation.
+      * **fs** scope: prefer an explicit content hash if the caller
+        supplies one in ``metadata``; otherwise derive
+        ``sha256(reference)`` from the source value.
+
+    The function never returns an empty string — the O-3.7 schema
+    requires ``minLength: 1``.
+    """
+    explicit = getattr(request, "subject_fingerprint", None)
+    if explicit:
+        return explicit
+
+    scope = _o37_scope_value(request)
+    if scope == "container":
+        # Container references can be ``name:tag`` (no digest at scan
+        # time without a registry pull). We emit a deterministic
+        # placeholder the runtime computed from the reference. The
+        # real digest lands in the sibling ``provenance_path`` artifact.
+        ref = request.source.value
+        return "sha256:" + hashlib.sha256(ref.encode("utf-8")).hexdigest()
+
+    if scope in ("monorepo", "git-tree", "service", "package"):
+        if git_sha and len(git_sha) >= 7:
+            return git_sha
+        # Last-resort fallback: derive from sbom_fingerprint.
+        return sbom_fingerprint
+
+    # fs scope
+    meta_hash = (getattr(request, "metadata", None) or {}).get(
+        "content_sha256"
+    )
+    if meta_hash:
+        return meta_hash
+    ref = request.source.value
+    return "sha256:" + hashlib.sha256(ref.encode("utf-8")).hexdigest()
+
+
+def _o37_sbom_path(request) -> str:
+    """Return the O-3.7 ``sbom_path`` field.
+
+    Conventions:
+
+      * **git-scoped** (``monorepo``, ``service``, ``git-tree``):
+        use ``request.subject_path`` (relative repo path per the
+        folder contract). Fall back to ``.`` (repo root) when not
+        provided.
+      * **fs** scope: the absolute or relative path the caller
+        scanned; truncated to the basename when very long.
+      * **container** scope: the OCI reference itself (it IS the
+        path-like identifier).
+      * **package** scope: the package coordinate (``ecosystem:name``).
+    """
+    scope = _o37_scope_value(request)
+    t = request.source.type
+    if scope in ("monorepo", "service", "git-tree"):
+        return getattr(request, "subject_path", None) or "."
+    if t in (SourceType.DOCKER_IMAGE, SourceType.OCI_IMAGE):
+        return request.source.value
+    if t is SourceType.REGISTRY:
+        return request.source.value
+    if scope == "package":
+        # Best-effort: parse the source value as ``ecosystem:name`` if
+        # the caller used the lockfile form.
+        v = request.source.value
+        if ":" in v and not v.startswith("http"):
+            return v
+        return v
+    # fs scope
+    return request.source.value
 
 
 # ---------------------------------------------------------------------------

@@ -94,12 +94,50 @@ class GenerateRequest(BaseModel):
     output_relationships: bool = True
     metadata: Dict[str, str] = Field(default_factory=dict)
     tenant_id: Optional[str] = None
+    # O-3.7 wire format compliance (S2.5 hotfix). Drives the
+    # ``subject_fingerprint`` and ``sbom_path`` computation in the
+    # emitted event payload. When omitted, the runtime derives a
+    # default from the source kind (container/registry -> "container",
+    # git -> "git-tree", otherwise -> "fs").
+    scope: Optional[str] = None
+    # Caller-supplied fingerprint for the subject. For git-backed
+    # scans this is the resolved commit SHA at scan time; for
+    # container scans it's the image digest (``sha256:...``); for fs
+    # scans it's the SHA-256 of the directory contents. The runtime
+    # computes a default when not provided.
+    subject_fingerprint: Optional[str] = None
+    # For git-backed scans, the relative path within the repo (per
+    # folder contract). Required when scope is ``monorepo`` or
+    # ``service``. Opaque for other scopes.
+    subject_path: Optional[str] = None
 
     @field_validator("formats")
     @classmethod
     def _validate_formats(cls, v: List[SBOMFormat]) -> List[SBOMFormat]:
         if not v:
             raise ValueError("at least one format is required")
+        return v
+
+    @field_validator("scope")
+    @classmethod
+    def _validate_scope(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        # The 6-value enum is locked in O-3.7. Validated here so a
+        # caller-supplied bad value fails the request with HTTP 400
+        # before the runtime emits a wire-format-invalid event.
+        valid = {
+            "monorepo",
+            "service",
+            "package",
+            "container",
+            "git-tree",
+            "fs",
+        }
+        if v not in valid:
+            raise ValueError(
+                f"unsupported scope={v!r}. valid: {sorted(valid)}"
+            )
         return v
 
     def validate_source(self) -> None:
