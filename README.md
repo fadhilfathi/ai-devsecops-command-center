@@ -129,7 +129,8 @@ tracking, evidence collection, audit answers. We build a system that
 │   │   ├── incident/     Port 3004
 │   │   ├── compliance/   Port 3005
 │   │   └── integration/  Port 3006
-│   └── shared/           Contracts, events, middleware, types
+│   ├── packages/         # Shared libraries (contracts, events, types, utils)
+│   └── common/           # Cross-cutting modules (observability, etc.)
 ├── agents/               Agent definitions
 │   ├── core/             Framework-agnostic agent core
 │   ├── roles/            security, incident, compliance, integration
@@ -207,10 +208,12 @@ Start here:
 - **[`PROJECT_DESCRIPTION.md`](./PROJECT_DESCRIPTION.md)** — the full
   product description, personas, use cases, and roadmap.
 - **[`docs/architecture/`](./docs/architecture/)** — system, agents,
-  event bus, security model.
+  event bus, security model (canonical auth: `authentication-and-security-design.md`,
+  canonical GitHub integration: `github-integration.md`).
 - **[`docs/adr/`](./docs/adr/)** — why we made the choices we made.
 - **[`docs/compliance/`](./docs/compliance/)** — control mapping.
 - **[`docs/security/`](./docs/security/)** — threat model, hardening.
+- **[`docs/observability/`](./docs/observability/)** — monitoring, logging, metrics.
 - **[`docs/runbooks/`](./docs/runbooks/)** — operator procedures.
 - **[`docs/operations/`](./docs/operations/)** — SLOs, on-call.
 

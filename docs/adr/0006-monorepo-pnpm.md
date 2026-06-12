@@ -19,8 +19,9 @@ We use a **monorepo** managed by **pnpm workspaces**.
 
 - Top-level `package.json` declares the workspaces.
 - Top-level `pnpm-workspace.yaml` enumerates them.
-- Shared code lives in `backend/shared/` and is depended on by services
-  via `"@aicc/shared": "workspace:*"`.
+- Shared code lives in `backend/packages/` (libraries) and
+  `backend/common/` (cross-cutting modules), and is depended on by
+  services via `"@aicc/shared": "workspace:*"` (and similar).
 - A single root `tsconfig.base.json` is the source of truth for compiler
   options; each workspace extends it.
 - A single root CI runs `pnpm -r <command>` to fan out lint, test, build.

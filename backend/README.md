@@ -2,7 +2,7 @@
 
 > The six backend services of the AI-DevSecOps Command Center. Each is
 > an independent deployable unit, sharing types, contracts, and
-> observability through `backend/packages/shared/` and `backend/common/observability/`.
+> observability through `backend/packages/` and `backend/common/`.
 
 ```
 backend/
@@ -13,11 +13,14 @@ backend/
 │   ├── incident/     # port 3004  - incident lifecycle, correlation
 │   ├── compliance/   # port 3005  - control mapping, evidence
 │   └── integration/  # port 3006  - external system adapters
-└── shared/           # cross-cutting: contracts, events, middleware, types, utils
+├── packages/         # shared libraries (contracts, events, types, utils)
+└── common/           # cross-cutting modules (observability, etc.)
 ```
 
 Each service is a self-contained Node.js + TypeScript project using
-**Fastify 4**. See [`/docs/adr/0006-monorepo-pnpm.md`](../../docs/adr/0006-monorepo-pnpm.md) and the package layout.
+**Fastify 4**. See [`/docs/adr/0006-monorepo-pnpm.md`](../../docs/adr/0006-monorepo-pnpm.md)
+for the workspace layout and [`/docs/adr/0004-six-services-one-database.md`](../../docs/adr/0004-six-services-one-database.md)
+for the data architecture.
 
 ## Common structure
 
@@ -55,3 +58,6 @@ make dev-auth
 - [`/docs/architecture/system-architecture.md`](../../docs/architecture/system-architecture.md)
 - [`/docs/architecture/event-bus.md`](../../docs/architecture/event-bus.md)
 - [`/docs/architecture/security-model.md`](../../docs/architecture/security-model.md)
+- [`/docs/architecture/authentication-and-security-design.md`](../../docs/architecture/authentication-and-security-design.md)
+- [`/docs/architecture/github-integration.md`](../../docs/architecture/github-integration.md)
+- [`/docs/observability/`](../../docs/observability/) — observability architecture
