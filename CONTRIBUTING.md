@@ -51,7 +51,7 @@ ship. A slow, reliable, auditable system is the goal.
 ### First checkout
 
 ```bash
-git clone https://github.com/aionrs/ai-devsecops-command-center.git
+git clone https://github.com/fadhilfathi/ai-devsecops-command-center.git
 cd ai-devsecops-command-center
 pnpm install
 cp .env.example .env       # edit secrets, never commit

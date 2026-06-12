@@ -22,7 +22,7 @@ When 1.0 is released we will formalize an LTS matrix in this file.
 Use one of the following private channels:
 
 1. **GitHub Security Advisories** (preferred):
-   <https://github.com/aionrs/ai-devsecops-command-center/security/advisories/new>
+   <https://github.com/fadhilfathi/ai-devsecops-command-center/security/advisories/new>
 2. **Email**: `security@aionrs.local` (PGP key in `docs/security/pgp-key.asc`)
 
 We acknowledge reports within **2 business days** and aim to provide a triage

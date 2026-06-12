@@ -53,12 +53,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aionrs/ai-devsecops-command-center.git"
+    "url": "https://github.com/fadhilfathi/ai-devsecops-command-center.git"
   },
   "bugs": {
-    "url": "https://github.com/aionrs/ai-devsecops-command-center/issues"
+    "url": "https://github.com/fadhilfathi/ai-devsecops-command-center/issues"
   },
-  "homepage": "https://github.com/aionrs/ai-devsecops-command-center#readme",
+  "homepage": "https://github.com/fadhilfathi/ai-devsecops-command-center#readme",
   "keywords": [
     "devsecops",
     "ai-agents",

@@ -5,11 +5,13 @@
 > behind a single, audit-ready interface — and a fleet of cooperating AI
 > agents that do the boring parts for you.
 
+**Repository**: <https://github.com/fadhilfathi/ai-devsecops-command-center>
+
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Status: Pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange)](./CHANGELOG.md)
 [![CI](https://img.shields.io/badge/CI-pending-lightgrey)](./.github/workflows/ci.yml)
 [![CodeQL](https://img.shields.io/badge/CodeQL-pending-lightgrey)](./.github/workflows/codeql.yml)
-[![Scorecard](https://img.shields.io/ossf-scorecard/?repository=aionrs%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/aionrs/ai-devsecops-command-center)
+[![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
 > **Status**: This repository is in **pre-alpha (Sprint 1 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
@@ -163,7 +165,7 @@ tracking, evidence collection, audit answers. We build a system that
 
 ```bash
 # 1. Clone
-git clone https://github.com/aionrs/ai-devsecops-command-center.git
+git clone https://github.com/fadhilfathi/ai-devsecops-command-center.git
 cd ai-devsecops-command-center
 
 # 2. Use the pinned Node version
