@@ -146,3 +146,51 @@ A full threat model with diagrams is in [`/docs/security/threat-model.md`](../se
   daily token budget**.
 - The runtime detects **prompt injection** patterns in tool outputs and
   refuses to follow instructions found in tool results.
+
+## Service-to-service event contracts (Sprint 2)
+
+The security stack — `sbom-pipeline` (4007), `vuln-intel` (4008),
+`dependency-intel` (4009), and the `security-service` (3003) — exchanges
+typed events on the event bus. The **canonical subject names and typed
+event interfaces** live in
+[`@aicc/shared/security`](../../backend/packages/shared/src/security/index.ts)
+(a sub-path export of `@aicc/shared`, locked in ADR 0008).
+
+> **Do not hardcode subject strings in service code.** Always import
+> the constant from `@aicc/shared/security`. The string-form is in
+> this document for clarity; the constant is the source of truth.
+
+| Constant                | Subject                                       | Producer        | Consumers                                              | Schema path                                                          |
+| ----------------------- | --------------------------------------------- | --------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
+| `SBOM_TOPIC`            | `security.sbom.generated`                     | sbom-pipeline   | dependency-intel, security-service, security-automation | `backend/models/security/sbom.model.ts`                              |
+| `VULN_TOPIC`            | `security.vulnerability.detected`             | vuln-intel      | dependency-intel, security-service, security-automation | `backend/models/security/vulnerability.model.ts`                     |
+| `RISK_TOPIC`            | `security.risk.calculated`                    | dependency-intel| security-service, security-automation                  | `backend/models/security/risk-score.model.ts`                        |
+
+Versions follow the subject (`…v1`, `…v2`); a breaking payload change
+requires a new subject version. See
+[`./event-bus.md`](./event-bus.md#subject-naming) for the full
+naming convention.
+
+**Example consumer wiring** (Node.js / Fastify service):
+
+```ts
+import { SBOM_TOPIC, type SbomGeneratedEvent } from "@aicc/shared/security";
+
+await bus.subscribe(
+  { subject: SBOM_TOPIC, consumerGroup: "security-service" },
+  async (msg) => {
+    const event = msg.data as SbomGeneratedEvent;
+    // event.sbom is CycloneDX-shaped (validated by Zod at the producer)
+    // event.tenantId, event.gitSha, event.scanner are all present
+  }
+);
+```
+
+The full Zod schema (validator) and TypeScript type are exported **per
+model** from `backend/models/security/`:
+
+- `SbomSchema` / `Sbom` — CycloneDX 1.5-shaped (components, dependencies, metadata)
+- `VulnerabilitySchema` / `Vulnerability` — normalised
+  (CVSSv3, EPSS, KEV, aliases, severity)
+- `DependencyGraphSchema` / `DependencyGraph` — nodes/edges with risk weights
+- `RiskScoreSchema` / `RiskScore` — composite 0–100 + per-axis scores + dashboard types
