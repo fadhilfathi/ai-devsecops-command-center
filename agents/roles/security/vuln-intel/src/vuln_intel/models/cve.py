@@ -125,20 +125,37 @@ class SeverityAggregate(BaseModel):
 class AffectedVersionRange(BaseModel):
     """A single version range inside an affected package.
 
-    Fields use the OSV-style ``introduced`` / ``fixed`` / ``last_affected``
-    conventions because they can express the most common ranges
-    unambiguously. A range with only ``introduced`` set means "from this
-    version onwards" and a range with only ``fixed`` set means "all
-    versions up to (but not including) this one".
+    The two ``introduced`` / ``introduced_at`` fields are deliberately
+    separate (per FullstackEngineer Pydantic↔Zod alignment, 2026-06-12):
+
+    * ``introduced_in`` — the *version* (semver string) at which the
+      vulnerable range starts. Per-version, per-affected-entry.
+    * ``introduced_at`` — the *deploy* (ISO-8601 timestamp) at which
+      the package was first deployed into the affected range.
+      Per-deploy, per-affected-entry. Internal-only — does NOT appear
+      on the GitOps wire format (see GitOpsManager sign-off 2026-06-12).
+
+    OSV-style ``fixed`` / ``last_affected`` are also supported so we
+    can express "from this version onwards" (``introduced_in`` only)
+    and "up to but not including this version" (``fixed`` only).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    introduced: str | None = Field(default=None, max_length=128)
+    introduced_in: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Per-version semver at which the vulnerable range starts.",
+    )
+    introduced_at: datetime | None = Field(
+        default=None,
+        description="Per-deploy ISO-8601 timestamp at which the package "
+        "was first deployed into the affected range. Internal only.",
+    )
     fixed: str | None = Field(default=None, max_length=128)
     last_affected: str | None = Field(default=None, max_length=128)
 
-    @field_validator("introduced", "fixed", "last_affected")
+    @field_validator("introduced_in", "fixed", "last_affected")
     @classmethod
     def _no_whitespace(cls, v: str | None) -> str | None:
         return v.strip() if v is not None else None
@@ -227,6 +244,38 @@ class CveRecord(BaseModel):
 
     # --- provenance ---------------------------------------------------------
     raw: dict[str, Any] = Field(default_factory=dict, description="Original source payloads (truncated)")
+
+    # --- S2.8: cross-source consensus + pre-actionable gate -----------------
+    # S2.8 O-3.7: GitOpsManager added ``consensus_sources`` to the
+    # 19-field wire format. We populate it after every ingest run from
+    # the ``_sources_seen`` set maintained by the service. The list
+    # contains the source names (nvd, ghsa, osv) that corroborated
+    # this (CVE, package) pair — not just the CVE. The security-service
+    # :4003 projection uses ``length(consensus_sources) >= 2`` as
+    # the O-3.6 4-condition ``auto_actionable`` gate.
+    consensus_sources: list[str] = Field(
+        default_factory=list,
+        description="Source identifiers that confirmed this (CVE, package) pair. "
+        "REQUIRED non-empty on the GitOps wire (O-3.7 19-field schema).",
+    )
+
+    # S2.8: internal pre-actionable flag, never emitted on the wire.
+    # The wire ``auto_actionable`` is computed by security-service
+    # :4003 (vuln-projection.ts) as the LOCKED 4-condition AND:
+    #   (kev OR (severity in {high, critical} AND epss >= 0.36))
+    #     AND length(consensus_sources) >= 2
+    #     AND has_reachable_fix(fixed_in, package)
+    #     AND in_graph == true
+    # The first AND third conditions are computable inside vuln-intel
+    # and stored here as ``vuln_intel_pre_actionable`` for operator
+    # alerting (Logfire / Grafana) and as a hint to the dependency-intel
+    # service. The second and fourth conditions require graph state
+    # owned by security-service, so it owns the wire flag.
+    vuln_intel_pre_actionable: bool | None = Field(
+        default=None,
+        description="Internal pre-actionable hint: (kev OR (high/critical AND epss >= 0.36)) "
+        "AND fix_available. Never emitted on the wire — security-service owns auto_actionable.",
+    )
 
     # ----------------------------------------------------------------- helpers
     @property

@@ -167,7 +167,7 @@ def _affected_from_osv(payload: dict[str, Any]) -> list[AffectedPackage]:
             if introduced or fixed or last_affected:
                 versions.append(
                     AffectedVersionRange(
-                        introduced=introduced,
+                        introduced_in=introduced,
                         fixed=fixed,
                         last_affected=last_affected,
                     )

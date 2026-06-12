@@ -163,8 +163,7 @@ with `result in {success, error}` = **2 series per service**. Compliance-
 service emits ~22 series total (2 audit + ~20 default process metrics
 with `compliance_service_` prefix). Well under the 50k cap.
 
-**Runbook:** `docs/runbooks/compliance-audit-log.md` (ComplianceOfficer
-to create; cross-link from the alert annotation).
+**Runbook:** `docs/runbooks/compliance-audit-log.md` (**created 2026-06-12** by ComplianceOfficer; alert annotation `{{ $labels.runbook_base_url }}/compliance-audit-log` resolves correctly via the standard runbook_base_url pattern). 130 lines; 3-step decision tree (bus connection → schema validation → structured log filter) with the `event.type` vs `audit_kind` confusion callout.
 
 **Why a separate group from §3.10 S2.8 controls:** audit emission is a
 S2.9 deliverable, not S2.8. The `security_stack.audit_emission` group
@@ -425,6 +424,14 @@ don't regress it.
   doc fixes) — all accepted 2026-06-12. Round 3 sign-off (D1–D5
   divergences + Q3 Node.js service-label gap + §3.7 VulnIngestionLag
   metric + §5.1.1 Node.js helper footnote) — all accepted 2026-06-12.
+  **Round 6 sign-off (D6 `tenant_tier` FINAL VERDICT, D7 5-bucket
+  `sbom_size_bucket`, §3.8.4 merge, §3.8 cardinality over-cap resolution,
+  §3.11 vuln_feed gauge) — all accepted 2026-06-12.** **D6 `tenant_tier`
+  APPROVED (option 1) — 230k per-service is within Prometheus's actual
+  capacity, Sprint 3 recording-rule pre-agg on `(target_type, tenant_tier,
+  result)` is the planned fix path.** **Sprint 3.2 ADR 0009 cardinality
+  governance co-authored (PlatformArchitect lead, SRE co-author) —
+  filed on team board as `019ebc0f-ab33`.**
 - [x] **SREEngineer** (me) — locked targets; per-bucket burn alerts in
   `alert-rules.yml`; per-bucket runbook stubs created; `histogram_quantile`
   safety note added; §2/§3 column headers fixed; B4 steady-state
@@ -450,9 +457,14 @@ don't regress it.
   `sbom_size_bucket` scheme LOCKED (xs/small/medium/large/xlarge, drop
   xxlarge, xs added), §3.8.4 merge LOCKED with `route` label retained.
   Per-bucket risk-calc SLOs in §3 are calibrated against the new scheme.
-  **Conditional acceptance on D6 `tenant_tier` addition** — pending
+  ~~**Conditional acceptance on D6 `tenant_tier` addition** — pending
   PlatformArchitect final verdict on the cost-benefit (~230k per-service
-  vs current ~78k).
+  vs current ~78k).~~ **D6 `tenant_tier` FINAL VERDICT 2026-06-12
+  (PlatformArchitect): APPROVE option 1.** `tenant_tier` is added to
+  `devsecops_sbom_generation_duration_seconds`; Sprint 3 recording-rule
+  pre-aggregation on `(target_type, tenant_tier, result)` is the planned
+  fix path. 230k per-service is within Prometheus's actual capacity;
+  recording rule drops alert-path series to ~30k.
 - [x] **VulnerabilityIntelligenceAgent** — polling cadence confirmed 2026-06-12
   (round 6): NVD=60min, GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h.
   SLO targets in §5.6 are now **anchored to the real cadence** (NVD/OSV
@@ -470,11 +482,14 @@ don't regress it.
   `alert-rules.yml` (`AuditLogEmissionErrorRate` ticket at error rate
   >1% over 5m, `AuditLogEmissionErrorRatePage` page at error rate
   >1/s for 5m). 30 rules total, lint exit 0. Cardinality well under
-  cap (~22 series for compliance-service). **Out of scope (next
-  follow-up):** ComplianceOfficer to create
-  `docs/runbooks/compliance-audit-log.md` (Sprint 2.5/2.11 task
-  `019ebc0f-ab38` filed on team board). Tracked in `metrics-spec.md` §9
-  as Sprint 2.5/2.11.
+  cap (~22 series for compliance-service). ComplianceOfficer created
+  the runbook `docs/runbooks/compliance-audit-log.md` (130 lines,
+  3-step decision tree, `event.type` vs `audit_kind` confusion callout).
+  Task `019ebc0f-ab38` completed. **F-14 decision (SRE, 2026-06-12):**
+  audit log store wiring = **option B (direct `AUDIT_LOG_TOPIC`
+  subscriber)** — durable PG persistence via bus subscriber, not
+  Loki→Promtail→PG. P5 task `019ebc1a-3468` is the implementation
+  owner (ComplianceOfficer, ~120 LOC).
   deferred work.
 - [ ] **Lead / S2.11 E2E validation owner** — confirm the SLOs are achievable
   in production over the 30d baseline; tune targets if real telemetry shows

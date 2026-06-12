@@ -139,12 +139,12 @@ def _affected_from_ghsa(payload: dict[str, Any]) -> list[AffectedPackage]:
                 elif token.startswith("<"):
                     fixed = token[1:].strip()
             if introduced or fixed:
-                vulnerable_ranges.append(AffectedVersionRange(introduced=introduced, fixed=fixed))
+                vulnerable_ranges.append(AffectedVersionRange(introduced_in=introduced, fixed=fixed))
         elif isinstance(vrange, list):
             for vr in vrange:
                 vulnerable_ranges.append(
                     AffectedVersionRange(
-                        introduced=vr.get("introduced"),
+                        introduced_in=vr.get("introduced"),
                         fixed=vr.get("fixed"),
                     )
                 )

@@ -188,7 +188,7 @@ def _affected_packages_from_nvd(configurations: list[dict[str, Any]] | None) -> 
                     package_manager=None,
                     versions=[
                         AffectedVersionRange(
-                            introduced=cpe.get("versionStartIncluding"),
+                            introduced_in=cpe.get("versionStartIncluding"),
                             fixed=cpe.get("versionEndExcluding"),
                             last_affected=cpe.get("versionEndIncluding"),
                         )
