@@ -168,7 +168,7 @@ def _build_command(
 
     if not request.include_dev_dependencies:
         # Skip dev dependencies by default for prod scans.
-        cmd.extend(["--select-catalogers", "+package")]
+        cmd.extend(["-c", "package"])
 
     # Always use HEAD git commits for reproducibility.
     if request.source.type == SourceType.GIT_REPOSITORY:

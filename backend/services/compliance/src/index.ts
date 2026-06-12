@@ -21,6 +21,7 @@ import { InMemoryBlobStore } from './evidence/blob-store.memory.js';
 import { EvidenceAttacher } from './evidence/evidence-attacher.js';
 import { buildEvidenceRepository } from './repositories/evidence.repository.js';
 import { buildScanListener } from './evidence/scan-listener.js';
+import { metricsRegistry } from './observability/audit.js';
 
 const config = ServiceConfigSchema.parse(loadConfig());
 
@@ -84,6 +85,11 @@ overdueTimer.unref();
 // Boot
 // ---------------------------------------------------------------------------
 
-app.get('/metrics', async () => '# Prometheus metrics endpoint');
+app.get('/metrics', async (_req, reply) => {
+  // Flush the local audit registry. Sprint 3 will swap this to the shared
+  // @aicc/observability package's metricsRegistry when it lands.
+  reply.type('text/plain; version=0.0.4; charset=utf-8');
+  return metricsRegistry.metrics();
+});
 
 app.listen({ port: config.PORT, host: '0.0.0.0' });

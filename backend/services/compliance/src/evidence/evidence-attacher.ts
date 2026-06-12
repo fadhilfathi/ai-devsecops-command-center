@@ -22,6 +22,7 @@ import { EventTypes, type Severity } from '@aicc/shared/events';
 import type { EvidenceRepository, EvidenceRecord } from '../repositories/evidence.repository.js';
 import type { MappingEngine } from '../control-mapper/index.js';
 import type { PoamService } from '../poam/poam.service.js';
+import { withAudit } from '../observability/audit.js';
 
 /** Minimal blob store interface. The Sprint 2 impl is in-memory; Sprint 3
  *  is the cloud provider. */
@@ -180,7 +181,10 @@ export class EvidenceAttacher {
       data,
       severity: severityFromVuln(data.highestSeverity),
     };
-    await this.bus.publish(envelope);
+    await withAudit(
+      { tenantId: data.tenantId, auditKind: 'control.violated', subjectId: data.controlId, detail: { framework: data.framework, highestSeverity: data.highestSeverity, violatingVulnCount: data.violatingVulnIds.length, scanId: data.scanId } },
+      () => this.bus.publish(envelope),
+    );
   }
 
   private async emitEvidenceAttached(record: EvidenceRecord, input: AttachScanInput): Promise<void> {
@@ -204,7 +208,10 @@ export class EvidenceAttacher {
       },
       severity: 'info',
     };
-    await this.bus.publish(envelope);
+    await withAudit(
+      { tenantId: record.tenantId, auditKind: 'evidence.attached', subjectId: record.id, detail: { controlId: record.controlId, kind: record.kind, assetId: input.assetId, scanId: input.scanId, tool: input.tool } },
+      () => this.bus.publish(envelope),
+    );
   }
 }
 

@@ -63,6 +63,42 @@ class Settings(BaseSettings):
     ingest_schedule_cron: str = Field(default="0 3 * * *")  # daily at 03:00 UTC
     ingest_enabled: bool = Field(default=True)
 
+    # ---------------------------------------------------------------- polling cadence (S2.7)
+    # Per-source polling interval in minutes. The lag-SLO SREEngineer
+    # set is "feed age < 4x cadence" so these defaults leave plenty of
+    # headroom.
+    ingest_schedule_nvd_minutes: int = Field(default=60, ge=1, le=1440)
+    ingest_schedule_ghsa_minutes: int = Field(default=15, ge=1, le=1440)
+    ingest_schedule_osv_minutes: int = Field(default=30, ge=1, le=1440)
+    ingest_schedule_epss_minutes: int = Field(default=360, ge=1, le=1440)
+    ingest_schedule_kev_minutes: int = Field(default=360, ge=1, le=1440)
+
+    # ---------------------------------------------------------------- validation (S2.8)
+    validation_max_json_depth: int = Field(default=20, ge=1, le=128)
+    validation_reject_unknown_sources: bool = Field(default=True)
+    # Set False in dev to skip signature verification (none of the
+    # upstream feeds are signed today, so this is False everywhere).
+    feed_signature_required: bool = Field(default=False)
+
+    # ---------------------------------------------------------------- audit log (S2.8)
+    audit_log_filename: str = Field(default="vuln-intel-audit.jsonl")
+    audit_log_max_bytes: int = Field(default=64 * 1024 * 1024, ge=0)
+
+    # ---------------------------------------------------------------- consensus (S2.8)
+    consensus_min_sources_high_critical: int = Field(default=2, ge=2, le=3)
+    consensus_apply_to_severity: bool = Field(default=True)
+
+    # ---------------------------------------------------------------- LLM (S2.8)
+    llm_enabled: bool = Field(default=False)
+    llm_model: str = Field(default="gpt-4o-mini")
+    llm_base_url: str = Field(default="https://api.openai.com/v1")
+    llm_api_key: str | None = Field(default=None)
+    llm_timeout_seconds: float = Field(default=15.0, ge=1.0, le=60.0)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    llm_tenant_budget_tokens: int = Field(default=100_000, ge=0)
+    llm_global_budget_tokens: int = Field(default=5_000_000, ge=0)
+    llm_cost_per_1k_micros: int = Field(default=200, ge=0)
+
     # ---------------------------------------------------------------- observability
     log_level: str = Field(default="INFO", pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     otel_endpoint: str = Field(default="http://localhost:4317")
@@ -73,6 +109,10 @@ class Settings(BaseSettings):
     auth_jwt_algorithm: str = Field(default="HS256")
     auth_jwt_audience: str = Field(default="ai-devsecops")
     auth_required: bool = Field(default=False)  # set true in prod
+
+    @property
+    def audit_log_path(self) -> Path:
+        return self.data_dir / self.audit_log_filename
 
     @property
     def store_path(self) -> Path:
