@@ -51,10 +51,15 @@ rollback when it misbehaves.
                                           ▼
                 ┌──────────────────────────────────────────────────────┐
                 │  github-bridge service (planned for S2.x)            │
-                │  Consumes Redis Stream, calls GitHub                  │
-                │  repository_dispatch API:                             │
-                │      event_type: vulnerability-detected               │
-                │      (and critical-cve-detected for Critical CVEs)    │
+                │  Consumes Redis Stream subject                       │
+                │      `security.vulnerability.detected.v1`            │
+                │  and projects the rich per-CVE `VulnerabilitySchema` │
+                │  to the GitOps wire format (per-finding, see         │
+                │  `security/wire-format/vulnerability-gitops-record   │
+                │  .schema.json`). Then calls the GitHub               │
+                │  repository_dispatch API:                            │
+                │      event_type: vulnerability-detected              │
+                │      (and critical-cve-detected for Critical CVEs)   │
                 └─────────────────────────┬────────────────────────────┘
                                           │
                                           ▼
