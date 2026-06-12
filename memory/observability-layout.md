@@ -41,18 +41,36 @@ prod file. There are **no** dev-only root-level files in
 
 ### Open items (Sprint 2 follow-ups)
 
-- ✅ **Loki config** — resolved 2026-06-12. SREEngineer published
-  `infra/observability/loki-config.yaml`. GitOpsManager uncommented
-  the mount in `docker-compose.yml` (commit pending).
-- **Runbook URL templating**: `alert-rules.yml` references
-  `https://runbooks.example.com/observability/...` — this needs to be
-  templated to use `RUNBOOK_BASE_URL` from env. **Action**: SRE to
-  templatize.
-- **OTel collector exporters**: use `${env:LOKI_URL}`, `${env:TEMPO_URL}`,
-  `${env:PROM_REMOTE_WRITE_URL}` — these are now in `.env.example`.
+All Sprint 1 follow-up items resolved as of 2026-06-12:
+
+- ✅ **Loki config** — `infra/observability/loki-config.yaml` published.
+- ✅ **Runbook URL templating** — alert rules and SLO burn template use
+  `{{ $labels.runbook_base_url }}` / `{{ $labels.dashboard_base_url }}`
+  with the labels driven by `external_labels` and the env vars
+  `RUNBOOK_BASE_URL` / `DASHBOARD_BASE_URL`.
+- ✅ **Stale path in `memory/monitoring-architecture.md`** — fixed by
+  SREEngineer; now points to the subfolder.
+- ✅ **Dev/prod split** — resolved as "same files, different env vars".
+  No separate dev root files. Documented in `infra/observability/README.md`.
 
 ### Reference implementations
 
 - `backend/common/observability/` — TypeScript reference implementations
   (otel.ts, logger.ts, health.ts) for FullstackEngineer to migrate the
   services to.
+
+## Closed items (historical)
+
+All Sprint 1 follow-ups resolved as of 2026-06-12:
+
+- ✅ **Loki config** — SREEngineer published
+  `infra/observability/loki-config.yaml`.
+- ✅ **Runbook URL templating** — SREEngineer templatized in
+  `alert-rules.yml` and `slo-burn.yml.j2` with
+  `{{ $labels.runbook_base_url }}` / `{{ $labels.dashboard_base_url }}`
+  driven by `external_labels` + `RUNBOOK_BASE_URL` / `DASHBOARD_BASE_URL`.
+- ✅ **Stale path in `memory/monitoring-architecture.md`** — SRE fixed
+  line 47; now points to `infra/observability/alertmanager/alertmanager.yml`.
+- ✅ **Dev/prod split** — resolved as "same files, different env vars".
+  No separate dev root files. Documented in
+  `infra/observability/README.md`.
