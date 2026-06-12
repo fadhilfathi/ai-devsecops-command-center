@@ -38,15 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     hardening baseline.
   - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
   - `docs/architecture/`: `README.md`, `system-architecture.md`,
-    `agent-topology.md`, `event-bus.md`, `security-model.md`.
+    `agent-topology.md`, `event-bus.md`, `security-model.md`
+    (all Sprint 1 drafts; canonical versions coming from
+    PlatformArchitect / SecurityArchitect).
   - `docs/agents/README.md`, `docs/compliance/README.md`,
     `docs/security/README.md`, `docs/runbooks/README.md`,
     `docs/operations/README.md`.
-  - Nine `docs/adr/` records: 0001 (record ADRs), 0002 (monorepo +
-    pnpm), 0003 (six services), 0004 (Fastify), 0005 (Redis Streams
-    bus — proposed), 0006 (JWT auth — proposed), 0007 (event
-    versioning — proposed), 0008 (compliance evidence stream —
-    proposed), 0009 (Docker Compose dev — proposed).
+  - `docs/adr/`: 0001–0004 by PlatformArchitect (event-bus transport,
+    agent comm, event schemas, six-services-one-DB) and 0005–0007 by
+    GitOpsManager (record ADRs, monorepo with pnpm, Docker Compose dev).
 - **Service scaffolds** (placeholders for Sprint 1 implementation)
   - README for each of the six backend services: `auth`, `agent`,
     `security`, `incident`, `compliance`, `integration`.
@@ -54,13 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - README for `frontend/` describing the eight screens and
     frontend architecture.
   - READMEs for `agents/core/`, `agents/roles/`, `agents/skills/`.
-- **Observability config**
-  - `infra/observability/prometheus.yml` scraping all services.
-  - `infra/observability/otel-collector.yaml` with OTLP receivers
-    and exporters to Tempo, Prometheus, and a debug logger.
-  - `infra/observability/loki-config.yaml` for log aggregation.
-  - Grafana provisioning: datasources (Prometheus, Loki),
-    dashboards folder, starter dashboard.
+- **Observability config** (root scaffolding; SREEngineer published the
+  authoritative `infra/observability/{prometheus,otel-collector,alertmanager,grafana,logs}/`
+  tree — see `/docs/observability/`)
+  - `infra/observability/README.md` as the entry point.
+  - Initial Prometheus, OTel, Loki, Grafana config drafts (SREEngineer
+    published the canonical versions).
 
 ### Changed
 

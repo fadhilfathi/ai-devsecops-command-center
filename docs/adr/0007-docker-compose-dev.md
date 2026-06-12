@@ -4,7 +4,7 @@ date: 2026-06-12
 deciders: GitOpsManager, SREEngineer
 ---
 
-# 0009 — Local development via Docker Compose
+# 0007 — Local development via Docker Compose
 
 ## Context
 

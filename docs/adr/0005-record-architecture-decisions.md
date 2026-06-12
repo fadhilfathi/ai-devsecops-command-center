@@ -1,10 +1,10 @@
 ---
 status: accepted
 date: 2026-06-12
-deciders: PlatformArchitect, SecurityArchitect, GitOpsManager
+deciders: GitOpsManager
 ---
 
-# 0001 — Record architecture decisions
+# 0005 — Record architecture decisions
 
 ## Context
 

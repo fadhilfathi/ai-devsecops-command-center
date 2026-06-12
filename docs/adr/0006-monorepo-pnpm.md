@@ -1,10 +1,10 @@
 ---
 status: accepted
 date: 2026-06-12
-deciders: PlatformArchitect, GitOpsManager
+deciders: GitOpsManager
 ---
 
-# 0002 — Monorepo with pnpm workspaces
+# 0006 — Monorepo with pnpm workspaces
 
 ## Context
 
