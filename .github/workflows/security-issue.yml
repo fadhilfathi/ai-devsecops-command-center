@@ -1,0 +1,210 @@
+name: security-issue
+
+# Owner: GitOpsManager
+# Runbook: docs/runbooks/security-automation.md
+#
+# Opens a deduplicated GitHub issue for every Critical CVE detected by
+# .github/workflows/security.yml (job vuln-report, when severity == "critical"
+# and auto_actionable == true).
+#
+# Dedup strategy: search for an open issue with the same CVE/GHSA id
+# in the title; if one exists, skip.
+
+on:
+  repository_dispatch:
+    types: [critical-cve-detected]
+  workflow_dispatch:
+    inputs:
+      cve_id:
+        description: "CVE/GHSA id to test"
+        required: false
+        default: "GHSA-test-test-test"
+
+concurrency:
+  group: security-issue-${{ github.event.client_payload.id }}
+  cancel-in-progress: false  # NEVER cancel a real issue open
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read       # used to dedup against PRs as well (rare)
+
+jobs:
+  open-issue:
+    name: "Open or update Critical CVE issue"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      issue_number: ${{ steps.open.outputs.number }}
+      issue_url: ${{ steps.open.outputs.url }}
+      skipped_reason: ${{ steps.dedup.outputs.reason }}
+    steps:
+      - name: Validate payload
+        id: parse
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          set -euo pipefail
+          echo "📥 Payload:"
+          echo "${PAYLOAD}"
+          ID=$(echo "${PAYLOAD}" | jq -r '.id            // empty')
+          if [ -z "${ID}" ]; then
+            echo "::error::Empty or missing 'id' in client_payload"
+            exit 1
+          fi
+          PKG=$(echo "${PAYLOAD}" | jq -r '.package        // "unknown"')
+          SEV=$(echo "${PAYLOAD}" | jq -r '.severity       // "critical"')
+          SUM=$(echo "${PAYLOAD}" | jq -r '.summary        // "No summary provided"')
+          FIXED=$(echo "${PAYLOAD}" | jq -r '.fixed_in       // [] | join(", ")')
+          CVSS=$(echo "${PAYLOAD}" | jq -r '.cvss_v3        // "n/a"')
+          RANGE=$(echo "${PAYLOAD}" | jq -r '.vulnerable_range // "n/a"')
+          REFS=$(echo "${PAYLOAD}" | jq -r '.references     // [] | .[] | "- " + .' 2>/dev/null || echo "- (no references)")
+          echo "id=${ID}"       >> "$GITHUB_OUTPUT"
+          echo "package=${PKG}" >> "$GITHUB_OUTPUT"
+          echo "severity=${SEV}" >> "$GITHUB_OUTPUT"
+          echo "summary=${SUM}" >> "$GITHUB_OUTPUT"
+          echo "fixed_in=${FIXED}" >> "$GITHUB_OUTPUT"
+          echo "cvss_v3=${CVSS}" >> "$GITHUB_OUTPUT"
+          echo "vulnerable_range=${RANGE}" >> "$GITHUB_OUTPUT"
+          echo "references<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${REFS}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Dedup check
+        id: dedup
+        env:
+          CVE_ID: ${{ steps.parse.outputs.id }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const cveId = process.env.CVE_ID;
+            // Search open issues for the same CVE id
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'security,severity:critical',
+              per_page: 100
+            });
+            const hit = issues.find(i => i.title.includes(cveId));
+            if (hit) {
+              core.info(`✅ Found existing issue #${hit.number} for ${cveId} — skipping.`);
+              core.setOutput('reason', `existing-issue-${hit.number}`);
+              core.setOutput('skipped', 'true');
+              return;
+            }
+            // Also check closed issues within the last 30 days
+            const since = new Date(Date.now() - 30*24*3600*1000).toISOString();
+            const closed = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'closed', labels: 'security,severity:critical',
+              since, per_page: 100
+            });
+            const recent = closed.find(i => i.title.includes(cveId));
+            if (recent) {
+              core.info(`⏸️  Found recently-closed issue #${recent.number} for ${cveId} (within 30d) — skipping.`);
+              core.setOutput('reason', `recently-closed-issue-${recent.number}`);
+              core.setOutput('skipped', 'true');
+              return;
+            }
+            core.setOutput('reason', 'no-dup');
+            core.setOutput('skipped', 'false');
+
+      - name: Open issue
+        id: open
+        if: steps.dedup.outputs.skipped == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const id           = '${{ steps.parse.outputs.id }}';
+            const pkg          = '${{ steps.parse.outputs.package }}';
+            const sev          = '${{ steps.parse.outputs.severity }}';
+            const summary      = '${{ steps.parse.outputs.summary }}';
+            const fixedIn      = '${{ steps.parse.outputs.fixed_in }}';
+            const cvss         = '${{ steps.parse.outputs.cvss_v3 }}';
+            const range        = '${{ steps.parse.outputs.vulnerable_range }}';
+            const references   = `${{ steps.parse.outputs.references }}`;
+            const detectedAt   = new Date().toISOString();
+            const sla          = '24h ack, 48h triage, 7d patch (see SECURITY.md)';
+            const title        = `🚨 [CRITICAL] ${id} — ${pkg}`;
+            const body         = [
+              '## Critical CVE detected',
+              '',
+              `**id:** \`${id}\``,
+              `**severity:** \`${sev}\``,
+              `**cvss_v3:** \`${cvss}\``,
+              `**package:** \`${pkg}\``,
+              `**vulnerable range:** \`${range}\``,
+              `**fixed in:** \`${fixedIn || 'no fix yet'}\``,
+              `**detected_at:** \`${detectedAt}\``,
+              `**git_sha:** \`${context.sha.slice(0,7)}\``,
+              `**SLA target:** ${sla}`,
+              '',
+              '## Summary',
+              '',
+              summary,
+              '',
+              '## References',
+              '',
+              references,
+              '',
+              '## Action checklist',
+              '',
+              '- [ ] Acknowledge within 24h (assignee: TBD)',
+              '- [ ] Confirm affected version(s) in the deployed platform',
+              '- [ ] Open a fix PR or backport PR',
+              '- [ ] Coordinate disclosure date with reporter',
+              '- [ ] Publish advisory (GHSA) on patch day',
+              '',
+              '## Provenance',
+              '',
+              '- Opened by: `.github/workflows/security-issue.yml`',
+              '- Triggered by: `.github/workflows/security.yml` job `vuln-report` (Critical fork)',
+              '- Source: `security/vulns/<date>.json` (NDJSON, auto-appended)',
+              '- See [`docs/runbooks/security-automation.md`](docs/runbooks/security-automation.md)',
+              '',
+              '---',
+              '🤖 This issue was opened by the GitOpsManager automation. A human owner must take action per the SLA.',
+              ''
+            ].join('\n');
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title, body,
+              labels: ['security', 'severity:critical', 'automated', 'security/automated']
+            });
+            core.info(`🚨 Opened issue #${issue.number}: ${issue.html_url}`);
+            core.setOutput('number', String(issue.number));
+            core.setOutput('url', issue.html_url);
+
+      - name: Comment on related open PRs
+        if: steps.dedup.outputs.skipped == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const id = '${{ steps.parse.outputs.id }}';
+            const issueUrl = '${{ steps.open.outputs.url }}';
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', per_page: 50
+            });
+            for (const pr of prs) {
+              // Heuristic: comment on PRs that touch the same package
+              const text = (pr.title + ' ' + (pr.body || '')).toLowerCase();
+              const pkg = '${{ steps.parse.outputs.package }}'.toLowerCase();
+              if (pkg !== 'unknown' && text.includes(pkg)) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: `🔔 Related Critical CVE opened: ${issueUrl}\n\nThis PR may be affected by \`${id}\`. Please review.`
+                });
+              }
+            }
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.dedup.outputs.skipped }}" = "true" ]; then
+            echo "⏭️  Skipped (dedup): ${{ steps.dedup.outputs.reason }}"
+          else
+            echo "🚨 Opened: ${{ steps.open.outputs.url }}"
+          fi
