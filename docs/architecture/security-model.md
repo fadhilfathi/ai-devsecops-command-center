@@ -242,3 +242,42 @@ of `validation_failed`, `unauthorized`, `forbidden`, `not_found`,
 `conflict`, `rate_limited`, `internal_error`). The
 `backend/services/security/src/services/proxy.ts` file maps upstream
 service errors to this envelope.
+
+**Example — start a SBOM generation:**
+
+```bash
+curl -X POST https://api.example/security/sbom/generate \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-Tenant-Id: tnt_01HXYZ" \
+  -H "Idempotency-Key: 7e2a0e6a-1c8d-4f5e-8c79-3b9e6e1c8b2a" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": { "type": "git", "url": "https://github.com/fadhilfathi/ai-devsecops-command-center", "ref": "main" },
+    "scope":  "monorepo",
+    "formats": ["cyclonedx-json", "cyclonedx-xml", "spdx-json"]
+  }'
+# → 202 Accepted
+# { "jobId": "job_01HXYZ", "status": "queued", "estimatedDurationSeconds": 120 }
+```
+
+## Future refactors (proposed; not blocking)
+
+- **SRE-proposed split** of `.github/workflows/sbom.yml` ownership:
+  SBOMPipelineAgent owns the workflow file content; GitOpsManager
+  owns the runner/secret wiring in a shared `security-ci.yml`
+  label-gated to a `security-ci` runner pool. Deferred to Sprint 3
+  pending runner-pool rollout.
+- **Egress proxy for AI providers** — currently the security service
+  hits the upstream LLM providers directly. A dedicated egress proxy
+  with per-tenant token budgets and request/response redaction would
+  tighten the AI safety story; see ADR 0008 follow-up notes.
+- **WebAuthn / passkey** for the Operator role — MFA via TOTP is the
+  current default; passkeys are a 2026.H2 target.
+
+## See also
+
+- [`./authentication-and-security-design.md`](./authentication-and-security-design.md) — canonical auth, RBAC, sessions
+- [`/docs/security/`](../security/) — operational security
+- [`/docs/compliance/`](../compliance/) — control mapping
+- [`SECURITY.md`](../../SECURITY.md) — disclosure policy
+- [`/docs/adr/`](../adr/) — architecture decision records
