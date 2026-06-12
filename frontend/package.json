@@ -18,7 +18,7 @@
     "zustand": "^4.5.4",
     "axios": "^1.7.4",
     "recharts": "^2.12.7",
-    "lucide-react": "^0.439.0",
+    "lucide-react": "^0.577.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
     "react-window": "^1.8.10",
