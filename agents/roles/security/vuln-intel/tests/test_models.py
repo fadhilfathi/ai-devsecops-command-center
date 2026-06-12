@@ -144,8 +144,15 @@ def test_cve_record_consensus_sources_default_empty() -> None:
     """S2.8: every CveRecord has a ``consensus_sources`` list (O-3.7
     wire-format requirement) defaulting to empty. The list is
     populated by the consensus pass after every ingest run."""
-    from vuln_intel.models.cve import CveRecord
-    rec = CveRecord()
+    from vuln_intel.models.cve import CveRecord, SeverityAggregate, SeverityQualitative, ScoreSource
+    rec = CveRecord(
+        id="CVE-2024-9999",
+        severity=SeverityAggregate(
+            qualitative=SeverityQualitative.HIGH,
+            max_score=7.5,
+            primary_source=ScoreSource.NVD,
+        ),
+    )
     assert hasattr(rec, "consensus_sources")
     assert rec.consensus_sources == []
 
@@ -155,7 +162,14 @@ def test_cve_record_pre_actionable_default_none() -> None:
     hint, computed by the service layer after consensus + fix checks.
     Defaults to None; security-service :4003 owns the wire
     ``auto_actionable`` field."""
-    from vuln_intel.models.cve import CveRecord
-    rec = CveRecord()
+    from vuln_intel.models.cve import CveRecord, SeverityAggregate, SeverityQualitative, ScoreSource
+    rec = CveRecord(
+        id="CVE-2024-9999",
+        severity=SeverityAggregate(
+            qualitative=SeverityQualitative.HIGH,
+            max_score=7.5,
+            primary_source=ScoreSource.NVD,
+        ),
+    )
     assert hasattr(rec, "vuln_intel_pre_actionable")
     assert rec.vuln_intel_pre_actionable is None

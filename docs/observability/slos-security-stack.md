@@ -199,12 +199,20 @@ with the same PromQL and a different `service` label.
 > PlatformArchitect sign-off; will be **re-confirmed at end of S2.11
 > E2E validation** with the actual NVD/GHSA/OSV polling cadence and
 > the first 30d of lag telemetry. **Polling cadence confirmed by
-> VulnerabilityIntelligenceAgent on 2026-06-12 (round 6):** NVD=60min,
-> GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h. The targets below
-> are now anchored to a real cadence — GHSA has 60× headroom over
+> VulnerabilityIntelligenceAgent on 2026-06-12 (round 6, env vars
+> shipped round 8):** NVD=60min, GHSA=15min (webhook), OSV=30min,
+> EPSS=6h, KEV=6h. **Env var contract** (now part of the SLO doc so
+> the cadence and the SLO burn math stay in lockstep):
+> `VULN_INTEL_INGEST_SCHEDULE_NVD_MINUTES=60`,
+> `VULN_INTEL_INGEST_SCHEDULE_GHSA_MINUTES=15`,
+> `VULN_INTEL_INGEST_SCHEDULE_OSV_MINUTES=30`,
+> `VULN_INTEL_INGEST_SCHEDULE_EPSS_MINUTES=360`,
+> `VULN_INTEL_INGEST_SCHEDULE_KEV_MINUTES=360`. The targets below
+> are now anchored to a real cadence — GHSA has 1× headroom over
 > polling (15min SLO vs 15min cadence), NVD has 2× headroom (2h SLO
 > vs 60min cadence), and OSV has 2× headroom (1h SLO vs 30min cadence).
-> If polling cadence changes in production, the SLOs move together.
+> If any of these env var values change in production, the SLOs move
+> with them and a re-anchor note is appended to §5.6.
 
 **Per-source 95% lag SLOs (headroom-anchored):**
 

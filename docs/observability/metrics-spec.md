@@ -2,8 +2,8 @@
 
 > **Project:** AI-DevSecOps Command Center
 > **Document Owner:** Platform Architect (spec); SRE Engineer (ingestion, alerts)
-> **Version:** 1.0.4 (Sprint 2, S2.7 + S2.8 hand-in) — **LOCKED 2026-06-12**
-> **Last Updated:** 2026-06-12 (round 6: D7 5-bucket scheme applied to §3.3 + alert rules; §3.8 `tenant_id_hash` dropped (FullstackEngineer LANDED, resolves ~109k → ~560 cardinality over-cap); §3.10.7 deleted (merged into §3.8.4 rename); §3.11 vuln_feed gauge added; D6 still pending PlatformArchitect verdict)
+> **Version:** 1.0.5 (Sprint 2, S2.7 + S2.8 hand-in) — **LOCKED 2026-06-12**
+> **Last Updated:** 2026-06-12 (round 8: **spec-vs-runtime drift correction** — §3.8.1/3.8.2/3.8.4/3.8.5/3.8.6 spec body now matches FullstackEngineer's LANDED 2026-06-12 runtime refactor that dropped `tenant_id_hash` from all 5 tenant-bearing metrics, renamed §3.8.4 to `devsecops_rate_limit_rejections_total` with `route,bucket` labels, and recomputed per-service total to ~3,717 series. Per `memory/s2-spec-vs-review-drift.md`: **spec wins, runtime is correct**.)
 > **Status:** **Locked** (PlatformArchitect sign-off 2026-06-12, rounds 1+2+3+5 closed end-to-end)
 > **Companion:** `docs/observability/slos-security-stack.md` (SRE-owned, v1.2 Locked)
 > **Cross-linked from:** `docs/architecture/event-bus.md` §14 (PlatformArchitect)
@@ -189,28 +189,34 @@ ingestion latencies over the scrape window.
 |---|---|
 | **Type** | Histogram |
 | **Purpose** | Latency of the security-service → Python service proxy hop |
-| **Labels** | `route`, `target_service`, `result`, `tenant_id_hash` |
+| **Labels** | `route`, `target_service`, `result` |
 | **Allowed `route`** | `/sbom/generate`, `/sbom/analyze`, `/vulnerabilities/ingest`, `/risk/calculate`, `/security/dashboard` |
 | **Allowed `target_service`** | `sbom-pipeline`, `vuln-intel`, `dependency-intel` |
 | **Allowed `result`** | `success`, `failure`, `timeout`, `cancelled` |
 | **Histogram buckets (seconds)** | `0.01, 0.05, 0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600` (12 buckets) |
-| **Cardinality (per replica)** | 5 routes × 3 targets × 4 results × N_tenants × 12 buckets = 720 × N_tenants |
-| **Cardinality (4 replicas × N=50)** | **72,000 series** (74% of per-service total) |
+| **Cardinality (per replica)** | 5 routes × 3 targets × 4 results × 12 buckets = 720 series |
+| **Cardinality (4 replicas)** | **2,880 series** (still the largest single metric in §3.8) |
 
-**Why `tenant_id_hash`:** the per-tenant 99p SLO is the most useful
-slice for the S2.11 E2E validation (different tenants have wildly
-different SBOM sizes; per-tenant 99p surfaces tenant-specific issues
-that fleet-wide 99p masks). Hash, not raw, to keep cardinality bounded
-and PII-safe. Salt configured from `METRICS_TENANT_SALT` env var.
+**Note on `tenant_id_hash` (round 6 — DROPPED):** the earlier
+design carried `tenant_id_hash` to support a per-tenant 99p SLO slice,
+but that label multiplied cardinality by N_tenants and put §3.8
+~2× over the 50,000 per-service soft cap. Per ADR 0009 (drafted
+Sprint 3) and the runtime refactor LANDED 2026-06-12
+(`backend/common/observability/metrics.ts` helper), the per-tenant
+slice now lives in the dashboard layer (drill-down by tenant after
+the fleet-wide 99p surfaces an outlier), not as a metric label. The
+`tenant_id_hash` label is **forbidden** on all §3.8 metrics per
+metrics-spec §5.1.
 
 #### 3.8.2 `devsecops_proxy_request_total`
 | Attribute | Value |
 |---|---|
 | **Type** | Counter |
 | **Purpose** | All proxy calls (success + 4xx + 5xx) |
-| **Labels** | `route`, `target_service`, `status_code`, `tenant_id_hash` |
+| **Labels** | `route`, `target_service`, `status_code` |
 | **Allowed `status_code`** | `200`, `400`, `401`, `403`, `404`, `429`, `500`, `502`, `503`, `504` (10 values) |
-| **Cardinality (per replica, N=50)** | 5 × 3 × 10 × 50 = 7,500 series |
+| **Cardinality (per replica)** | 5 × 3 × 10 = 150 series |
+| **Cardinality (4 replicas)** | **600 series** |
 
 #### 3.8.3 `devsecops_eventbus_publish_total`
 | Attribute | Value |
@@ -222,46 +228,43 @@ and PII-safe. Salt configured from `METRICS_TENANT_SALT` env var.
 | **Allowed `result`** | `success`, `dropped`, `error` |
 | **Cardinality** | 3 × 3 = **9 series** (trivial) |
 
-#### 3.8.4 `devsecops_rate_limit_triggered_total`
+#### 3.8.4 `devsecops_rate_limit_rejections_total`
 | Attribute | Value |
 |---|---|
 | **Type** | Counter |
-| **Purpose** | Per-route 429 trigger count (10 req/s limit) |
-| **Labels** | `route`, `tenant_id_hash` |
-| **Cardinality (per replica, N=50)** | 5 × 50 = 250 series |
+| **Purpose** | Per-route 429 trigger count (10 req/s limit). **Renamed in round 6** from the earlier `devsecops_rate_limit_triggered_total`; merged from deleted §3.10.7. |
+| **Labels** | `route`, `bucket` (D7 5-bucket `sbom_size_bucket`: `xs` / `small` / `medium` / `large` / `xlarge`) |
+| **Cardinality (per replica)** | 5 routes × 5 buckets = 25 series |
+| **Cardinality (4 replicas)** | **100 series** |
 
 #### 3.8.5 `devsecops_auth_failure_total`
 | Attribute | Value |
 |---|---|
 | **Type** | Counter |
 | **Purpose** | Per-route auth failure breakdown |
-| **Labels** | `route`, `reason`, `tenant_id_hash` |
+| **Labels** | `route`, `reason` |
 | **Allowed `reason`** | `missing_token`, `invalid_signature`, `expired`, `tenant_mismatch` |
-| **Cardinality (per replica, N=50)** | 5 × 4 × 50 = 1,000 series |
+| **Cardinality (per replica)** | 5 × 4 = 20 series |
+| **Cardinality (4 replicas)** | **80 series** |
 
 #### 3.8.6 `devsecops_dashboard_query_duration_seconds`
 | Attribute | Value |
 |---|---|
 | **Type** | Histogram |
 | **Purpose** | GET /security/dashboard aggregation latency |
-| **Labels** | `endpoint`, `tenant_id_hash` |
+| **Labels** | `endpoint` |
 | **Histogram buckets (seconds)** | `0.01, 0.05, 0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600` (12 buckets) |
-| **Cardinality (per replica, N=50)** | 1 × 50 × 12 = 600 series |
+| **Cardinality (per replica)** | 1 × 12 = 12 series |
+| **Cardinality (4 replicas)** | **48 series** |
 
-> ⚠️ **Cardinality impact of §3.8:** at Sprint 2 expected N=50 tenants
-> with 4 replicas, security-service :4003 emits **~97,400 active
-> series**, which is **~2× the 50,000 per-service soft cap**. The
-> dominant contributor is `devsecops_proxy_request_duration_seconds` at
-> 72,000 (74%). This is the same pattern as D2 (`repo_shape` on
-> sbom_gen): high-cardinality label on a histogram multiplies by
-> N_tenants × N_buckets.
->
-> **Mitigation queued for Sprint 3 (mirrors the §3.1 fix path):**
-> recording-rule pre-aggregation on `(route, target_service, result)`
-> for the alert path; raw series with `tenant_id_hash` kept for
-> dashboards. Expected drop: 97k → ~25k per-service. Tracked in the
-> SLO doc §8 sign-off checklist as a Sprint 3 task. **No code change
-> required from FullstackEngineer in Sprint 2.**
+> ✅ **Cardinality impact of §3.8 (round 6, RESOLVED):** with
+> `tenant_id_hash` dropped from all 5 tenant-bearing metrics (§3.8.1,
+> §3.8.2, §3.8.4, §3.8.5, §3.8.6) and §3.8.4 merged from §3.10.7,
+> security-service :4003 emits **~3,717 active series** (4 replicas),
+> which is **~7% of the 50,000 per-service soft cap** (down from
+> ~109,400 = 219% in the earlier design). **No Sprint 3 recording-rule
+> pre-aggregation needed for §3.8.** ADR 0009 (drafted Sprint 3) will
+> codify the rule that prohibited the original design.
 
 ### 3.10 S2.8 security-control metrics (T-02, T-03, T-04, T-05, T-09 mitigations)
 
@@ -525,6 +528,8 @@ ComplianceOfficer (compliance-service emission). Tracked in the SLO doc
 | 2026-06-12 | 1.0.0 | PlatformArchitect | Initial draft; S2.7 hand-in |
 | 2026-06-12 | 1.0.0-rc1 | SREEngineer | Ingested into `docs/observability/metrics-spec.md`; B2 follow-up added; §10 ADR list confirmed (0001–0004 are the only ADRs at this writing; 0005+ are taken by GitOpsManager's Sprint 1 work per PlatformArchitect) |
 | 2026-06-12 | 1.0.0 | SREEngineer | **Locked** — D1–D5 verdicts + Q3 sign-off applied: §3.1 +`repo_shape` (D2), §3.7 new `devsecops_vulnerability_ingestion_lag_seconds` (B2), §5.1.1 Node.js service-label helper footnote (Q3), §7 cardinality math updated (per-service total ~78,000, over soft cap — re-evaluate Sprint 3), §9 follow-up list updated with D1–D5 + Q3 resolutions |
+| 2026-06-12 | 1.0.4 | SREEngineer | **Locked (round 6 sign-off):** D7 5-bucket scheme (xs/small/medium/large/xlarge, xxlarge dropped) applied to §3.3 + alert rules; §3.8 `tenant_id_hash` drop + §3.8.4 rename + §3.10.7 deletion recorded in changelog (spec body updated in 1.0.5); §3.11 `vuln_feed_last_refresh_timestamp_seconds` gauge added |
+| 2026-06-12 | 1.0.5 | SREEngineer | **Locked (round 8 spec-vs-runtime drift correction):** §3.8.1/3.8.2/3.8.4/3.8.5/3.8.6 spec body rewritten to match FullstackEngineer's LANDED 2026-06-12 `backend/common/observability/metrics.ts` helper refactor — `tenant_id_hash` removed from labels on all 5 tenant-bearing metrics, §3.8.4 renamed `devsecops_rate_limit_triggered_total` → `devsecops_rate_limit_rejections_total` with `route,bucket` labels (D7 5-bucket), §3.8 cardinality note recomputed (~109,400 → ~3,717 active series, **no Sprint 3 recording-rule pre-aggregation needed for §3.8**). Per memory `s2-spec-vs-review-drift.md`: runtime is correct, spec is now aligned. ADR 0009 (Sprint 3) will codify the rule. |
 | 2026-06-12 | 1.0.1 | SREEngineer | **Refinement** — §3.1 callout block updated with the Sprint 3 mitigation note (recording-rule pre-aggregation on `(target_type, result)` per PlatformArchitect 2026-06-12 ACK). SLO doc §8 sign-off checklist has a new row for the Sprint 3 task. |
 | 2026-06-12 | 1.0.2 | SREEngineer | **Round 4** — §3.8 added with 6 security-service :4003 proxy metrics (FullstackEngineer S2.7 follow-up). §7 cardinality math updated: security-service :4003 per-service total ~109,400 at N=50 × 4 replicas; sbom-pipeline :4007 ~78,000. Both over the 50k soft cap; Sprint 3 mitigation = recording-rule pre-aggregation (same fix path as D2). §9 follow-up list updated. Compliance `audit_log_emission_total` metric noted as Sprint 2.5/2.11 deferred work. |
 | 2026-06-12 | 1.0.3 | SREEngineer | **Round 5 — S2.8 security-control metrics.** §3.10 added with 7 new metrics (T-02, T-03, T-04, T-05, T-08, T-09 mitigations): `devsecops_sbom_validation_errors_total`, `devsecops_cosign_verify_duration_seconds`, `devsecops_cve_feed_records_rejected_total`, `devsecops_risk_score_audit_chain_verified`, `devsecops_canary_test_failures_total`, `devsecops_llm_token_budget_remaining`, `devsecops_rate_limit_rejections_total` (§3.8.4 merge pending). D6 (`target_type` rename + `tenant_tier` addition) and D7 (new 5-bucket `sbom_size_bucket` scheme) routed to PlatformArchitect for sign-off. |

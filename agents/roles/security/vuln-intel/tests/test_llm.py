@@ -412,10 +412,15 @@ def test_lp_12_clamp_band_helper() -> None:
     # width = (5.0 / 10.0) * 0.3 = 0.15
     assert abs(lo - 0.25) < 1e-6
     assert abs(hi - 0.55) < 1e-6
-    # Out-of-range CVSS is clamped to [0, 10]
+    # Out-of-range CVSS is clamped to [0, 10] (so width ≤ 0.3)
     band = LlmExploitScorer._clamp_band(99.0, 0.50)
     assert band is not None
-    assert band[1] == 1.0  # capped
+    assert abs(band[0] - 0.20) < 1e-6  # 0.50 - 0.30
+    assert abs(band[1] - 0.80) < 1e-6  # 0.50 + 0.30
+    # EPSS=0.95 + width=0.30 would exceed 1.0 → cap at 1.0
+    band = LlmExploitScorer._clamp_band(10.0, 0.95)
+    assert band is not None
+    assert band[1] == 1.0
     # No EPSS → no band
     assert LlmExploitScorer._clamp_band(5.0, None) is None
     # No CVSS → no band

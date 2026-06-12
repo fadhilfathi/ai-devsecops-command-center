@@ -3,10 +3,13 @@
 ## Decisions
 - [decision-pnpm-turborepo.md](./decision-pnpm-turborepo.md) — Sprint 2 toolchain: pnpm + Turborepo (no npm migration)
 
-## Sprint 2 — Security Intelligence Core (IN PROGRESS)
+## Sprint 2 — Security Intelligence Core (CLOSED ✅ 2026-06-12)
 - [sprint-2-task-board.md](./sprint-2-task-board.md) — 11 tasks, agent assignments, tech stack, dependencies
-
-## Sprint 1 — COMPLETE ✅
+- [s2-closeout-summary.md](./s2-closeout-summary.md) — final closeout state: 6 in-flight commits (3e241f6, a81f2a9, 9c4e99e, 2e85a86, 41420fe, 988783b) all on origin/main
+- [sprint-2-closeout.md](./sprint-2-closeout.md) — SBOMPipelineAgent's view of the closeout
+- [s3-backlog-state.md](./s3-backlog-state.md) — Sprint 3 backlog (S3.1 P0 = v2 SBOM cutover, 7 other tickets)
+- [project-sprint2-vulnerability-intelligence.md](./project-sprint2-vulnerability-intelligence.md) — VulnerabilityIntelligenceAgent: S2.2 (vuln-intel :4008) + S2.3 (dep-intel :4009) + S2.8 hardening (validators, consensus, audit, LLM)
+- Repo: https://github.com/fadhilfathi/ai-devsecops-command-center
 - [sprint-1-status.md](./sprint-1-status.md) — Sprint 1 final status (232 files, 16,889 insertions, all 10 success criteria met)
 - [sprint-1-retrospective.md](./sprint-1-retrospective.md) — PlatformArchitect retrospective: contributions, conventions locked, Sprint 2 hot list
 - [sprint-1-task-board.md](./sprint-1-task-board.md) — sprint 1 task assignments
@@ -28,7 +31,7 @@
 - [monitoring-architecture.md](./monitoring-architecture.md) — SREEngineer: monitoring, logging, metrics architecture
 - [gitops-manager-sprint-1.md](./gitops-manager-sprint-1.md) — GitOpsManager: repo, CI/CD, contributor docs, ADRs 0005-0007
 
-## Open items (cross-team, as of 2026-06-12)
+## Open items (cross-team, as of 2026-06-12 — Sprint 2 closeout)
 
 | ID  | Item                                                                | Owner             | Status         | Waiting on                                          |
 | --- | ------------------------------------------------------------------- | ----------------- | -------------- | --------------------------------------------------- |
@@ -37,13 +40,8 @@
 | O-3 | ~~GitOpsManager docs PR (gated on O-2)~~ | — | SUPERSEDED by Sprint 2 GitOps scope (auto-commit SBOM, vuln reports, SECURITY.md) | — |
 | O-4 | SRE Jinja macro cleanup (small docs-only follow-up; not in Sprint 2 backend reshape) | SREEngineer | optional | SREEngineer |
 | O-5 | **GitHub repo creation + push** | Lead | ✅ DONE 2026-06-12 — `fadhilfathi/ai-devsecops-command-center` live, 12 commits pushed | — |
-
-## Sprint 2 — Security Intelligence Core (IN PROGRESS)
-- [sprint-2-task-board.md](./sprint-2-task-board.md) — 11 tasks, agent assignments, tech stack, dependencies
-- [project-sprint2-vulnerability-intelligence.md](./project-sprint2-vulnerability-intelligence.md) — VulnerabilityIntelligenceAgent: S2.2 (vuln-intel :4008) + S2.3 (dep-intel :4009) + S2.8 hardening (validators, consensus, audit, LLM)
-- Repo: https://github.com/fadhilfathi/ai-devsecops-command-center
-
-All Sprint 1 follow-up items (Loki config, runbook templating, stale paths, dev/prod split) are resolved — see `observability-layout.md` "Closed items (historical)" section.
+| O-6 | **Sprint 2 closeout** (11/11 main tasks + 3 follow-ups + 3 in-flight spec-alignment commits) | Lead | ✅ CLOSED 2026-06-12 | — |
+| O-7 | **Sprint 3 kickoff** (P0 = v2 SBOM cutover S3.1, +7 P1/P2 tickets) | Lead | 🟡 PLANNED 2026-06-15 | — |
 
 ## Cross-cutting
 - [project-conventions.md](./project-conventions.md) — locked naming, layout, stack, ownership
