@@ -155,17 +155,19 @@ import { publish } from "@aicc/event-bus";
 import { SBOM_TOPIC, type SbomGeneratedEvent } from "@aicc/shared/security";
 
 await publish(SBOM_TOPIC, {
-  schema:            "security.sbom.generated.v1",   // discriminator
-  sbomId:            "sbom-2026-06-12-a1b2c3d-monorepo",
-  sbomFingerprint:   "sha256:9b74c989...d7c8a",      // sha256 of RFC 8785/JCS canonicalized primary-format SBOM bytes — SecurityArchitect T-09 audit-log correlation key
-  sbomFormat:        "cyclonedx-json",
-  sbomPath:          "security/sboms/sbom-2026-06-12-a1b2c3d-monorepo.cyclonedx-json",
-  scope:             "monorepo",
-  subject:           "repo:aicc/command-center",
-  subjectFingerprint:"a1b2c3d4e5f6...",             // git SHA / image digest
-  generatedAt:       "2026-06-12T18:42:11.420Z",
-  generator:         "syft:1.18.0",
-  componentsCount:   1842,
+  schema:                "security.sbom.generated.v1",   // discriminator
+  sbomId:                "sbom-2026-06-12-a1b2c3d-monorepo",
+  sbomFingerprint:       "sha256:9b74c989...d7c8a",      // <alg>:<hex> — SecurityArchitect T-09 audit-log correlation key
+  sbomFingerprintAlgorithm: "sha256",                      // O-3.7: hash algorithm (sha256 | sha512 | blake3); prefix in sbomFingerprint MUST match
+  sbomFingerprintFormat:    "cyclonedx-json+canonicalized-jcs",  // O-3.7: canonicalization contract; default = JCS canonicalized CycloneDX JSON
+  sbomFormat:            "cyclonedx-json",
+  sbomPath:              "security/sboms/sbom-2026-06-12-a1b2c3d-monorepo.cyclonedx-json",
+  scope:                 "monorepo",
+  subject:               "repo:aicc/command-center",
+  subjectFingerprint:    "a1b2c3d4e5f6...",             // git SHA / image digest
+  generatedAt:           "2026-06-12T18:42:11.420Z",
+  generator:             "syft:1.18.0",
+  componentsCount:       1842,
 } satisfies SbomGeneratedEvent);
 ```
 
@@ -173,14 +175,29 @@ The `sbomFingerprint` field is required on every `SBOM_TOPIC` event
 as of the O-3.6 contract lock (2026-06-12). Producers MUST compute
 the digest over the RFC 8785 / JCS canonicalized bytes of the
 **primary** format (CycloneDX JSON preferred; SPDX JSON if
-CycloneDX is not produced) and emit it as `sha256:<64-hex>`. The
-field is the audit-log correlation key for SecurityArchitect's
-S2.8 § 3.6 mitigations; the JSON Schema in
-`security/wire-format/sbom-generated.schema.json` is the source of
-truth for the full event contract (snake_case at the wire boundary,
-camelCase internally — the field is published as `sbom_fingerprint`
-in NDJSON and over the wire, but the TypeScript interface uses
-`sbomFingerprint`; the event-bus runtime maps between the two).
+CycloneDX is not produced) and emit it as `<alg>:<64-hex>` (or
+`<alg>:<128-hex>` for sha512). The field is the audit-log correlation
+key for SecurityArchitect's S2.8 § 3.6 mitigations.
+
+The O-3.7 contract lock (2026-06-12) adds the two companion fields
+`sbomFingerprintAlgorithm` (hash algorithm: `sha256` | `sha512` |
+`blake3`) and `sbomFingerprintFormat` (canonicalization contract:
+`cyclonedx-json+canonicalized-jcs` | `cyclonedx-json+raw` |
+`spdx-json+canonicalized-jcs` | `spdx-json+raw`). These two fields
+are the versioned contract that lets consumers reproduce the exact
+input bytes before re-hashing — without them, a "why doesn't my
+hash match?" debugging class is unavoidable. The convention aligns
+with in-toto / SLSA v1.0 attestation patterns.
+
+The JSON Schema in
+[`security/wire-format/sbom-generated.schema.json`](../../security/wire-format/sbom-generated.schema.json)
+is the source of truth for the full event contract (13 required
+fields as of O-3.7). Snake_case at the wire boundary, camelCase
+internally — the fields are published as `sbom_fingerprint`,
+`sbom_fingerprint_algorithm`, `sbom_fingerprint_format` in NDJSON
+and over the wire, but the TypeScript interface uses
+`sbomFingerprint`, `sbomFingerprintAlgorithm`,
+`sbomFingerprintFormat`; the event-bus runtime maps between the two.
 
 The full per-model Zod schemas (`SbomSchema`, `VulnerabilitySchema`,
 `DependencyGraphSchema`, `RiskScoreSchema`) and their inferred TypeScript
