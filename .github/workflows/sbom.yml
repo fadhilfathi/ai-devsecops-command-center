@@ -3,8 +3,18 @@ name: sbom
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "security/**"
+      - "**/*.md"
+      - ".github/workflows/security.yml"
+      - ".github/workflows/security-issue.yml"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "security/**"
+      - "**/*.md"
+      - ".github/workflows/security.yml"
+      - ".github/workflows/security-issue.yml"
   workflow_dispatch:
 
 permissions:
