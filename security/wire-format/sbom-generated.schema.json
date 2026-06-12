@@ -2,13 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aicc.local/schemas/security.sbom.generated.v1.json",
   "title": "security.sbom.generated.v1",
-  "description": "Wire format for the `security.sbom.generated.v1` event published by sbom-pipeline (:4007) and consumed by security-service (:4003) and GitOps automation (.github/workflows/security.yml). LOCKED 2026-06-12 (O-3.6). Projection boundary: security-service :4003 (NOT the Python agents). One event per SBOM artifact.",
+  "description": "Wire format for the `security.sbom.generated.v1` event published by sbom-pipeline (:4007) and consumed by security-service (:4003) and GitOps automation (.github/workflows/security.yml). LOCKED 2026-06-12 (O-3.6). Projection boundary: security-service :4003 (NOT the Python agents). One event per SBOM artifact. O-3.7 additions: `sbom_fingerprint_algorithm` and `sbom_fingerprint_format` fields (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention). Schema grows from 11 to 13 required fields.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema",
     "sbom_id",
     "sbom_fingerprint",
+    "sbom_fingerprint_algorithm",
+    "sbom_fingerprint_format",
     "sbom_format",
     "sbom_path",
     "scope",
@@ -29,9 +31,26 @@
       "pattern": "^sbom-\\d{4}-\\d{2}-\\d{2}-[0-9a-f]{7,40}-(monorepo|service|package|container|fs|git-tree)$"
     },
     "sbom_fingerprint": {
-      "description": "Cryptographic fingerprint of the SBOM artifact bytes, used as the audit-log correlation key in SecurityArchitect's S2.8 §3.6 mitigations. Format: `sha256:<hex>`. The digest is computed over the RFC 8785 / JCS canonicalized bytes of the PRIMARY format (CycloneDX JSON preferred; SPDX JSON if CycloneDX is not produced). Producers MUST canonicalize before hashing. Consumers MUST recompute and reject on mismatch. Convention aligns with sigstore / in-toto / SLSA v1.0 attestation patterns.",
+      "description": "Cryptographic fingerprint of the SBOM artifact bytes, used as the audit-log correlation key in SecurityArchitect's S2.8 §3.6 mitigations. Format: `sha256:<hex>` (or `sha512:<hex>` / `blake3:<hex>` — see `sbom_fingerprint_algorithm`). The digest is computed over the bytes described by `sbom_fingerprint_format` (default: RFC 8785 / JCS canonicalized CycloneDX JSON). Consumers MUST recompute using the algorithm + format and reject on mismatch. The 'sha256:' prefix encodes the algorithm; the canonicalization is encoded separately in `sbom_fingerprint_format`. Convention aligns with sigstore / in-toto / SLSA v1.0 attestation patterns.",
       "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$"
+      "pattern": "^(sha256|sha512|blake3):[0-9a-f]{64,128}$"
+    },
+    "sbom_fingerprint_algorithm": {
+      "description": "Hash algorithm used to compute `sbom_fingerprint`. The algorithm prefix in `sbom_fingerprint` MUST match this field. Default for O-3.7: 'sha256'. Open-ended for future migration to 'sha512' or 'blake3'. The algorithm alone is not sufficient to recompute the fingerprint — the input bytes (defined by `sbom_fingerprint_format`) must also be reproduced. O-3.7 addition (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention of explicitly describing the digest algorithm).",
+      "type": "string",
+      "enum": ["sha256", "sha512", "blake3"],
+      "default": "sha256"
+    },
+    "sbom_fingerprint_format": {
+      "description": "Versioned string describing the canonicalization applied to the SBOM bytes before hashing. Versioned contract: 'cyclonedx-json+canonicalized-jcs' (default — RFC 8785 / JCS canonicalized CycloneDX JSON), 'cyclonedx-json+raw' (no canonicalization — legacy interop only, will be deprecated), 'spdx-json+canonicalized-jcs' (future — when SPDX is the primary format), 'spdx-json+raw' (future). The format string is a contract, not an implementation detail. Consumers MUST reproduce the exact same input bytes (subject to the format) before hashing. Two semantically-identical SBOMs hashed with JCS vs. without JCS will produce different fingerprints — encoding the canonicalization eliminates an entire class of 'why doesn't my hash match?' debugging. O-3.7 addition (SecurityArchitect redline; future-proofs the wire contract for Sprint 3+ format additions).",
+      "type": "string",
+      "enum": [
+        "cyclonedx-json+canonicalized-jcs",
+        "cyclonedx-json+raw",
+        "spdx-json+canonicalized-jcs",
+        "spdx-json+raw"
+      ],
+      "default": "cyclonedx-json+canonicalized-jcs"
     },
     "sbom_format": {
       "description": "Primary serialization format of the SBOM on disk (`security/sboms/<sbom_id>.<sbom_format>`). Producers publish the primary format only; secondary format is optional and not referenced in the event.",
@@ -101,6 +120,8 @@
       "schema": "security.sbom.generated.v1",
       "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
       "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+      "sbom_fingerprint_algorithm": "sha256",
+      "sbom_fingerprint_format": "cyclonedx-json+canonicalized-jcs",
       "sbom_format": "cyclonedx-json",
       "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
       "provenance_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo/provenance.intoto.jsonl",
