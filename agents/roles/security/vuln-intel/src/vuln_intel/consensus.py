@@ -1,12 +1,13 @@
 """Cross-source consensus for CVE severity scoring.
 
-The SecurityArchitect's S2.8 threat model (``docs/threat-models/
-s2-security-mitigations.md`` § 3.5 + § 3.6) requires that a CVE only
-be eligible for HIGH or CRITICAL severity when **at least two** of
-the upstream sources {NVD, GHSA, OSV} corroborate it. Single-source
-HIGH/CRITICAL classifications are tagged ``unofficial`` so that the
-Security UI can flag them for human review and the risk engine can
-down-weight them in cluster scoring.
+The SecurityArchitect's S2.8 threat model
+(``docs/architecture/s2-security-mitigations.md`` § 3.5 + § 3.6)
+requires that a CVE only be eligible for HIGH or CRITICAL severity
+when **at least two** of the upstream sources {NVD, GHSA, OSV}
+corroborate it. Single-source HIGH/CRITICAL classifications are
+tagged ``unofficial`` so that the Security UI can flag them for
+human review and the risk engine can down-weight them in cluster
+scoring.
 
 **Threat-model references (S2.8):**
 * **§ 3.5** — per-feed JSON-Schema validation: T-02 (CVE feed

@@ -33,6 +33,7 @@ from sbom_generator.metrics import SourceType as MetricsSourceType
 from sbom_generator.config import Settings
 from sbom_generator.models.request import GenerateRequest, SourceType
 from sbom_generator.models.response import GenerateResponse
+from sbom_generator.security.ssrf import assert_safe_target
 from sbom_generator.syft import SyftRunner, SyftResult
 
 logger = logging.getLogger("sbom_generator.agent")
@@ -269,6 +270,15 @@ class SBOMGeneratorAgent:
     async def generate(self, request: GenerateRequest) -> GenerateResponse:
         """Run a single SBOM scan and serialize the results."""
         request.validate_source()
+
+        # T-07 (S2.8): async SSRF defense.
+        # The Pydantic validator at the model layer already rejected IP
+        # literals and banned hostnames. Here we additionally resolve
+        # hostnames and check that *no* returned A/AAAA record is in a
+        # private/reserved range — this catches DNS rebinding attacks
+        # where a hostname resolves to a private IP at request time.
+        await self._ssrf_check(request)
+
         record = JobRecord(
             request_id="-",  # filled in by caller
             started_at=0.0,
@@ -369,6 +379,91 @@ class SBOMGeneratorAgent:
                 "devsecops_sbom_active_scans",
                 value=0.0,
                 scanner_type=MetricsSourceType.SYFT.value,
+            )
+
+    # ---- T-07 SSRF defense (S2.8 hotfix) ---------------------------------
+
+    _REMOTE_SOURCE_KINDS = frozenset(
+        {
+            SourceType.GIT_REPOSITORY,
+            SourceType.DOCKER_IMAGE,
+            SourceType.OCI_IMAGE,
+            SourceType.REGISTRY,
+        }
+    )
+
+    async def _ssrf_check(self, request: GenerateRequest) -> None:
+        """Run the async SSRF defense for remote sources.
+
+        For local-path sources (directory/file/archive), the SSRF check
+        is unnecessary — Syft only reads from the local filesystem and
+        no network egress occurs.
+
+        For remote sources, ``assert_safe_target`` resolves the hostname
+        and rejects any result whose IP falls in a private/reserved
+        range. A timeout or resolution failure fails closed.
+        """
+        kind = request.source.type
+        if kind not in self._REMOTE_SOURCE_KINDS:
+            return
+
+        ssrf = self._settings.ssrf
+        target = request.source.value
+        try:
+            result = await assert_safe_target(
+                target,
+                allowlist=ssrf.git_host_allowlist,
+                default_deny=ssrf.default_deny,
+                dns_timeout_seconds=ssrf.dns_timeout_seconds,
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Fail closed: any unexpected error in the SSRF check is
+            # treated as a block. This is the safer default for a
+            # defense-in-depth layer.
+            logger.warning("SSRF check raised: %s", exc)
+            self._telemetry.event(
+                "sbom.ssrf.error",
+                error_type=type(exc).__name__,
+                error=str(exc),
+                source_type=kind.value,
+            )
+            from sbom_generator.errors import SsrfBlockedError
+
+            raise SsrfBlockedError(
+                f"SSRF defense: unexpected error during target validation",
+                details={"value": target, "error": str(exc)},
+            ) from exc
+
+        if not result.allowed:
+            logger.warning(
+                "SSRF block: source_type=%s target=%s reason=%s",
+                kind.value,
+                target,
+                result.reason,
+            )
+            self._telemetry.event(
+                "sbom.ssrf.blocked",
+                source_type=kind.value,
+                target=target,
+                reason=result.reason,
+            )
+            from sbom_generator.errors import SsrfBlockedError
+
+            raise SsrfBlockedError(
+                f"SSRF defense: target rejected ({result.reason})",
+                details={
+                    "value": target,
+                    "source_type": kind.value,
+                    "reason": result.reason,
+                    "resolved_addresses": list(result.resolved_addresses),
+                },
+            )
+        # Allowed — log resolved addresses for forensics.
+        if result.resolved_addresses:
+            logger.info(
+                "SSRF allowed: target=%s resolved=%s",
+                target,
+                result.resolved_addresses,
             )
 
     # ---- Bus handler ---------------------------------------------------

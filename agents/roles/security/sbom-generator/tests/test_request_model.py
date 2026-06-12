@@ -120,3 +120,171 @@ def test_valid_source_types_includes_all_kinds():
         "registry",
     }
     assert expected.issubset(VALID_SOURCE_TYPES)
+
+
+# ---------------------------------------------------------------------------
+# T-07 SSRF defense — SS-07a..SS-07j (S2.8 hotfix)
+# ---------------------------------------------------------------------------
+# These cases verify that the Pydantic-level SSRF defense rejects targets
+# whose host is a private/reserved IP literal, a banned hostname, or fails
+# the allowlist default-deny check. The async DNS-rebinding check is
+# covered separately in tests/test_ssrf.py.
+# ---------------------------------------------------------------------------
+
+
+from sbom_generator.errors import SsrfBlockedError
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://10.0.0.1/repo.git",            # RFC 1918
+        "https://10.255.255.254/repo.git",
+        "https://172.16.0.1/repo.git",          # RFC 1918
+        "https://172.31.255.254/repo.git",
+        "https://192.168.0.1/repo.git",         # RFC 1918
+        "https://192.168.1.254/repo.git",
+    ],
+)
+def test_ss_07a_rfc1918_ipv4_blocked(value):
+    """SS-07a: RFC 1918 IPv4 ranges in URL host are rejected."""
+    req = GenerateRequest(source=SourceRef(type="git-repository", value=value))
+    with pytest.raises(ValidationError) as exc_info:
+        req.validate_source()
+    # Must surface the SSRF code so the HTTP layer can render 400 cleanly.
+    assert "ssrf" in str(exc_info.value).lower() or isinstance(
+        exc_info.value, SsrfBlockedError
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://127.0.0.1/repo.git",           # loopback
+        "https://127.255.255.254/repo.git",
+        "https://0.0.0.0/repo.git",             # unspecified
+        "https://169.254.169.254/latest/meta-data/",  # cloud metadata
+        "https://224.0.0.1/repo.git",           # multicast
+        "https://255.255.255.255/repo.git",     # broadcast
+    ],
+)
+def test_ss_07b_loopback_metadata_multicast_blocked(value):
+    """SS-07b: loopback, metadata, multicast, broadcast ranges blocked."""
+    req = GenerateRequest(source=SourceRef(type="git-repository", value=value))
+    with pytest.raises(ValidationError) as exc_info:
+        req.validate_source()
+    assert "ssrf" in str(exc_info.value).lower() or isinstance(
+        exc_info.value, SsrfBlockedError
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://[::1]/repo.git",               # IPv6 loopback
+        "https://[fe80::1]/repo.git",           # IPv6 link-local
+        "https://[fc00::1]/repo.git",           # IPv6 ULA
+        "https://[ff00::1]/repo.git",           # IPv6 multicast
+    ],
+)
+def test_ss_07c_ipv6_reserved_blocked(value):
+    """SS-07c: IPv6 reserved ranges are rejected."""
+    req = GenerateRequest(source=SourceRef(type="git-repository", value=value))
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_ss_07d_image_reference_private_registry_blocked():
+    """SS-07d: docker-image references to private registries are rejected.
+
+    ``10.0.0.5:5000/foo/bar`` would otherwise let an attacker direct Syft
+    to a private registry. The image-host extractor must catch the bare
+    IPv4 literal embedded in the reference.
+    """
+    req = GenerateRequest(
+        source=SourceRef(type="docker-image", value="10.0.0.5:5000/foo/bar")
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        req.validate_source()
+    assert "ssrf" in str(exc_info.value).lower() or isinstance(
+        exc_info.value, SsrfBlockedError
+    )
+
+
+def test_ss_07e_registry_blocked_for_internal_host():
+    """SS-07e: registry sources to private hosts are rejected."""
+    req = GenerateRequest(
+        source=SourceRef(type="registry", value="https://10.0.0.1/v2/")
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_ss_07f_scp_style_internal_host_blocked():
+    """SS-07f: SCP-style git URLs to private hosts are rejected."""
+    req = GenerateRequest(
+        source=SourceRef(
+            type="git-repository", value="git@192.168.1.10:owner/repo.git"
+        )
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_ss_07g_banned_hostname_suffixes_blocked():
+    """SS-07g: hostnames ending in banned suffixes are rejected."""
+    for value in (
+        "https://api.localhost/repo.git",
+        "https://api.internal/repo.git",
+        "https://api.intranet/repo.git",
+        "https://api.corp/repo.git",
+        "https://api.lan/repo.git",
+        "https://metadata.google.internal/",
+        "https://metadata.azure.com/",
+    ):
+        req = GenerateRequest(source=SourceRef(type="git-repository", value=value))
+        with pytest.raises(ValidationError):
+            req.validate_source()
+
+
+def test_ss_07h_public_github_allowed():
+    """SS-07h: legitimate public hosts (allowlist match) pass.
+
+    This is the positive case: a github.com URL must validate.
+    """
+    req = GenerateRequest(
+        source=SourceRef(
+            type="git-repository", value="https://github.com/aionrs/api.git"
+        )
+    )
+    req.validate_source()  # no raise
+    req2 = GenerateRequest(
+        source=SourceRef(
+            type="git-repository", value="git@github.com:aionrs/api.git"
+        )
+    )
+    req2.validate_source()
+
+
+def test_ss_07i_docker_hub_default_allowed():
+    """SS-07i: bare image names resolve to docker.io (default registry) and pass."""
+    req = GenerateRequest(
+        source=SourceRef(type="docker-image", value="nginx:1.25")
+    )
+    req.validate_source()  # no raise
+    req2 = GenerateRequest(
+        source=SourceRef(type="oci-image", value="ghcr.io/aionrs/api:v1.0.0")
+    )
+    req2.validate_source()  # ghcr.io is not private; passes SSRF check
+
+
+def test_ss_07j_local_paths_unaffected():
+    """Local-path sources are never subjected to SSRF checks."""
+    for kind, value in (
+        ("directory", "/workspace"),
+        ("file", "/workspace/Pipfile"),
+        ("archive", "/workspace/x.tar.gz"),
+    ):
+        req = GenerateRequest(source=SourceRef(type=kind, value=value))
+        req.validate_source()  # no raise, no SSRF check
+

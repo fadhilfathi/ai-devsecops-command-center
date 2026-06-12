@@ -144,15 +144,25 @@ class Service:
                 errors[src] = "unknown source"
                 continue
             t0 = time.perf_counter()
-            # S2.8: the per-source validator is wired into the source
+            # S2.8: per-source validator is wired into the source
             # layer's fetch loop (see nvd.py, ghsa.py, osv.py) — every
             # record is checked against the per-feed JSON-Schema
-            # *before* it is yielded. The Service layer's job here is
-            # to count accepted/rejected records for the per-feed
-            # audit log and the validation-rejection metric. We
-            # synthesise a "passed" ValidationResult for each record
-            # that the source yields, because the source has already
-            # filtered out the bad ones.
+            # *before* it is yielded. The source layer is the source
+            # of truth for per-record schema compliance (per the
+            # SecurityArchitect's S2.8 sign-off, 2026-06-12).
+            #
+            # We do NOT run a post-parse sanity check here because
+            # the sanity check is per-record (it would re-validate a
+            # record that was already validated by the source layer)
+            # and is therefore redundant. The SecurityArchitect's
+            # recommendation for per-record sanity checks is:
+            #   "If the source-layer validation passes and the sanity
+            #   check fails, that's a code bug to fix, not a runtime
+            #   decision." — message slot 019ebae2-9de4, 2026-06-12.
+            #
+            # We do, however, record a "passed" ValidationResult for
+            # each yielded record so the per-feed audit log shows the
+            # per-feed record counts.
             try:
                 source_validator = get_validator(src.value)
             except Exception:  # noqa: BLE001
@@ -165,29 +175,12 @@ class Service:
                     limit=req.max_per_source,
                     full=req.full,
                 ):
-                    # S2.8: per-record audit placeholder. The source
-                    # already performed the schema check; we record
-                    # the accept result here so the audit log shows
-                    # per-feed record counts.
-                    if source_validator is not None:
-                        vres = source_validator.validate_record(
-                            _synthesize_raw(rec, src.value)
-                        )
-                        validation_results.append(vres)
-                        # If the synthesized payload fails the
-                        # post-parse check, downgrade to a warning
-                        # (don't reject) so we don't regress the
-                        # existing 36-test suite — the source layer
-                        # is the source of truth.
-                        if not vres.valid:
-                            logger.debug(
-                                "post_parse_check_warning source=%s cve=%s errors=%s",
-                                src.value, rec.id, vres.errors[:3],
-                            )
-                    else:
-                        validation_results.append(
-                            _accepted_result(rec.id)
-                        )
+                    # S2.8 (per SecurityArchitect sign-off): the
+                    # source layer is the source of truth. We append
+                    # an "accepted" result for the audit log so
+                    # record counts are visible, but we do NOT
+                    # re-validate here.
+                    validation_results.append(_accepted_result(rec.id))
 
                     is_new = await self.store.upsert(rec)
                     # Track which sources have corroborated this CVE
@@ -541,57 +534,17 @@ def _group_by_source(records: list[CveRecord]) -> dict[SourceName, list[CveRecor
 
 
 # ---------------------------------------------------------------------------
-# S2.8 helpers — synthesized raw payload for the post-parse sanity check
+# S2.8 helpers — accepted-result placeholder for the per-feed audit log
 # ---------------------------------------------------------------------------
-def _synthesize_raw(rec: CveRecord, source: str) -> dict[str, Any]:
-    """Build a minimal raw payload for the per-source validator from a
-    normalized CveRecord. The goal is a *post-parse* sanity check
-    (defence in depth), not a full re-validation. Only the schema's
-    required fields are populated; the source layer is the source of
-    truth for per-record schema compliance."""
-    if source == "nvd":
-        cve: dict[str, Any] = {
-            "id": rec.id,
-            "published": rec.published.isoformat() if rec.published else "",
-            "lastModified": rec.last_modified.isoformat() if rec.last_modified else "",
-        }
-        if rec.cvss and rec.cvss.vector:
-            sev = rec.severity.qualitative.value if rec.severity else "NONE"
-            cve.setdefault("metrics", {}).setdefault("cvssMetricV31", []).append(
-                {
-                    "cvssData": {
-                        "version": "3.1",
-                        "vectorString": rec.cvss.vector,
-                        "baseScore": rec.cvss.base_score or 0.0,
-                        "baseSeverity": sev,
-                    }
-                }
-            )
-        return {"vulnerabilities": [{"cve": cve}]}
-    if source == "ghsa":
-        return {
-            "ghsa_id": rec.id if rec.id.startswith("GHSA-") else "",
-            "cve_id": rec.id,
-            "severity": rec.severity.qualitative.value if rec.severity else "NONE",
-            "cvss": {
-                "vector_string": rec.cvss.vector if rec.cvss else "",
-                "score": (rec.cvss.base_score if rec.cvss and rec.cvss.base_score is not None else 0.0),
-            },
-            "published_at": rec.published.isoformat() if rec.published else "",
-            "updated_at": rec.last_modified.isoformat() if rec.last_modified else "",
-        }
-    if source == "osv":
-        return {
-            "id": rec.id,
-            "modified": rec.last_modified.isoformat() if rec.last_modified else "",
-            "published": rec.published.isoformat() if rec.published else "",
-            "summary": (rec.description or "")[:1024],
-        }
-    return {"id": rec.id}
-
-
 def _accepted_result(record_id: str) -> Any:
-    """Return a passing :class:`ValidationResult` for the audit log."""
+    """Return a passing :class:`ValidationResult` for the audit log.
+
+    The source layer is the source of truth for per-record schema
+    compliance (per the SecurityArchitect's S2.8 sign-off,
+    2026-06-12). The service layer records "accepted" placeholders
+    so the per-feed audit log shows record counts, but does NOT
+    re-validate here.
+    """
     from ..validators import ValidationResult
     return ValidationResult(valid=True, record_id=record_id)
 

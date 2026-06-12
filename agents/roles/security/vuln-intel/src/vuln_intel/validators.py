@@ -9,7 +9,7 @@ coerced) and counted in the per-feed audit log so operators can spot
 upstream schema drift before it pollutes the store.
 
 The schemas below are direct ports of the AJV definitions kept in
-``docs/threat-models/s2-security-mitigations.md`` § 3.5 (per-feed
+``docs/architecture/s2-security-mitigations.md`` § 3.5 (per-feed
 JSON-Schema validation). Numeric fields are range-checked at the
 schema layer (CVSS 0.0–10.0, EPSS 0.0–1.0, severity enum
 whitelist). JSON is parsed with a hard ``max_depth`` of 20 to
@@ -19,8 +19,9 @@ prevent stack-overflow attacks from malicious upstream payloads.
 * **T-02 (CVE feed poisoning)** — mitigated by per-feed schema
   validation. The T-02 STRIDE category is *Tampering*; the
   mitigation is the AJV-derived schemas + the rejection-on-parse-
-  error policy (never coerce). The ``s2-security-mitigations.md``
-  § 3.5 STRIDE-per-service table is the canonical source.
+  error policy (never coerce). The
+  ``docs/architecture/s2-security-mitigations.md`` § 3.5 STRIDE-per-
+  service table is the canonical source.
 * **T-03 (LLM exploit-signal pollution)** — the LLM response
   schema is :data:`LLM_RESPONSE_SCHEMA` in :mod:`llm`; it is
   validated by ``json-schema`` and any deviation falls back to

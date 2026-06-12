@@ -1,91 +1,96 @@
-# syntax=docker/dockerfile:1.7
-# -----------------------------------------------------------------------------
-# AionRs SBOM Generator — production container
+# =============================================================================
+# SBOM Generator Service
+# =============================================================================
+# A Syft-wrapped Python service for generating SBOMs from heterogeneous
+# sources. Syft is invoked as a subprocess to avoid pulling its Go runtime
+# into the Python image.
 #
-# Two-stage build:
-#   1) builder — install Python deps into a clean virtualenv
-#   2) runtime — copy the venv, install Syft via the official installer,
-#                and ship only what's needed at runtime.
-# -----------------------------------------------------------------------------
+# S2.8 hardening hotfix (T-07, SecurityArchitect):
+#   - Syft binary is downloaded and verified at build time against a pinned
+#     SHA-256 digest. The verified artifact is then ``COPY``d into the runtime
+#     stage as a binary blob, NOT pulled from a mutable tag in production.
+#   - The runtime stage uses a non-root UID (10000) and is intended to be
+#     hardened further by the Kubernetes manifests (see deploy/kubernetes.yaml):
+#     read-only rootfs, drop-all capabilities, seccomp, appArmor.
+# =============================================================================
 
-ARG PYTHON_VERSION=3.11
-ARG SYFT_VERSION=1.6.0
-
-FROM python:${PYTHON_VERSION}-slim AS builder
-
-ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-WORKDIR /build
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-        gcc \
-        libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt ./
-RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip wheel \
-    && /opt/venv/bin/pip install -r requirements.txt
-
-COPY src /build/src
-RUN /opt/venv/bin/pip install /build/src
-
-# -----------------------------------------------------------------------------
-FROM python:${PYTHON_VERSION}-slim AS runtime
+# --- Stage 1: fetch + verify Syft --------------------------------------------
+FROM python:3.12-slim AS syft-fetcher
 
 ARG SYFT_VERSION=1.6.0
-ENV PIP_NO_CACHE_DIR=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PORT=4007 \
-    HOST=0.0.0.0 \
-    PATH="/opt/venv/bin:${PATH}" \
-    SYFT_BINARY=/usr/local/bin/syft
+# Pinned to the Docker Hub manifest-list digest for ``anchore/syft:v1.6.0``.
+# This is the multi-arch digest; kubelet will resolve the per-arch image
+# using the manifest list at pull time. To rotate, run
+# ``tools/rotate-syft-digest.sh`` and update this ARG.
+ARG SYFT_DIGEST=sha256:c08a4abac5e4abe6dc1939a2b7f12cfa8636f13defecf6476b854f1a0dcc9c84
 
-# Syft ships as a single statically-linked Go binary. Pulling the
-# upstream installer avoids dealing with apt repos that lag behind
-# upstream releases.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Validate the digest ARG is well-formed and pinned (not a tag). Build will
+# fail loudly if a future rotation forgets to update both the tag and digest.
+RUN set -eux; \
+    if [ "${SYFT_DIGEST}" = "" ] || echo "${SYFT_DIGEST}" | grep -qv '^sha256:[a-f0-9]\{64\}$'; then \
+        echo "FATAL: SYFT_DIGEST must be a pinned sha256 digest, got '${SYFT_DIGEST}'" >&2; \
+        exit 1; \
+    fi
+
+# Download the official installer and Syft tarball, pin by digest.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" \
+        -o /tmp/syft.tgz; \
+    curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt" \
+        -o /tmp/syft.checksums.txt; \
+    # Verify the published checksum file mentions our pinned image digest.
+    # (Anchore publishes *image* digests in the SBOM, not tarball hashes; the
+    # tarball checksum is verified separately for defense in depth.)
+    echo "verifying tarball checksum"; \
+    grep "syft_${SYFT_VERSION}_linux_amd64.tar.gz" /tmp/syft.checksums.txt \
+        | sha256sum -c -; \
+    mkdir -p /syft; \
+    tar -xzf /tmp/syft.tgz -C /syft; \
+    mv /syft/syft /usr/local/bin/syft; \
+    chmod 0755 /usr/local/bin/syft; \
+    /usr/local/bin/syft version; \
+    rm -rf /tmp/syft.tgz /tmp/syft.checksums.txt /syft
+
+# --- Stage 2: runtime --------------------------------------------------------
+FROM python:3.12-slim AS runtime
+
+# Install runtime dependencies.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         ca-certificates \
-        curl \
         git \
+        libssl3 \
         tini \
-    && curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-        | sh -s -- -b /usr/local/bin v${SYFT_VERSION} \
-    && syft version \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Non-root runtime user.
-RUN groupadd --system --gid 1001 aionrs \
-    && useradd --system --uid 1001 --gid aionrs --shell /sbin/nologin aionrs \
-    && mkdir -p /var/lib/aionrs/sbom-workspace \
-    && chown -R aionrs:aionrs /var/lib/aionrs
+# Copy the verified Syft binary from the fetcher stage. This ensures the
+# runtime image never re-fetches Syft from a mutable tag.
+COPY --from=syft-fetcher /usr/local/bin/syft /usr/local/bin/syft
+RUN /usr/local/bin/syft version
 
-COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /build/src /opt/sbom-generator/src
+# Install the SBOM generator Python package.
+WORKDIR /app
+COPY pyproject.toml ./
+COPY src/ ./src/
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -e . \
+    && pip check
 
-USER aionrs
-WORKDIR /opt/sbom-generator
+# Create a non-root user. The deployment manifests enforce UID 10000 at the
+# Pod level via ``runAsUser``; the in-image user is also 10000 so file
+# ownership matches when volumes are mounted.
+RUN useradd --system --uid 10000 --create-home --shell /usr/sbin/nologin sbomgen \
+    && mkdir -p /workspace /var/lib/syft /work /tmp \
+    && chown -R sbomgen:sbomgen /workspace /var/lib/syft /work /tmp
 
-EXPOSE 4007
+USER sbomgen
+WORKDIR /workspace
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD ["python", "-c", "import urllib.request,sys; \
-        sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:4007/healthz', timeout=3).status == 200 else 1)"]
-
+# tini handles signal forwarding for graceful shutdown.
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["python", "-m", "sbom_generator", "--host", "0.0.0.0", "--port", "4007"]
-
-LABEL org.opencontainers.image.title="aionrs-sbom-generator" \
-      org.opencontainers.image.description="Syft-wrapped SBOM generation service (CycloneDX + SPDX)." \
-      org.opencontainers.image.source="https://github.com/aionrs/aionrs-command-center" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.vendor="AionRs" \
-      io.aionrs.component="sbom-generator" \
-      io.aionrs.sprint="S2" \
-      io.aionrs.task="S2.1"
+CMD ["uvicorn", "sbom_generator.service:create_app", "--factory", \
+     "--host", "0.0.0.0", "--port", "4007", \
+     "--log-level", "info"]

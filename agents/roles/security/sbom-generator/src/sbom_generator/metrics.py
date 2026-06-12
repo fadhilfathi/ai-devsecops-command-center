@@ -25,8 +25,12 @@ Locked metric set
   ``format`` is DEFERRED to Sprint 3 (4× cardinality jump — see
   metrics-spec §3.1).
 * ``devsecops_sbom_components_total`` — Counter, label
-  ``{sbom_size_bucket}`` with **five** buckets (locked, Sprint 2):
-  small / medium / large / xlarge / xxlarge.
+  ``{sbom_size_bucket}`` with **five** buckets (D7 LOCKED, Sprint 2.7
+  round 6 closure 2026-06-12): xs / small / medium / large / xlarge.
+  The ``xxlarge`` bucket from the round-5 scheme was RETIRED —
+  workloads that would have been xxlarge now flow into xlarge and
+  are accepted as SLO overshoots. The new ``xs`` bucket catches
+  trivially-small SBOMs (sub-10 components).
 * ``devsecops_sbom_active_scans`` — Gauge, label ``{scanner_type}``.
 * ``devsecops_sbom_scan_failures_total`` — Counter, label ``{reason}``
   with bounded reasons: ``syft_not_found`` / ``syft_timeout`` /
@@ -36,19 +40,35 @@ Locked metric set
 Bucket boundaries
 =================
 
-The component-count buckets are locked:
+The component-count buckets are D7 LOCKED (Sprint 2.7 round 6 closure,
+2026-06-12). The scheme is the SAME across all metrics that carry the
+``sbom_size_bucket`` label, in particular:
 
-* ``small``    — ``n < 100``
-* ``medium``   — ``100 ≤ n < 1_000``
-* ``large``    — ``1_000 ≤ n < 10_000``
-* ``xlarge``   — ``10_000 ≤ n < 50_000``
-* ``xxlarge``  — ``n ≥ 50_000``
+* ``devsecops_sbom_components_total`` (this module, sbom-generator :4007)
+* ``devsecops_risk_calculation_duration_seconds`` (dependency-intel :4009,
+  consumed by ``infra/observability/prometheus/alert-rules.yml`` for the
+  5 ``RiskCalcHighLatency*`` alerts + the per-bucket SLO targets in
+  ``docs/observability/slos-security-stack.md`` §3)
 
-Dropping ``xxlarge`` causes the
-``RiskCalcHighLatencyXxlarge`` alert in
-``infra/observability/prometheus/alert-rules.yml`` to never fire —
-that's the OS-image / large-monorepo early-warning signal, and it
-is the ``xxlarge`` bucket's whole reason to exist.
+Locking the bucket boundaries across metrics is what makes the
+``RiskCalcHighLatencyXs`` alert work — the alert queries
+``sbom_size_bucket="xs"`` on the ``dependency-intel`` histogram, and the
+sbom-generator's component counter must agree on the same bucket name
+for the per-bucket dashboard panel to be self-consistent.
+
+Locked boundaries:
+
+* ``xs``      — ``n < 10``
+* ``small``   — ``10 ≤ n < 100``
+* ``medium``  — ``100 ≤ n < 1_000``
+* ``large``   — ``1_000 ≤ n < 5_000``
+* ``xlarge``  — ``n ≥ 5_000`` (no upper bound; ``xxlarge`` is RETIRED)
+
+The ``xxlarge`` bucket from the round-5 scheme was retired on 2026-06-12
+because the S2.8 cap (~5k components) blocks upstream SBOMs from
+reaching ≥10k in normal operation. ≥10k workloads are treated as
+``xlarge`` SLO overshoots and may be acceptable per
+``docs/observability/slos-security-stack.md`` §3.
 
 Ecosystem enum
 ==============
@@ -132,34 +152,38 @@ class FailureReason(str, Enum):
 # ---------------------------------------------------------------------------
 
 _SIZE_BUCKET_BOUNDARIES: tuple[tuple[int, str], ...] = (
+    (10, "xs"),
     (100, "small"),
     (1_000, "medium"),
-    (10_000, "large"),
-    (50_000, "xlarge"),
+    (5_000, "large"),
 )
 
 
 def sbom_size_bucket(component_count: int) -> str:
-    """Map a component count to one of the five locked buckets.
+    """Map a component count to one of the five D7 LOCKED buckets.
 
-    >>> sbom_size_bucket(50)
+    Bucket scheme (D7, round 6 closure 2026-06-12):
+
+    >>> sbom_size_bucket(5)
+    'xs'
+    >>> sbom_size_bucket(10)
     'small'
     >>> sbom_size_bucket(100)
     'medium'
-    >>> sbom_size_bucket(9_999)
+    >>> sbom_size_bucket(4_999)
     'large'
-    >>> sbom_size_bucket(49_999)
+    >>> sbom_size_bucket(5_000)
     'xlarge'
     >>> sbom_size_bucket(50_000)
-    'xxlarge'
+    'xlarge'
     """
     if component_count < 0:
         # Defensive — the analyzer never produces negative counts.
-        return "small"
+        return "xs"
     for ceiling, label in _SIZE_BUCKET_BOUNDARIES:
         if component_count < ceiling:
             return label
-    return "xxlarge"
+    return "xlarge"
 
 
 # ---------------------------------------------------------------------------

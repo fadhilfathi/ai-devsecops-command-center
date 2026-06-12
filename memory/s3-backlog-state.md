@@ -35,6 +35,12 @@ docs/sprint-3/backlog.md (created during Sprint 2 closeout).
 - S3.8: Widen VulnKind to add dast/manual when a scanner emits them
   on the wire (one-line Zod schema change).
 
+**Additional Sprint 3 tasks filed on board (post-closeout, owned by GitOpsManager):**
+- `019ebc2b-…` S3.1 cap-sizing review infra: dashboard panel + recording-rule export (GitOps deliverable for SecurityArchitect + SRE's cap-sizing validation)
+- `019ebc2b-…` S3.x F-14 PG schema: audit_log append-only + 7-yr retention + WORM (GitOps review + land) — cross-compat with Sprint 2.1 F-14 PR is confirmed: additive DDL delta is forward-compatible
+- `019ebc2b-…` S3.x Alertmanager routing for S2.9 audit-emission alerts (GitOps land) — SRE's alerts, GitOps lands the routing config
+- `019ebc2d-…` S3.x VULN_INTEL_AUTO_ACTION_EPSS_MIN + SECURITY_AUTO_ACTION_EPSS_MIN env var pair (default 0.36, coordinated) — relates to P2 4-condition `auto_actionable` formula's EPSS branch; coordinated env var design is GitOps-owned, both consumers (vuln-intel Python, security-service Node) read it
+
 **Backlog hygiene note:**
 The Sprint 3 backlog file should be re-verified for any items added
 by the ComplianceOfficer's Sprint 2.1 follow-ups (mapping-engine
@@ -42,3 +48,12 @@ extension, evidence attacher, scan listener, mapping rules update,
 F-17 PR). If the ComplianceOfficer added items in their TURN 2-5
 follow-ups that were deferred to Sprint 3, those need to be
 consolidated into the backlog before kickoff.
+
+**Broader Sprint 3 scope (from `docs/sprint-3/backlog.md`, NOT Sprint 2 carry-over):**
+- S3.2: Live Trivy + Dependency-Track integration (VulnerabilityIntelligenceAgent, P1)
+- S3.3: Agent runtime v1 (PlatformArchitect, P1)
+- S3.4: WebSocket real-time channel for the security dashboard (FullstackEngineer, P2)
+- S3.5: Helm chart for the AionRs security stack (SREEngineer, P1)
+- S3.6: Terraform landing zone (SREEngineer, P2)
+- S3.7: Compliance evidence auto-collection (ComplianceOfficer, P1)
+- S3.8: Risk score explainability SHAP-style (DataScientist TBD, P3)
