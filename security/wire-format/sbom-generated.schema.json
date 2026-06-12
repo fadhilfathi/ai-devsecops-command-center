@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicc.local/schemas/security.sbom.generated.v1.json",
+  "title": "security.sbom.generated.v1",
+  "description": "Wire format for the `security.sbom.generated.v1` event published by sbom-pipeline (:4007) and consumed by security-service (:4003) and GitOps automation (.github/workflows/security.yml). LOCKED 2026-06-12 (O-3.6). Projection boundary: security-service :4003 (NOT the Python agents). One event per SBOM artifact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sbom_id",
+    "sbom_fingerprint",
+    "sbom_format",
+    "sbom_path",
+    "scope",
+    "subject",
+    "subject_fingerprint",
+    "generated_at",
+    "generator",
+    "components_count"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Event discriminator. MUST be the literal string `security.sbom.generated.v1`.",
+      "const": "security.sbom.generated.v1"
+    },
+    "sbom_id": {
+      "description": "Stable identifier for the SBOM artifact. Format: `sbom-<YYYY-MM-DD>-<git-short-sha>-<scope>` (scope ∈ {monorepo, service, package, container, fs, git-tree}). Used as the basename in `security/sboms/<sbom_id>.<format>` and as the `id` field in `security/sboms/index.json`.",
+      "type": "string",
+      "pattern": "^sbom-\\d{4}-\\d{2}-\\d{2}-[0-9a-f]{7,40}-(monorepo|service|package|container|fs|git-tree)$"
+    },
+    "sbom_fingerprint": {
+      "description": "Cryptographic fingerprint of the SBOM artifact bytes, used as the audit-log correlation key in SecurityArchitect's S2.8 §3.6 mitigations. Format: `sha256:<hex>`. The digest is computed over the RFC 8785 / JCS canonicalized bytes of the PRIMARY format (CycloneDX JSON preferred; SPDX JSON if CycloneDX is not produced). Producers MUST canonicalize before hashing. Consumers MUST recompute and reject on mismatch. Convention aligns with sigstore / in-toto / SLSA v1.0 attestation patterns.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sbom_format": {
+      "description": "Primary serialization format of the SBOM on disk (`security/sboms/<sbom_id>.<sbom_format>`). Producers publish the primary format only; secondary format is optional and not referenced in the event.",
+      "type": "string",
+      "enum": ["cyclonedx-json", "spdx-json"]
+    },
+    "sbom_path": {
+      "description": "Relative repo path to the SBOM file inside `security/sboms/`. Producers MUST write to `<repo-root>/security/sboms/<sbom_id>.<sbom_format>` (folder contract LOCKED in security/README.md § 'Folder contracts').",
+      "type": "string",
+      "pattern": "^security/sboms/sbom-[^/]+\\.(cyclonedx-json|spdx-json)$"
+    },
+    "provenance_path": {
+      "description": "Relative repo path to the SLSA v1.0 in-toto provenance attestation. Optional but RECOMMENDED for `container` and `monorepo` scopes. Sibling of the SBOM: `security/sboms/<sbom_id>/provenance.intoto.jsonl`.",
+      "type": "string",
+      "pattern": "^security/sboms/sbom-[^/]+/provenance\\.intoto\\.jsonl$"
+    },
+    "scope": {
+      "description": "Subject classification. Aligns with SRE `repo_shape` label (LOCKED 2026-06-12, D2 verdict).",
+      "type": "string",
+      "enum": ["monorepo", "service", "package", "container", "fs", "git-tree"]
+    },
+    "subject": {
+      "description": "Opaque reference to the scanned subject. Conventional prefixes: `repo:owner/name`, `image:registry/name:tag`, `path:relative/path`, `fs:absolute/path`. Producers SHOULD use `owner/name` for `monorepo` scope.",
+      "type": "string",
+      "minLength": 1
+    },
+    "subject_fingerprint": {
+      "description": "Cryptographic identifier of the subject. For `monorepo` and `git-tree` scope: full git SHA. For `container` scope: image digest (`sha256:<hex>`). For `service` / `package` scope: same as the parent repo SHA. Used to correlate SBOM events to vuln scan targets and to deduplicate retry runs.",
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "description": "ISO 8601 UTC timestamp of when the SBOM bytes were finalized and written to disk. Producers MUST use UTC with millisecond precision and a `Z` suffix.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+    },
+    "generator": {
+      "description": "Tool identifier and version that produced the SBOM. Convention: `<tool>:<semver>`. Examples: `syft:1.18.0`, `cdxgen:10.10.2`. Used to filter vulnerabilities by scanner coverage and to attribute drift in `security/vulns/weekly-*.md`.",
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+:\\d+\\.\\d+\\.\\d+(-[a-z0-9.-]+)?$"
+    },
+    "components_count": {
+      "description": "Total number of components (packages) enumerated in the SBOM. Used by SRE's `sbom_size_bucket` label projection (LOCKED 2026-06-12, D1 verdict: small<100, medium<1k, large<10k, xlarge<50k, xxlarge≥50k).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "tool_invocation": {
+      "description": "Optional sub-record capturing the tool invocation parameters needed for SLSA v1.0 source verification (LOCKED with the SBOM pipeline, see `security/README.md` § 'SBOM pipeline contract'). Recorded in the provenance attestation; the event references it by path. Not strictly required in the event payload but recommended for `container` and `monorepo` scopes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_version", "arguments"],
+      "properties": {
+        "tool_version": { "type": "string" },
+        "arguments": { "type": "array", "items": { "type": "string" } },
+        "environment": { "type": "string" }
+      }
+    },
+    "labels": {
+      "description": "Optional free-form labels for downstream filtering. Conventional keys: `team`, `tier`, `compliance-scope`. MUST NOT include PII.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "examples": [
+    {
+      "schema": "security.sbom.generated.v1",
+      "sbom_id": "sbom-2026-06-12-4de5cfa-monorepo",
+      "sbom_fingerprint": "sha256:9b74c9897bac770ffc02951a59f3b0a4d11f6b2a4b1b3a5d2e2c0a4f5e6d7c8a",
+      "sbom_format": "cyclonedx-json",
+      "sbom_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo.cyclonedx-json",
+      "provenance_path": "security/sboms/sbom-2026-06-12-4de5cfa-monorepo/provenance.intoto.jsonl",
+      "scope": "monorepo",
+      "subject": "repo:aicc/command-center",
+      "subject_fingerprint": "4de5cfa9b8c0e1f2a3b4c5d6e7f8091a2b3c4d5e",
+      "generated_at": "2026-06-12T18:42:11.420Z",
+      "generator": "syft:1.18.0",
+      "components_count": 1842,
+      "labels": { "team": "platform", "tier": "1" }
+    }
+  ]
+}
