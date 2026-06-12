@@ -42,7 +42,7 @@ class VulnIntelClient:
             r = await client.get(self.settings.vuln_intel_url.rstrip("/") + "/livez")
             return r.status_code == 200
         except httpx.HTTPError as exc:  # noqa: BLE001
-            logger.warning("vuln_intel_health_failed", error=str(exc))
+            logger.warning("vuln_intel_health_failed: %s", exc)
             return False
 
     async def match_components(

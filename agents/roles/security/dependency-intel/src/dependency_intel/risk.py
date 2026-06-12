@@ -130,31 +130,27 @@ def compute_risk(
         teleport = {nid: 1.0 / n for nid in graph.nodes}
 
     nxg = to_networkx(graph)
-    # networkx's pagerank with a personalization dict == personalised PR
-    try:
-        pr = nx.pagerank(
-            nxg,
-            alpha=damping,
-            personalization=teleport,
-            max_iter=max_iter,
-            tol=tol,
-        )
-    except nx.PowerIterationFailedConvergence:
-        # Re-run with looser tolerance
-        pr = nx.pagerank(
-            nxg,
-            alpha=damping,
-            personalization=teleport,
-            max_iter=max_iter * 4,
-            tol=tol * 100,
-        )
+    # In a dependency graph, edge ``u -> v`` means "u depends on v".
+    # Risk should flow *backwards*: a vulnerability in v should affect u.
+    # We therefore run PageRank on the reversed graph.
+    reversed_g = nxg.reverse(copy=True)
+    # Power-iteration personalised PageRank — implemented in pure Python
+    # so we don't take a hard dependency on scipy.
+    pr = _pagerank_power(
+        reversed_g,
+        damping=damping,
+        teleport=teleport,
+        max_iter=max_iter,
+        tol=tol,
+    )
 
-    # Normalise PR to [0, 100]
+    # Normalise PR to [0, 100]. We use max-scaling so the highest-ranked
+    # node gets 100 and the smallest gets a small but non-zero value.
+    # This avoids the "everyone is 0" failure mode of min-max scaling.
     if pr:
         pr_max = max(pr.values())
-        pr_min = min(pr.values())
-        if pr_max > pr_min:
-            pr_norm = {k: 100.0 * (v - pr_min) / (pr_max - pr_min) for k, v in pr.items()}
+        if pr_max > 0:
+            pr_norm = {k: 100.0 * v / pr_max for k, v in pr.items()}
         else:
             pr_norm = {k: 0.0 for k in pr}
     else:
@@ -289,3 +285,56 @@ def is_transitive(graph: DependencyGraph, node_id: str) -> bool:
     if node_id in graph.root_node_ids:
         return False
     return True
+
+
+# ============================================================================
+# Pure-Python personalised PageRank (power iteration)
+# ============================================================================
+
+
+def _pagerank_power(
+    graph: nx.DiGraph,
+    *,
+    damping: float,
+    teleport: dict[str, float],
+    max_iter: int,
+    tol: float,
+) -> dict[str, float]:
+    """Personalised PageRank via power iteration.
+
+    Avoids networkx's scipy implementation so the service can run on
+    slim base images that don't ship scipy.
+    """
+    nodes = list(graph.nodes())
+    n = len(nodes)
+    if n == 0:
+        return {}
+    # Personalization vector (must sum to 1)
+    pers = {node: float(teleport.get(node, 0.0)) for node in nodes}
+    s = sum(pers.values())
+    if s > 0:
+        pers = {k: v / s for k, v in pers.items()}
+    else:
+        # uniform fallback
+        pers = {node: 1.0 / n for node in nodes}
+    # Initialise
+    rank = dict(pers)
+    # Compute out-degrees
+    out_deg = {node: max(1, graph.out_degree(node)) for node in nodes}
+    # Iterate
+    for _ in range(max_iter):
+        new_rank: dict[str, float] = {node: 0.0 for node in nodes}
+        # Distribute each node's rank to its out-neighbours
+        for u in nodes:
+            share = damping * rank[u] / out_deg[u]
+            for _, v in graph.out_edges(u):
+                new_rank[v] += share
+        # Add teleportation
+        for node in nodes:
+            new_rank[node] += (1.0 - damping) * pers[node]
+        # Convergence check
+        delta = sum(abs(new_rank[node] - rank[node]) for node in nodes)
+        rank = new_rank
+        if delta < tol:
+            break
+    return rank

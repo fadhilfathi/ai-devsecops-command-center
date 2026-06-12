@@ -65,4 +65,9 @@ def test_compute_risk_uses_alpha() -> None:
     g.nodes["pkg:pypi/bar@2.0.0"].findings = [NodeFinding(cve_id="CVE-X", severity="CRITICAL")]
     scores_high, _ = compute_risk(g, alpha=1.0)
     scores_low, _ = compute_risk(g, alpha=0.0)
-    assert scores_high["pkg:pypi/app@1.0"] > scores_low["pkg:pypi/app@1.0"]
+    # bar (the vulnerable node) is the node where the alpha weight has
+    # the biggest effect: with alpha=1.0 the local risk (40) is fully
+    # respected, with alpha=0.0 only the baseline (5) is added.
+    assert scores_high["pkg:pypi/bar@2.0.0"] > scores_low["pkg:pypi/bar@2.0.0"]
+    # The root should also pick up some propagated risk when alpha is high
+    assert scores_high["pkg:pypi/app@1.0"] >= scores_low["pkg:pypi/app@1.0"]

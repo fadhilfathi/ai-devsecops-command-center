@@ -34,6 +34,7 @@ from ..risk import compute_risk, find_vulnerability_clusters
 from ..store import GraphStore
 from ..telemetry import (
     configure_logging,
+    REGISTRY,
     dep_intel_correlation_total,
     dep_intel_graph_edges,
     dep_intel_graph_nodes,
@@ -62,7 +63,7 @@ class Service:
             ok = await self.vuln_intel.health()
             dep_intel_vuln_intel_up.set(1 if ok else 0)
         except httpx.HTTPError as exc:
-            logger.warning("vuln_intel_unreachable", error=str(exc))
+            logger.warning("vuln_intel_unreachable: %s", exc)
             dep_intel_vuln_intel_up.set(0)
         self._refresh_gauges()
 
@@ -337,7 +338,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/metrics", include_in_schema=False)
     async def metrics() -> Response:
-        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
     @app.post("/dep-intel/graph/build", response_model=SbomIngestResponse)
     async def build(

@@ -103,9 +103,7 @@ def build_graph(
     for comp in request.components:
         if graph.node_count + added_nodes >= max_nodes:
             skipped_nodes += 1
-            logger.warning(
-                "graph_node_limit_reached", limit=max_nodes, skipped=skipped_nodes
-            )
+            logger.warning("graph_node_limit_reached limit=%s skipped=%s", max_nodes, skipped_nodes)
             continue
         key = component_key(comp)
         if key in graph.nodes:
@@ -149,7 +147,7 @@ def build_graph(
     }
     for dep in request.dependencies:
         if graph.edge_count + added_edges >= max_edges:
-            logger.warning("graph_edge_limit_reached", limit=max_edges)
+            logger.warning("graph_edge_limit_reached limit=%s", max_edges)
             break
         # Auto-create missing endpoint nodes
         for ref in (dep.from_ref, dep.to_ref):

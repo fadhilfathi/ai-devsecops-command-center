@@ -17,12 +17,8 @@ def main() -> None:
     configure_logging(settings.log_level)
     logger = get_logger("dependency_intel")
     logger.info(
-        "service_starting",
-        host=settings.host,
-        port=settings.port,
-        tenant=settings.tenant_id,
-        data_dir=str(settings.data_dir),
-        vuln_intel_url=settings.vuln_intel_url,
+        "service_starting host=%s port=%s tenant=%s data_dir=%s vuln_intel_url=%s",
+        settings.host, settings.port, settings.tenant_id, str(settings.data_dir), settings.vuln_intel_url,
     )
 
     config = uvicorn.Config(
@@ -36,7 +32,7 @@ def main() -> None:
     server = uvicorn.Server(config)
 
     def _shutdown(signum: int, _frame: Any) -> None:
-        logger.info("shutdown_signal_received", signum=signum)
+        logger.info("shutdown_signal_received signum=%s", signum)
         server.should_exit = True
 
     for sig in (signal.SIGTERM, signal.SIGINT):
