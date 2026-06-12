@@ -527,25 +527,58 @@ The audit table schema:
 
 ```sql
 CREATE TABLE audit_log (
-  id          UUID PRIMARY KEY,
-  ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  tenant_id   UUID NOT NULL,
-  actor       JSONB NOT NULL,
-  action      TEXT NOT NULL,
-  target      JSONB NOT NULL,
-  inputs      JSONB NOT NULL,
-  output      JSONB NOT NULL,
-  prev_hash   BYTEA NOT NULL,
-  hash        BYTEA NOT NULL,
-  record      JSONB NOT NULL
+  id              UUID PRIMARY KEY,
+  ts              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  tenant_id       UUID NOT NULL,
+  -- The source service that emitted the event. Required for CIS Control 8.6
+  -- (review/analyze audit logs by service) and for SRE per-service SLO routing
+  -- (the S2.7 audit-emission metric and the S2.8 RiskScoreAuditChainBroken
+  -- alert are sliced by service). NOT NULL.
+  service         TEXT NOT NULL,
+  -- Retention class drives the 0-90d/90d-1y/1y-7y tier rotation. The default
+  -- 'operational' covers the 1y warm tier; 'regulatory' (7y cold WORM) is set
+  -- by compliance-service emitters; 'diagnostic' (90d hot only) covers
+  -- runtime/observability events. The retention job partitions by this column.
+  retention_class TEXT NOT NULL DEFAULT 'operational'
+                    CHECK (retention_class IN ('regulatory', 'operational', 'diagnostic')),
+  -- Rich actor envelope (preserves the S2.8 forensics context). Compliance
+  -- extracts actor->>'id' for NIST AU-3 accountability; the ip/user_agent
+  -- fields are kept for incident response and abuse detection.
+  actor           JSONB NOT NULL,
+  action          TEXT NOT NULL,
+  target          JSONB NOT NULL,
+  inputs          JSONB NOT NULL,
+  output          JSONB NOT NULL,
+  prev_hash       BYTEA NOT NULL,
+  hash            BYTEA NOT NULL,
+  record          JSONB NOT NULL
 );
-CREATE INDEX audit_log_tenant_ts_idx ON audit_log (tenant_id, ts DESC);
+CREATE INDEX audit_log_tenant_ts_idx    ON audit_log (tenant_id, ts DESC);
+CREATE INDEX audit_log_service_ts_idx   ON audit_log (service, ts DESC);
+CREATE INDEX audit_log_retention_class  ON audit_log (retention_class) WHERE retention_class = 'regulatory';
+```
+
+**Hash-chain seed (HMAC-SHA256 + platform salt, per ComplianceOfficer sign-off 2026-06-12):**
+
+The seed for a tenant's first audit record is `HMAC-SHA256(AICC_AUDIT_CHAIN_SALT, "<tenant_id>:<tenant_created_at_rfc3339_nanos>")`. The salt is loaded from the platform's secret store (Vault/KMS) at service boot and is **never** persisted in the audit_log table — a DB dump alone is insufficient to forge a valid chain (defends against second pre-image attacks if the tenant creation timestamp leaks). The salt is rotatable quarterly per FedRAMP AC-2; historical record hashes are **not** recomputed on rotation (the seed-at-record-creation is the auditor's invariant; the salt is a defense, not a key).
+
+```ts
+// Seed computation (informative; the full chain-walking verifier lives in
+// tests/test_audit.py and the security-service runtime).
+import { createHmac } from 'node:crypto';
+function seedFor(tenantId: string, tenantCreatedAtRfc3339Nanos: string): Buffer {
+  const salt = process.env.AICC_AUDIT_CHAIN_SALT!;  // from Vault
+  return createHmac('sha256', salt)
+    .update(`${tenantId}:${tenantCreatedAtRfc3339Nanos}`)
+    .digest();
+}
 ```
 
 **Retention** (per ComplianceOfficer alignment):
-- 0–90 days: hot, queryable in Postgres.
-- 90 d – 1 y: warm, daily export to Parquet in object storage, queryable via Athena/Trino.
-- 1 y – 7 y: cold, archive in object storage with object-lock (WORM).
+- 0–90 days: hot, queryable in Postgres. `retention_class = 'diagnostic'` rows are dropped at 90d.
+- 90 d – 1 y: warm, daily export to Parquet in object storage, queryable via Athena/Trino. `retention_class = 'operational'` rows are dropped at 1y.
+- 1 y – 7 y: cold, archive in object storage with object-lock (WORM). `retention_class = 'regulatory'` rows are kept the full 7y.
+- The warm tier keeps the `record` JSONB and may drop `inputs`/`output` if storage is tight (the `record` field is the legally-required content per CIS Control 8.5).
 
 ## 4. Risks
 
