@@ -28,8 +28,9 @@ rollback when it misbehaves.
    - [Run from a fork (security researcher flow)](#run-from-a-fork-security-researcher-flow)
 5. [Common failure modes](#common-failure-modes)
 6. [Canary tests (T-09) — treat canary matches as P0](#canary-tests-t-09--treat-canary-matches-as-p0)
-7. [Debugging](#debugging)
-8. [Contact](#contact)
+7. [Downstream routing — POA&M cross-ref for `auto_actionable=false`](#downstream-routing--poam-cross-ref-for-auto_actionablefalse)
+8. [Debugging](#debugging)
+9. [Contact](#contact)
 
 ---
 
@@ -318,6 +319,75 @@ when the canary test itself is running**:
    security-issue.yml, release.yml) failing to gate on the canary
    regex.
 
+### Distinguisher: expected vs unexpected canary hit (T-09, Sprint 3 dependency)
+
+The triage procedure above assumes the operator must distinguish between
+two canary-hit populations:
+
+- **Expected canary hit** — the synthetic test running in CI/prod at a
+  scheduled time, owned by `@security-architect` per the S2.8 test plan
+  § 3.6 (DC-01..DC-04). The test deliberately emits a `__CANARY__`
+  marker to verify that the marker is sanitized. The hit is
+  **logged-but-expected**; no page.
+- **Unexpected canary hit** — a `__CANARY__` marker appears in the
+  absence of an authorized test run. This is either a real intrusion
+  (someone is exploiting the data-exfil path) OR a scheduled test that
+  failed to post its `#sec-canary-armed` notice. Either way, it is
+  **P0** — page immediately.
+
+**The distinguisher field** is `canary_test_run_id` (UUID v4, opaque).
+The scheduled canary test, when armed, MUST:
+
+1. Generate a `canary_test_run_id` (UUID v4).
+2. Post `#sec-canary-armed <canary_test_run_id>` to `#sec-automation`,
+   with the test start time, expected duration, and the run_id itself.
+3. Stamp every emitted record, response, and committed artifact with
+   the run_id in a top-level `canary_test_run_id` field.
+4. On test completion, post `#sec-canary-disarmed <canary_test_run_id>`.
+5. Record the run_id in the canary test ledger
+   (`docs/security/canary-fires.md` — Sprint 3 deliverable).
+
+**The runbook cross-reference logic** is:
+
+```text
+canary_hit_detected:
+  if canary_hit.canary_test_run_id is present:
+    if canary_hit.canary_test_run_id in docs/security/canary-fires.md:
+      # Authorized test run. Log only. No page.
+      log(canary_hit)
+    else:
+      # run_id is present but not in the ledger. Either the test
+      # owner forgot to register the run, or someone is forging
+      # a run_id to bypass detection. P0.
+      page("@security-architect", "@gitops-manager")
+  else:
+    # No run_id at all. The canary hit is not associated with any
+    # authorized test. P0.
+    page("@security-architect", "@gitops-manager")
+```
+
+**Sprint 2 implementation status:** the `canary_test_run_id` field is
+NOT YET emitted by the canary test (T-09 is a Sprint 3 deliverable;
+see the S2.8 test plan). In Sprint 2, all canary hits are treated as
+unexpected (P0). The distinguisher logic above is the Sprint 3 target
+state; operators following this runbook in Sprint 2 should skip the
+ledger check and go straight to step 1 of the triage procedure.
+
+**Operator checklist (Sprint 2):**
+
+- [ ] Confirm the canary marker is exactly `__CANARY__` (case-sensitive)
+- [ ] Check `#sec-automation` for a recent `#sec-canary-armed` post
+      within the last 6h
+- [ ] If found, follow the 6-step triage procedure (snapshot, page owner)
+- [ ] If not found, treat as P0 and follow the standard incident response runbook
+
+**Operator checklist (Sprint 3+):**
+
+- [ ] All Sprint 2 checks, plus
+- [ ] If the canary hit has a `canary_test_run_id` field, look it up
+      in `docs/security/canary-fires.md` and follow the distinguisher
+      logic above
+
 ### Canary regex (Sprint 2)
 
 ```text
@@ -340,6 +410,89 @@ attacker will not pick this exact token.)
   [Disable the workflows in an incident](#disable-the-workflows-in-an-incident)
   procedure. Use that runbook to stop the bleed; come back here for
   the canary-specific follow-up.
+
+---
+
+## Downstream routing — POA&M cross-ref for `auto_actionable=false`
+
+> **Why this section exists:** SecurityArchitect's S2.8 mitigation § 3.6
+> (T-03 cross-source consensus gate) requires that a HIGH or CRITICAL
+> finding with `auto_actionable == false` MUST still appear in the
+> compliance evidence chain as a "verification-pending" POA&M item,
+> not be silently dropped. The automation chain (GitOps) and the
+> compliance chain (POA&M) serve different audiences; both must
+> receive the data.
+
+### The 3 routing paths (LOCKED 2026-06-12, O-3.7 cross-team sign-off)
+
+The 4-condition `auto_actionable` gate determines which downstream
+consumer processes a finding. The 3 routing paths are MUTUALLY
+EXCLUSIVE based on `(auto_actionable, severity)`:
+
+| `auto_actionable` | `severity`     | Downstream consumer                                          | Output                                                                              | Status flag      |
+| ----------------- | -------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ---------------- |
+| `true`            | `critical`     | `.github/workflows/security-issue.yml` (via security.yml dispatch) | GitHub issue with labels `security`, `automated`, `cve`, `severity:critical`         | `auto_actioned`  |
+| `false`           | `critical` or `high` | **ComplianceOfficer S2.9 POA&M auto-mapping** (via `scan-listener.ts` subscription to `security.vulnerability.detected.v1`) | POA&M item with `status: 'verification-pending'`                                    | `tracked`        |
+| any               | any            | security-service :4003 NDJSON appender                      | `security/vulns/<YYYY-MM-DD>.json` line                                             | `recorded`       |
+
+The second row is the POA&M cross-ref. Without it, a HIGH/CRITICAL
+that fails the 4-condition gate (e.g. consensus of 1, no fix, or not
+in our dep graph) would be silently dropped from the compliance
+chain — the very failure mode SecurityArchitect's § 3.6 calls out.
+
+### What the operator needs to know
+
+1. **The compliance service subscribes to the FULL `security.vulnerability.detected.v1` stream** — not a filtered subset. The
+   `scan-listener.ts` in `backend/services/compliance/src/subscribers/`
+   receives every event, regardless of `auto_actionable`, and applies
+   the S2.9 POA&M auto-mapping rule. If you observe a HIGH/CRITICAL
+   finding in `security/vulns/<date>.json` with `auto_actionable: false`
+   but **no** corresponding POA&M item in the compliance service, that
+   is a contract violation — page `@compliance-officer` AND
+   `@gitops-manager`.
+
+2. **Records with `auto_actionable: false && severity in {low, medium, unknown}` fall to the third row only.** They are recorded in the
+   NDJSON for the audit log (90-day retention per `security/README.md`
+   § 'Folder contracts') but are NOT subject to the POA&M
+   auto-mapping rule. This is intentional — a low-severity unconfirmed
+   finding does not warrant a compliance evidence item, only a
+   recorded audit log.
+
+3. **The status flag column** is informational; it is what the S2.9
+   POA&M auto-mapping and the GitOps issue opener emit. The flag
+   values are not on the wire format (they are downstream artifacts).
+
+### How to verify the routing is working
+
+```bash
+# 1. Confirm a recent finding exists in the NDJSON
+$ cat security/vulns/$(date -u +%Y-%m-%d).json | jq -r 'select(.severity == "critical") | .id'
+
+# 2. For each critical id above, check whether a corresponding
+#    GitHub issue exists (auto_actioned) or a POA&M item exists (tracked)
+$ gh issue list --label "severity:critical" --search "<id>" --state all
+# (compliance POA&M check is via the compliance service REST API;
+#  see docs/runbooks/compliance-service.md for the exact query)
+```
+
+If a critical id from step 1 has no issue AND no POA&M item, the
+4-condition gate is correctly recording it but the routing is broken.
+Page `@compliance-officer` immediately.
+
+### What this section is NOT
+
+- It is not a recipe for opening a POA&M item manually. The
+  compliance service auto-creates POA&M items via the S2.9
+  auto-mapping. Manual POA&M creation is via the compliance dashboard.
+- It is not a fix for the 4-condition gate. If `auto_actionable` is
+  `false` because the gate failed (e.g. consensus of 1), the correct
+  remediation is to investigate why consensus is low — the POA&M
+  cross-ref only ensures the failure is *tracked*, not that it is
+  *fixed*.
+- It is not authorization to bypass the GitOps critical-CVE issue
+  opener. `auto_actionable == true && severity == 'critical'` ALWAYS
+  opens an issue, regardless of POA&M status. The two paths run in
+  parallel.
 
 ---
 
