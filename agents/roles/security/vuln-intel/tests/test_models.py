@@ -112,3 +112,50 @@ def test_aggregate_severity_prefers_v4() -> None:
     assert sev.cvss_v4 is not None
     assert sev.cvss_v3 is not None
     assert sev.qualitative == SeverityQualitative.HIGH
+
+
+# ---------------------------------------------------------------------------
+# S2.8 follow-up (2026-06-12): CveRecord / AffectedVersionRange additions
+# ---------------------------------------------------------------------------
+def test_affected_version_range_introduced_in_renamed() -> None:
+    """S2.8 follow-up: Pydantic field is ``introduced_in`` (per-version
+    semver), matching the wire format. The old ``introduced`` name
+    is removed."""
+    from vuln_intel.models.cve import AffectedVersionRange
+    r = AffectedVersionRange(introduced_in="1.0.0", fixed="2.0.0")
+    assert r.introduced_in == "1.0.0"
+    assert r.fixed == "2.0.0"
+
+
+def test_affected_version_range_introduced_at() -> None:
+    """S2.8 follow-up: new ``introduced_at`` (per-deploy ISO-8601) is
+    internal-only — does NOT appear on the GitOps wire format."""
+    from datetime import datetime, timezone
+    from vuln_intel.models.cve import AffectedVersionRange
+    ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    r = AffectedVersionRange(introduced_in="1.0.0", introduced_at=ts, fixed="2.0.0")
+    assert r.introduced_at == ts
+    # The field is present in model_dump; the security-service
+    # projection strips it before publishing to the wire.
+    assert r.model_dump().get("introduced_at") == ts
+
+
+def test_cve_record_consensus_sources_default_empty() -> None:
+    """S2.8: every CveRecord has a ``consensus_sources`` list (O-3.7
+    wire-format requirement) defaulting to empty. The list is
+    populated by the consensus pass after every ingest run."""
+    from vuln_intel.models.cve import CveRecord
+    rec = CveRecord()
+    assert hasattr(rec, "consensus_sources")
+    assert rec.consensus_sources == []
+
+
+def test_cve_record_pre_actionable_default_none() -> None:
+    """S2.8: ``vuln_intel_pre_actionable`` is the internal pre-actionable
+    hint, computed by the service layer after consensus + fix checks.
+    Defaults to None; security-service :4003 owns the wire
+    ``auto_actionable`` field."""
+    from vuln_intel.models.cve import CveRecord
+    rec = CveRecord()
+    assert hasattr(rec, "vuln_intel_pre_actionable")
+    assert rec.vuln_intel_pre_actionable is None
