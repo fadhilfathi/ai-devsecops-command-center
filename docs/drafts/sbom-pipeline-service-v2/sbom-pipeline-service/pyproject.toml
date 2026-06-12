@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sbom-pipeline"
+version = "1.0.0"
+description = "Syft-wrapped SBOM generation, analysis, and storage service (AionRs S2.1)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "AionRs Security Team", email = "security@aionrs.io" },
+]
+keywords = ["sbom", "syft", "cyclonedx", "spdx", "supply-chain", "devsecops"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    # Validation
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    # CLI
+    "click>=8.1.7",
+    # Logging
+    "structlog>=24.1.0",
+    # Observability
+    "opentelemetry-api>=1.24.0",
+    "opentelemetry-sdk>=1.24.0",
+    "opentelemetry-exporter-otlp>=1.24.0",
+    "opentelemetry-instrumentation-fastapi>=0.45b0",
+    "opentelemetry-instrumentation-httpx>=0.45b0",
+    "prometheus-client>=0.20.0",
+    # Storage
+    "aiosqlite>=0.19.0",
+    "sqlalchemy[asyncio]>=2.0.27",
+    # Event bus — Sprint 1's EventBus
+    "nats-py>=2.6.0",
+    # Utilities
+    "httpx>=0.27.0",
+    "tenacity>=8.2.0",
+    "orjson>=3.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "ruff>=0.3.0",
+    "respx>=0.21.0",
+    "freezegun>=1.4.0",
+    "click-testing>=1.0.0",
+]
+
+[project.scripts]
+sbom-pipeline = "sbom_pipeline.cli:main"
+sbom-generate = "sbom_pipeline.cli:generate_cmd"
+
+[project.urls]
+Homepage = "https://aionrs.io"
+Documentation = "https://aionrs.io/docs/sbom-pipeline"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sbom_pipeline*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-ra", "--strict-markers", "--tb=short"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "C4", "S", "RUF", "PT"]
+ignore = ["S101", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[tool.coverage.run]
+source = ["src/sbom_pipeline"]
+omit = ["*/tests/*", "*/__main__.py", "*/cli.py"]
