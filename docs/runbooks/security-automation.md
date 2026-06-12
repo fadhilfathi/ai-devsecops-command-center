@@ -25,6 +25,7 @@ rollback when it misbehaves.
    - [Manually trigger](#manually-trigger)
    - [Roll back a bot PR](#roll-back-a-bot-pr)
    - [Disable the workflows in an incident](#disable-the-workflows-in-an-incident)
+   - [Run from a fork (security researcher flow)](#run-from-a-fork-security-researcher-flow)
 5. [Common failure modes](#common-failure-modes)
 6. [Debugging](#debugging)
 7. [Contact](#contact)
@@ -197,6 +198,35 @@ After the incident:
 1. Re-enable the workflows: `gh workflow enable security.yml`
 2. Open a post-mortem issue tagged `incident/security-automation`.
 3. Add a regression test or guard to prevent recurrence.
+
+### Run from a fork (security researcher flow)
+
+If you fork the repository to investigate or test the security
+automation:
+
+- The default `GITHUB_TOKEN` in fork runs **does not have
+  `contents: write` or `pull-requests: write` to the upstream
+  repo** by design. The auto-PR jobs (`sbom-commit`, `vuln-report`,
+  `weekly-digest`, `cleanup`) will fail with `403 Resource not
+  accessible by integration`.
+- The `security.yml` workflow reads the env var
+  `GH_PUSH_TOKEN_FALLBACK`, which resolves to
+  `secrets.GH_PUSH_TOKEN || secrets.GITHUB_TOKEN`. To run the
+  auto-PR jobs from your fork:
+  1. Create a PAT (or GitHub App installation token) on the
+     upstream repo with `contents: write` and
+     `pull-requests: write`.
+  2. On the **fork**, add the token as a secret named
+     `GH_PUSH_TOKEN` (Settings → Secrets and variables →
+     Actions).
+  3. Re-run the workflow from the Actions tab. The jobs will
+     use `GH_PUSH_TOKEN` for the upstream calls.
+- The read-only jobs (`create-labels` is `contents: read`) work
+  fine in fork context with the default token.
+- The `security-issue.yml` workflow cannot be triggered from a
+  fork via `repository_dispatch` (GitHub blocks cross-repo
+  dispatch); use `workflow_dispatch` with a test CVE id
+  (`GHSA-test-test-test`) instead.
 
 ---
 
