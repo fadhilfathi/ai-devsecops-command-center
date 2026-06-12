@@ -1,0 +1,57 @@
+# =============================================================================
+# SLO burn-rate alert template — rendered by the SLO controller per SLO
+# See docs/observability/alerting-runbooks.md §3
+# =============================================================================
+{# Macros — passed in via -v: service, slo, sli_query, target, window #}
+{% set budget = 1 - target %}
+{% set fast_burn_mult = 14.4 %}     {# exhausts budget in ~2 days #}
+{% set slow_burn_mult = 1 %}       {# exhausts budget in ~30 days #}
+
+groups:
+  - name: slo.burn.{{ service }}.{{ slo | replace("/", ".") }}
+    interval: 30s
+    rules:
+
+      # ----- Fast burn (page): 1h and 6h windows -----
+      - alert: SLO_{{ service | title | replace("-", "") }}_{{ slo | title | replace("/", "") }}_FastBurn
+        expr: |
+          (
+            ({{ sli_query | replace("[5m]", "[1h]") }}) < ({{ target }} - {{ budget }} * {{ fast_burn_mult }})
+            and
+            ({{ sli_query | replace("[5m]", "[6h]") }}) < ({{ target }} - {{ budget }} * {{ fast_burn_mult }})
+          )
+        for: 2m
+        labels:
+          severity: page
+          service: {{ service }}
+          slo: {{ slo }}
+        annotations:
+          summary: "SLO {{ slo }} for {{ service }} is fast-burning ({{ fast_burn_mult }}x)"
+          description: |
+            SLO: {{ slo }}
+            Target: {{ target }}
+            Budget remaining: {{ '{{' }} with query "service_error_budget_remaining_ratio{service='{{ service }}',slo='{{ slo }}'}" {{ '}}' }}{{ '{{' }} . | first | value | humanizePercentage {{ '}}' }}{{ '{{' }} end {{ '}}' }}.
+            This would exhaust the budget in ~2 days.
+          runbook: "https://runbooks.example.com/observability/SLOBurnIncident"
+          dashboard: "https://grafana.example.com/d/{{ service }}-slo"
+
+      # ----- Slow burn (ticket): 24h and 3d windows -----
+      - alert: SLO_{{ service | title | replace("-", "") }}_{{ slo | title | replace("/", "") }}_SlowBurn
+        expr: |
+          (
+            ({{ sli_query | replace("[5m]", "[24h]") }}) < {{ target }}
+            and
+            ({{ sli_query | replace("[5m]", "[3d]") }}) < {{ target }}
+          )
+        for: 30m
+        labels:
+          severity: ticket
+          service: {{ service }}
+          slo: {{ slo }}
+        annotations:
+          summary: "SLO {{ slo }} for {{ service }} is slow-burning (1x)"
+          description: |
+            SLO: {{ slo }}
+            Target: {{ target }}
+            Investigate within 1 business day.
+          runbook: "https://runbooks.example.com/observability/SLOSlowBurn"

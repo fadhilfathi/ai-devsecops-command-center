@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------------------------------------
+   AionUi global styles
+   ------------------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-aion-bg text-aion-text font-sans;
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+
+  /* Slim, dark scrollbars that fit the AionUi aesthetic. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1f2742;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2a345a;
+  }
+}
+
+@layer components {
+  .aion-card {
+    @apply bg-aion-surface border border-aion-border rounded-lg;
+  }
+
+  .aion-card-hover {
+    @apply aion-card transition-colors hover:border-aion-accent/40;
+  }
+
+  .aion-divider {
+    @apply border-t border-aion-border;
+  }
+
+  .aion-link {
+    @apply text-aion-accent hover:text-aion-accent/80 underline-offset-2 hover:underline;
+  }
+
+  .aion-mono {
+    @apply font-mono text-[0.85em] text-aion-muted;
+  }
+}
+
+@layer utilities {
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(94, 234, 212, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(94, 234, 212, 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}

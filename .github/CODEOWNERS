@@ -1,0 +1,41 @@
+# =============================================================================
+# CODEOWNERS
+# Auto-assigns reviewers based on paths. The default rule is platform; specific
+# teams own specific areas.
+# =============================================================================
+
+# Default owners — every PR needs at least one of these
+*                                       @aionrs/platform
+
+# Architecture & high-level design
+/docs/architecture/                     @aionrs/platform @aionrs/architects
+/docs/adr/                              @aionrs/platform @aionrs/architects
+/agents/                                @aionrs/architects
+
+# Backend services
+/backend/services/auth/                 @aionrs/auth @aionrs/security
+/backend/services/security/             @aionrs/security
+/backend/services/agent/                @aionrs/architects
+/backend/services/incident/             @aionrs/sre @aionrs/security
+/backend/services/compliance/           @aionrs/compliance @aionrs/security
+/backend/services/integration/          @aionrs/integrations
+/backend/shared/                        @aionrs/backend
+
+# Frontend
+/frontend/                              @aionrs/frontend
+
+# Infrastructure & deployment
+/infra/                                 @aionrs/sre
+/.github/workflows/                     @aionrs/sre
+/docker-compose.yml                     @aionrs/sre
+/Makefile                               @aionrs/sre
+
+# Compliance
+/docs/compliance/                       @aionrs/compliance
+
+# Security-sensitive files (always require security review)
+/SECURITY.md                            @aionrs/security
+/docs/security/                         @aionrs/security
+*.pem                                   @aionrs/security
+*.key                                   @aionrs/security
+*.p12                                   @aionrs/security

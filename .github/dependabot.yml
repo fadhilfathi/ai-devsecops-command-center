@@ -1,0 +1,123 @@
+# =============================================================================
+# Dependabot configuration
+# Keeps dependencies, container images, and GitHub Actions up to date.
+# =============================================================================
+
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # npm workspaces (frontend, backend services, shared, agents)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    groups:
+      production:
+        dependency-type: "production"
+      development:
+        dependency-type: "development"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+        # Major bumps are reviewed manually
+
+  # ---------------------------------------------------------------------------
+  # Frontend
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    rebase-strategy: "auto"
+
+  # ---------------------------------------------------------------------------
+  # Backend services
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/backend/services/auth"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "backend", "auth"]
+  - package-ecosystem: "npm"
+    directory: "/backend/services/agent"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "backend", "agents"]
+  - package-ecosystem: "npm"
+    directory: "/backend/services/security"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "backend", "security"]
+  - package-ecosystem: "npm"
+    directory: "/backend/services/incident"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "backend", "incidents"]
+  - package-ecosystem: "npm"
+    directory: "/backend/services/compliance"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "backend", "compliance"]
+  - package-ecosystem: "npm"
+    directory: "/backend/services/integration"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels: ["dependencies", "backend", "integrations"]
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "ci"
+    open-pull-requests-limit: 5
+
+  # ---------------------------------------------------------------------------
+  # Docker (base images in compose)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "docker"
+    open-pull-requests-limit: 5

@@ -1,0 +1,74 @@
+# Auto-label rules
+# https://github.com/actions/labeler
+
+frontend:
+  - frontend/**/*
+  - "**/*.tsx"
+  - "**/*.css"
+  - "**/*.scss"
+
+backend:
+  - backend/**/*
+
+agent:
+  - agents/**/*
+  - backend/services/agent/**/*
+
+security:
+  - backend/services/auth/**/*
+  - backend/services/security/**/*
+  - docs/security/**/*
+  - "**/*.pem"
+  - "**/*.key"
+
+compliance:
+  - backend/services/compliance/**/*
+  - docs/compliance/**/*
+
+incidents:
+  - backend/services/incident/**/*
+
+integrations:
+  - backend/services/integration/**/*
+
+infra:
+  - infra/**/*
+  - .github/workflows/**
+  - docker-compose.yml
+  - Makefile
+  - Dockerfile
+
+docs:
+  - docs/**/*
+  - "**/*.md"
+  - "**/*.mdx"
+
+dependencies:
+  - package.json
+  - pnpm-lock.yaml
+  - "**/package.json"
+
+ci:
+  - .github/workflows/**
+  - .github/dependabot.yml
+
+ci-skip:
+  - .github/PULL_REQUEST_TEMPLATE.md
+  - .github/ISSUE_TEMPLATE/**
+
+breaking-change:
+  - any:
+      - "**/BREAKING.md"
+      - "**/MIGRATION.md"
+
+tests:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - tests/**
+
+chore:
+  - "**/.gitignore"
+  - "**/.editorconfig"
+  - "**/.nvmrc"

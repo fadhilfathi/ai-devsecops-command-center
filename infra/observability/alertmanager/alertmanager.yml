@@ -1,0 +1,123 @@
+# =============================================================================
+# Alertmanager configuration — see docs/observability/alerting-runbooks.md §5
+# Owner: SREEngineer
+# =============================================================================
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: "smtp.example.com:587"
+  smtp_from: "alertmanager@example.com"
+  smtp_require_tls: true
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
+# ---------- Route tree ----------
+route:
+  receiver: default
+  group_by: ["alertname", "service", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Page on any user-impacting SLO burn
+    - matchers:
+        - slo =~ ".+"
+        - severity = "page"
+      receiver: pagerduty-sre
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+    # Auth-service pages go to the identity team on-call
+    - matchers:
+        - service = "auth"
+        - severity = "page"
+      receiver: pagerduty-identity
+      group_wait: 10s
+      repeat_interval: 1h
+    # Agent pages go to the AI team on-call
+    - matchers:
+        - service = "agent"
+        - severity = "page"
+      receiver: pagerduty-ai
+      group_wait: 10s
+      repeat_interval: 1h
+    # Tickets to GitHub Issues
+    - matchers:
+        - severity = "ticket"
+      receiver: github-issues
+      group_wait: 1m
+      repeat_interval: 24h
+    # Info to Slack
+    - matchers:
+        - severity = "info"
+      receiver: slack-info
+      group_wait: 1m
+      repeat_interval: 24h
+    # Watchdog always pages the SRE primary
+    - matchers:
+        - alertname = "WatchdogDeadmanSwitch"
+      receiver: pagerduty-sre
+      group_wait: 0s
+      repeat_interval: 1m
+
+# ---------- Inhibition: page suppresses ticket on same service/issue ----------
+inhibit_rules:
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="ticket"]
+    equal: [service, alertname]
+  - source_matchers: [alertname="ServiceDown"]
+    target_matchers: [__name__="up"]
+    equal: [service]
+
+# ---------- Receivers ----------
+receivers:
+  - name: default
+    webhook_configs:
+      - url: http://event-bus:8080/alerts
+        send_resolved: true
+
+  - name: pagerduty-sre
+    pagerduty_configs:
+      - service_key_file: /etc/alertmanager/secrets/pagerduty-sre.key
+        severity: critical
+        send_resolved: true
+        description: "{{ template \"pagerduty.default.description\" . }}"
+        details:
+          firing: "{{ .Alerts.Firing | len }}"
+          service: "{{ .CommonLabels.service }}"
+          runbook: "{{ .CommonAnnotations.runbook }}"
+
+  - name: pagerduty-identity
+    pagerduty_configs:
+      - service_key_file: /etc/alertmanager/secrets/pagerduty-identity.key
+        severity: critical
+        send_resolved: true
+
+  - name: pagerduty-ai
+    pagerduty_configs:
+      - service_key_file: /etc/alertmanager/secrets/pagerduty-ai.key
+        severity: critical
+        send_resolved: true
+
+  - name: github-issues
+    webhook_configs:
+      - url: http://integration:8080/issue/create
+        send_resolved: false
+
+  - name: slack-info
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack-webhook.url
+        channel: "#sre-info"
+        send_resolved: true
+        title: "{{ .CommonLabels.alertname }} — {{ .CommonLabels.service }}"
+        text: |
+          {{ range .Alerts }}{{ .Annotations.description }}
+          {{ end }}
+        actions:
+          - type: button
+            text: "Open Dashboard"
+            url: "{{ .CommonAnnotations.dashboard }}"
+          - type: button
+            text: "Open Runbook"
+            url: "{{ .CommonAnnotations.runbook }}"

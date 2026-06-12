@@ -1,0 +1,100 @@
+# Auto detect text files and perform LF normalization
+*               text=auto eol=lf
+
+# Source code
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.mjs           text eol=lf
+*.cjs           text eol=lf
+*.json          text eol=lf
+*.jsonc         text eol=lf
+*.css           text eol=lf
+*.scss          text eol=lf
+*.sass          text eol=lf
+*.less          text eol=lf
+*.html          text eol=lf
+*.vue           text eol=lf
+*.svelte        text eol=lf
+*.py            text eol=lf
+*.rb            text eol=lf
+*.go            text eol=lf
+*.rs            text eol=lf
+*.java          text eol=lf
+*.kt            text eol=lf
+*.swift         text eol=lf
+*.c             text eol=lf
+*.cpp           text eol=lf
+*.h             text eol=lf
+*.hpp           text eol=lf
+*.sh            text eol=lf
+*.bash          text eol=lf
+*.zsh           text eol=lf
+*.yaml          text eol=lf
+*.yml           text eol=lf
+*.toml          text eol=lf
+*.xml           text eol=lf
+*.md            text eol=lf
+*.mdx           text eol=lf
+*.adoc          text eol=lf
+*.rst           text eol=lf
+
+# Docker
+Dockerfile       text eol=lf
+*.dockerfile     text eol=lf
+docker-compose*.yml text eol=lf
+.dockerignore    text eol=lf
+
+# Configs that must be LF
+Makefile         text eol=lf
+GNUmakefile      text eol=lf
+.gitignore       text eol=lf
+.gitattributes   text eol=lf
+.editorconfig    text eol=lf
+.eslintrc*       text eol=lf
+.prettierrc*     text eol=lf
+.env.example     text eol=lf
+*.env.example    text eol=lf
+LICENSE          text eol=lf
+NOTICE           text eol=lf
+
+# Windows-style line endings for some files
+*.bat            text eol=crlf
+*.cmd            text eol=crlf
+*.ps1            text eol=crlf
+
+# Binary / large files
+*.png            binary
+*.jpg            binary
+*.jpeg           binary
+*.gif            binary
+*.ico            binary
+*.webp           binary
+*.pdf            binary
+*.zip            binary
+*.gz             binary
+*.tar            binary
+*.7z             binary
+*.rar            binary
+*.woff           binary
+*.woff2          binary
+*.ttf            binary
+*.eot            binary
+*.otf            binary
+*.mp4            binary
+*.mp3            binary
+*.wav            binary
+*.mov            binary
+*.avi            binary
+*.webm           binary
+
+# Lock files (managed by tools, treat as binary for diff purposes if huge)
+package-lock.json   text eol=lf -diff
+pnpm-lock.yaml      text eol=lf -diff
+yarn.lock           text eol=lf -diff
+poetry.lock         text eol=lf -diff
+Cargo.lock          text eol=lf -diff
+composer.lock       text eol=lf -diff
+go.sum              text eol=lf -diff
+Gemfile.lock        text eol=lf -diff

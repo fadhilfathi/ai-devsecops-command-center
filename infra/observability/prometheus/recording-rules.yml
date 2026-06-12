@@ -1,0 +1,157 @@
+# =============================================================================
+# Prometheus recording rules — pre-computed SLI series
+# Owner: SREEngineer
+# See: docs/observability/monitoring-architecture.md §4, §6
+# =============================================================================
+
+groups:
+  # ---------------------------------------------------------------------------
+  # Generic service SLIs (RED)
+  # ---------------------------------------------------------------------------
+  - name: sli.service.red
+    interval: 30s
+    rules:
+      - record: service:http_requests:rate5m
+        expr: sum by (service, route, method, status_class) (rate(http_requests_total[5m]))
+
+      - record: service:http_request_errors:ratio5m
+        expr: |
+          sum by (service, route, method) (rate(http_requests_total{status=~"5.."}[5m]))
+            / sum by (service, route, method) (rate(http_requests_total[5m]))
+
+      - record: service:http_request_duration:p50
+        expr: |
+          histogram_quantile(0.50,
+            sum by (le, service, route) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      - record: service:http_request_duration:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, service, route) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      - record: service:http_request_duration:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, service, route) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+  # ---------------------------------------------------------------------------
+  # Auth service SLIs
+  # ---------------------------------------------------------------------------
+  - name: sli.service.auth
+    interval: 30s
+    rules:
+      - record: service:auth:availability:ratio5m
+        expr: |
+          sum(rate(http_requests_total{service="auth",status!~"5.."}[5m]))
+            / sum(rate(http_requests_total{service="auth"}[5m]))
+
+      - record: service:auth:token_latency:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(http_request_duration_seconds_bucket{service="auth",route="/token"}[5m]))
+          )
+
+      - record: service:auth:token_correctness:ratio5m
+        expr: |
+          sum(rate(jwt_validation_total{result="valid"}[5m]))
+            / sum(rate(jwt_validation_total[5m]))
+
+  # ---------------------------------------------------------------------------
+  # Agent SLIs
+  # ---------------------------------------------------------------------------
+  - name: sli.service.agent
+    interval: 30s
+    rules:
+      - record: service:agent:task_success:ratio5m
+        expr: |
+          sum by (agent, task_type) (rate(agent_tasks_total{outcome="success"}[5m]))
+            / sum by (agent, task_type) (rate(agent_tasks_total[5m]))
+
+      - record: service:agent:task_duration:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, agent, task_type) (rate(agent_task_duration_seconds_bucket[5m]))
+          )
+
+      - record: service:agent:queue_depth
+        expr: max by (agent) (agent_tasks_in_flight)
+
+  # ---------------------------------------------------------------------------
+  # Security service SLIs
+  # ---------------------------------------------------------------------------
+  - name: sli.service.security
+    interval: 30s
+    rules:
+      - record: service:security:scan_completion:ratio5m
+        expr: |
+          sum(rate(scans_completed_total[5m]))
+            / sum(rate(scans_started_total[5m]))
+
+      - record: service:security:scan_freshness:hours
+        expr: (time() - max(security_last_scan_timestamp_seconds)) / 3600
+
+  # ---------------------------------------------------------------------------
+  # Error budget — derived from SLI vs SLO target
+  # ---------------------------------------------------------------------------
+  - name: sli.error_budget
+    interval: 1m
+    rules:
+      - record: service_error_budget_remaining_ratio
+        expr: |
+          (
+            service:auth:availability:ratio5m - 0.999
+          ) / (1 - 0.999)
+
+      - record: service_error_budget_remaining_minutes
+        expr: |
+          (
+            service:auth:availability:ratio5m - 0.999
+          ) / (1 - 0.999) * 43200
+
+  # ---------------------------------------------------------------------------
+  # USE — resource saturation
+  # ---------------------------------------------------------------------------
+  - name: sli.use.resources
+    interval: 30s
+    rules:
+      - record: service:nodejs:eventloop_lag:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, service) (rate(nodejs_eventloop_lag_seconds_bucket[5m]))
+          )
+
+      - record: service:cpu:utilization:ratio5m
+        expr: |
+          sum by (service) (rate(container_cpu_usage_seconds_total[5m]))
+            / sum by (service) (kube_pod_container_resource_limits{resource="cpu"})
+
+      - record: service:memory:utilization:ratio5m
+        expr: |
+          sum by (service) (container_memory_working_set_bytes)
+            / sum by (service) (kube_pod_container_resource_limits{resource="memory"})
+
+  # ---------------------------------------------------------------------------
+  # Platform-wide SLIs (federation-friendly)
+  # ---------------------------------------------------------------------------
+  - name: sli.platform
+    interval: 30s
+    rules:
+      - record: platform:api:availability:ratio5m
+        expr: |
+          sum(rate(http_requests_total{status!~"5.."}[5m]))
+            / sum(rate(http_requests_total[5m]))
+
+      - record: platform:api:p99_latency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      - record: platform:event_bus:lag:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(event_bus_lag_seconds_bucket[5m]))
+          )

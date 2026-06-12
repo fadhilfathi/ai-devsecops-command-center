@@ -1,0 +1,69 @@
+name: sbom
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  sbom:
+    name: Generate SBOMs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.18.0"
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate CycloneDX SBOM
+        run: |
+          npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.cyclonedx.json --spec-version 1.5
+          npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.cyclonedx.xml --spec-version 1.5 --format xml
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom.cyclonedx.json
+            sbom.cyclonedx.xml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload SBOM to Dependency-Track
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DEPENDENCY_TRACK_URL: ${{ secrets.DEPENDENCY_TRACK_URL }}
+          DEPENDENCY_TRACK_API_KEY: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
+        run: |
+          if [ -n "$DEPENDENCY_TRACK_URL" ] && [ -n "$DEPENDENCY_TRACK_API_KEY" ]; then
+            curl -sS -X POST "$DEPENDENCY_TRACK_URL/api/v1/bom" \
+              -H "X-Api-Key: $DEPENDENCY_TRACK_API_KEY" \
+              -H "Content-Type: multipart/form-data" \
+              -F "project=ai-devsecops-command-center" \
+              -F "autoCreate=true" \
+              -F "bom=@sbom.cyclonedx.json"
+          else
+            echo "Dependency-Track not configured; skipping upload"
+          fi

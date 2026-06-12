@@ -1,0 +1,234 @@
+# =============================================================================
+# AI-DevSecOps-Command-Center - Local Development Stack
+# =============================================================================
+# Brings up Postgres, Redis, the six backend services, the frontend, and
+# the observability toolchain (Prometheus, Grafana, Loki, OTel collector).
+# Use `make up` / `make down` for the common cases.
+# =============================================================================
+
+x-service-base: &service-base
+  restart: unless-stopped
+  env_file:
+    - .env
+  networks:
+    - ccnet
+
+services:
+  # ---------------------------------------------------------------------------
+  # Datastores
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: cc-postgres
+    environment:
+      POSTGRES_USER: aionrs
+      POSTGRES_PASSWORD: aionrs
+      POSTGRES_DB: command_center
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aionrs -d command_center"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ccnet
+
+  redis:
+    image: redis:7-alpine
+    container_name: cc-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ccnet
+
+  # ---------------------------------------------------------------------------
+  # Backend services
+  # ---------------------------------------------------------------------------
+  auth-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/services/auth/Dockerfile
+    container_name: cc-auth
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  agent-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/services/agent/Dockerfile
+    container_name: cc-agent
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  security-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/services/security/Dockerfile
+    container_name: cc-security
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  incident-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/services/incident/Dockerfile
+    container_name: cc-incident
+    ports:
+      - "3004:3004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  compliance-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/services/compliance/Dockerfile
+    container_name: cc-compliance
+    ports:
+      - "3005:3005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  integration-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/services/integration/Dockerfile
+    container_name: cc-integration
+    ports:
+      - "3006:3006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Frontend (AionUi)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cc-frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    depends_on:
+      - auth-service
+      - agent-service
+      - security-service
+      - incident-service
+      - compliance-service
+      - integration-service
+    networks:
+      - ccnet
+
+  # ---------------------------------------------------------------------------
+  # Observability
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: cc-prometheus
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    ports:
+      - "9090:9090"
+    networks:
+      - ccnet
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: cc-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - ccnet
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: cc-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - lokidata:/loki
+    networks:
+      - ccnet
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: cc-otel
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./infra/observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - ccnet
+
+volumes:
+  pgdata:
+  redisdata:
+  promdata:
+  grafanadata:
+  lokidata:
+
+networks:
+  ccnet:
+    driver: bridge
+    name: ccnet

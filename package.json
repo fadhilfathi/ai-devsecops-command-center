@@ -1,0 +1,73 @@
+{
+  "name": "ai-devsecops-command-center",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-native multi-agent DevSecOps command center: unified dashboard for assets, incidents, vulnerabilities, SBOM, compliance, and integrations.",
+  "license": "Apache-2.0",
+  "author": "MiniMax / AionRs",
+  "engines": {
+    "node": ">=20.18.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "workspaces": [
+    "frontend",
+    "backend/services/*",
+    "backend/packages/*",
+    "backend/common/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm run -r --parallel dev",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm -r --if-present test:e2e",
+    "lint": "pnpm -r --if-present lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "clean": "pnpm -r exec rimraf dist node_modules .turbo .cache coverage",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:build": "docker compose build",
+    "prepare": "husky || true",
+    "release": "standard-version",
+    "prerelease": "pnpm build && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.3.0",
+    "rimraf": "^6.0.1",
+    "standard-version": "^9.5.0",
+    "typescript": "^5.5.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aionrs/ai-devsecops-command-center.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aionrs/ai-devsecops-command-center/issues"
+  },
+  "homepage": "https://github.com/aionrs/ai-devsecops-command-center#readme",
+  "keywords": [
+    "devsecops",
+    "ai-agents",
+    "security",
+    "compliance",
+    "sbom",
+    "incident-response",
+    "vulnerability-management",
+    "multi-agent",
+    "command-center"
+  ]
+}

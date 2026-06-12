@@ -1,0 +1,70 @@
+# AICC local development infrastructure.
+#
+# Brings up Postgres (with 4 logical databases, one per service) and
+# Redis. NATS is included for the Sprint 2 event bus migration.
+#
+# Usage:
+#   docker compose -f infra/docker/docker-compose.yml up -d
+#   docker compose -f infra/docker/docker-compose.yml down -v
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aicc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aicc
+      POSTGRES_PASSWORD: aicc
+      POSTGRES_DB: aicc
+    ports:
+      - "5432:5432"
+    volumes:
+      - aicc_pgdata:/var/lib/postgresql/data
+      - ./init/postgres-databases.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aicc -d aicc"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: aicc-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - aicc_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: aicc-nats
+    restart: unless-stopped
+    command: ["-js"]   # JetStream enabled
+    ports:
+      - "4222:4222"
+      - "8222:8222"    # management UI
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Optional: RabbitMQ management UI (alternative broker for Sprint 2)
+  # rabbitmq:
+  #   image: rabbitmq:3.13-management-alpine
+  #   container_name: aicc-rabbitmq
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+
+volumes:
+  aicc_pgdata:
+  aicc_redisdata:

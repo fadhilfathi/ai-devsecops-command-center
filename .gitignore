@@ -1,0 +1,188 @@
+# =============================================================================
+# AI-DevSecOps-Command-Center
+# Comprehensive ignore patterns for a Node.js / TypeScript / Multi-service repo
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# OS / Editor
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# IDE / Editor
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+.fleet/
+.cursor/
+.aider*
+*.code-workspace
+
+# -----------------------------------------------------------------------------
+# Node.js / TypeScript
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.pnpm-debug.log*
+lerna-debug.log*
+.npm
+.yarn
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+coverage/
+*.lcov
+.nyc_output/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# -----------------------------------------------------------------------------
+# Environment & Secrets
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+secrets/
+.vault-token
+*.age
+.encrypted/
+
+# -----------------------------------------------------------------------------
+# Testing / Coverage
+# -----------------------------------------------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+junit.xml
+test-results/
+playwright-report/
+playwright/.cache/
+cypress/videos/
+cypress/screenshots/
+allure-results/
+allure-report/
+
+# -----------------------------------------------------------------------------
+# Docker / Infra
+# -----------------------------------------------------------------------------
+*.log
+docker-compose.override.yml
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfstate.backup
+infra/terraform/.terraform.lock.hcl
+infra/terraform/tfplan
+*.tfplan
+infra/kustomize/overlays/*/kustomization.yaml.bak
+kustomize/build/
+
+# -----------------------------------------------------------------------------
+# Logs / Runtime
+# -----------------------------------------------------------------------------
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+.pgdata/
+.redis/
+.mongodb-data/
+.prometheus/
+.grafana/
+
+# -----------------------------------------------------------------------------
+# Python (for tooling, scripts, agents)
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pyre/
+.pytype/
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.tgz
+*.tar.gz
+*.zip
+*.rar
+*.7z
+.tmp/
+tmp/
+.bak/
+.history/
+.turbo/
+.vercel/
+.netlify/
+.worktrees/

@@ -1,0 +1,134 @@
+# =============================================================================
+# Prometheus configuration — AI-DevSecOps Command Center
+# Owner: SREEngineer
+# See: docs/observability/monitoring-architecture.md
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: ${env:CLUSTER_NAME}
+    region: ${env:REGION}
+    environment: ${env:ENV}
+
+# -----------------------------------------------------------------------------
+# Load alerting rules and recording rules
+# -----------------------------------------------------------------------------
+rule_files:
+  - /etc/prometheus/rules/*.yml
+  - /etc/prometheus/rules/recording/*.yml
+
+# -----------------------------------------------------------------------------
+# Alertmanager
+# -----------------------------------------------------------------------------
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+# -----------------------------------------------------------------------------
+# Scrape configs
+# -----------------------------------------------------------------------------
+scrape_configs:
+  # ---- Prometheus self-monitoring ----
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: prometheus
+
+  # ---- OpenTelemetry Collector (metrics pipeline) ----
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8888"]
+        labels:
+          service: otel-collector
+
+  # ---- Backend services — generic scrape ----
+  # Every service exposes :9090/metrics. Service name is added by relabeling
+  # from the k8s annotation "ai-devsecops.io/service".
+  - job_name: backend-services
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_ai_devsecops_io_service]
+        target_label: service
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: container
+    metric_relabel_configs:
+      # Drop high-cardinality exemplar-only noise
+      - source_labels: [__name__]
+        regex: "go_gc_.*_seconds(_count)?"
+        action: drop
+      # Drop histograms' _created series to keep cardinality bounded
+      - source_labels: [__name__]
+        regex: ".+_created"
+        action: drop
+
+  # ---- Probes (health checks) ----
+  - job_name: readyz-probes
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_ai_devsecops_io_readyz]
+        target_label: __address__
+        replacement: ${1}
+        regex: (.+)
+      - source_labels: [__meta_kubernetes_pod_annotation_ai_devsecops_io_service]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        target_label: __port__
+        action: drop
+
+  # ---- Node / kubelet ----
+  - job_name: kubelet
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+
+  # ---- Federation from regional Prometheis ----
+  - job_name: federation
+    honor_labels: true
+    metrics_path: /federate
+    params:
+      match[]:
+        - '{__name__=~"job:.+"}'                 # up{} per scrape job
+        - '{__name__=~"service:.+"}'             # aggregated service SLIs
+        - '{__name__=~"agent:.+"}'               # agent metrics
+        - '{__name__="service_error_budget_remaining_ratio"}'
+    static_configs:
+      - targets:
+          - prometheus-eu:9090
+          - prometheus-us:9090
+
+# -----------------------------------------------------------------------------
+# Remote write (to Mimir / Thanos / long-term store)
+# -----------------------------------------------------------------------------
+remote_write:
+  - url: ${env:REMOTE_WRITE_URL}
+    write_relabel_configs:
+      # Drop noisy low-value metrics from remote storage
+      - source_labels: [__name__]
+        regex: "go_.*|process_.*|promhttp_.*"
+        action: drop
+    queue_config:
+      capacity: 10000
+      max_samples_per_send: 2000
+      batch_send_deadline: 5s

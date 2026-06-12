@@ -1,0 +1,204 @@
+# =============================================================================
+# Prometheus alert rules — see docs/observability/alerting-runbooks.md
+# Owner: SREEngineer
+# =============================================================================
+groups:
+  # ---------------------------------------------------------------------------
+  # Standard service alerts
+  # ---------------------------------------------------------------------------
+  - name: service.standard
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "Service {{ $labels.service }} is down (instance {{ $labels.instance }})"
+          description: |
+            Prometheus has not been able to scrape {{ $labels.service }} for 2 minutes.
+            Check pod status and recent deploys.
+          runbook: "https://runbooks.example.com/observability/ServiceDown"
+
+      - alert: ServiceHigh5xxRate
+        expr: |
+          sum by (service, route) (rate(http_requests_total{status=~"5.."}[5m]))
+            / sum by (service, route) (rate(http_requests_total[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.service }} 5xx rate on {{ $labels.route }} is {{ $value | humanizePercentage }}"
+          description: |
+            The 5xx rate on {{ $labels.service }} route {{ $labels.route }} has exceeded 5%
+            for 5 minutes. Investigate recent errors in Grafana Explore filtered by
+            service={{ $labels.service }} and route={{ $labels.route }}.
+          runbook: "https://runbooks.example.com/observability/ServiceHigh5xxRate"
+          dashboard: "https://grafana.example.com/d/{{ $labels.service }}-overview"
+
+      - alert: ServiceHighP99Latency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, service, route) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $labels.service }} p99 latency on {{ $labels.route }} > 1s"
+          description: "p99 latency = {{ $value | humanizeDuration }}. Open the latency panel and look for slow dependencies."
+          runbook: "https://runbooks.example.com/observability/ServiceHighP99Latency"
+
+      - alert: ServiceErrorBudgetExhausted
+        expr: service_error_budget_remaining_ratio < 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.service }} has exhausted its error budget"
+          description: |
+            SLO budget remaining: {{ $value | humanizePercentage }}.
+            Deploys to {{ $labels.service }} are halted by the admission webhook.
+            Engage SRE and the service owner; see the burn breakdown dashboard.
+          runbook: "https://runbooks.example.com/observability/ServiceErrorBudgetExhausted"
+
+      - alert: ServiceDeepHealthCheckFailing
+        expr: probe_success{job="readyz-probes"} == 0
+        for: 3m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.service }} /readyz is failing"
+          description: "The deep readiness probe is returning non-2xx. A downstream dependency is likely unhealthy."
+          runbook: "https://runbooks.example.com/observability/ServiceDeepHealthCheckFailing"
+
+      - alert: ServiceCardinalityExplosion
+        expr: deriv(prometheus_tsdb_head_series[10m]) > 100000
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Cardinality on {{ $labels.job }} is growing > 100k series/min"
+          description: "Inspect the top 50 label combinations at /api/v1/status/tsdb and roll back the offending change."
+          runbook: "https://runbooks.example.com/observability/ServiceCardinalityExplosion"
+
+      - alert: WatchdogDeadmanSwitch
+        expr: vector(time() - prometheus_last_evaluation_timestamp) > 300
+        for: 0m
+        labels:
+          severity: page
+        annotations:
+          summary: "Prometheus is not evaluating rules"
+          description: "Prometheus last evaluation was more than 5 minutes ago. The monitoring stack itself is unhealthy."
+          runbook: "https://runbooks.example.com/observability/WatchdogDeadmanSwitch"
+
+  # ---------------------------------------------------------------------------
+  # SLO burn-rate alerts — example for Auth availability
+  # Template lives at infra/observability/prometheus/templates/slo-burn.yml.j2
+  # ---------------------------------------------------------------------------
+  - name: slo.burn.auth.availability
+    interval: 30s
+    rules:
+      # Fast burn: budget would exhaust in ~2 days at this rate
+      - alert: SLO_Auth_Availability_FastBurn
+        expr: |
+          (
+            service:auth:availability:ratio5m < (1 - (1 - 0.999) * 14.4)
+            and
+            service:auth:availability:ratio1h < (1 - (1 - 0.999) * 14.4)
+          )
+          or
+          (
+            service:auth:availability:ratio6h < (1 - (1 - 0.999) * 14.4)
+            and
+            service:auth:availability:ratio1h < (1 - (1 - 0.999) * 14.4)
+          )
+        for: 2m
+        labels:
+          severity: page
+          slo: auth/availability
+        annotations:
+          summary: "Auth SLO 'availability' is fast-burning"
+          description: |
+            Burn rate: 14.4x. Budget would exhaust in ~2 days.
+            Budget remaining: {{ with query "service_error_budget_remaining_ratio{service='auth',slo='availability'}" }}{{ . | first | value | humanizePercentage }}{{ end }}.
+          runbook: "https://runbooks.example.com/observability/SLOBurnIncident"
+          dashboard: "https://grafana.example.com/d/auth-slo"
+
+      # Slow burn: budget would exhaust in ~30 days
+      - alert: SLO_Auth_Availability_SlowBurn
+        expr: |
+          (
+            service:auth:availability:ratio24h < 0.999
+            and
+            service:auth:availability:ratio3d < 0.999
+          )
+        for: 30m
+        labels:
+          severity: ticket
+          slo: auth/availability
+        annotations:
+          summary: "Auth SLO 'availability' is slow-burning"
+          description: "Burn rate: 1x. Investigate root cause within 1 business day."
+          runbook: "https://runbooks.example.com/observability/SLOSlowBurn"
+
+  # ---------------------------------------------------------------------------
+  # Agent alerts
+  # ---------------------------------------------------------------------------
+  - name: agent.standard
+    interval: 30s
+    rules:
+      - alert: AgentTaskFailureRate
+        expr: |
+          sum by (agent, task_type) (rate(agent_tasks_total{outcome="failure"}[5m]))
+            / sum by (agent, task_type) (rate(agent_tasks_total[5m]))
+            > 0.10
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Agent {{ $labels.agent }} task '{{ $labels.task_type }}' failing > 10%"
+          description: "Failure rate: {{ $value | humanizePercentage }}. Check LLM provider status and tool call errors."
+          runbook: "https://runbooks.example.com/observability/AgentTaskFailureRate"
+
+      - alert: AgentTaskDurationP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, agent, task_type) (rate(agent_task_duration_seconds_bucket[10m]))
+          ) > 300
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Agent {{ $labels.agent }} task p99 > 5m"
+          description: "Sustained for 15m. May indicate provider degradation or runaway loops."
+          runbook: "https://runbooks.example.com/observability/AgentTaskDurationP99High"
+
+      - alert: AgentLLMTokenSpendAnomaly
+        expr: |
+          sum by (agent, model) (rate(agent_llm_tokens_total[1h]))
+            > 3 * avg_over_time(
+                sum by (agent, model) (rate(agent_llm_tokens_total[1h]))[7d:1h]
+              )
+        for: 30m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Agent {{ $labels.agent }} LLM spend 3x baseline on {{ $labels.model }}"
+          description: "Suspect runaway loops or abuse. Lower max_tokens via dynamic config."
+          runbook: "https://runbooks.example.com/observability/AgentLLMTokenSpendAnomaly"
+
+      - alert: AgentDecisionOverride
+        expr: |
+          sum by (agent) (rate(agent_decision_override_total[5m]))
+            / sum by (agent) (rate(agent_decision_total[5m]))
+            > 0.20
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Agent {{ $labels.agent }} decision override rate > 20%"
+          description: "Likely model drift. Engage AI team; consider downgrading to 'suggest' mode."
+          runbook: "https://runbooks.example.com/observability/AgentDecisionOverride"
