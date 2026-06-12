@@ -77,6 +77,49 @@ vuln_intel_cache = Gauge(
     registry=REGISTRY,
 )
 
+# --- S2.7: feed refresh timestamp (lag SLO) ----------------------------------
+# Single global gauge, labelled by source, used by the SREEngineer to
+# alert on feed staleness. The value is the Unix timestamp (seconds)
+# of the last successful ingest run; 0 means "never run". The
+# service layer is responsible for setting this after every pull.
+vuln_feed_last_refresh_timestamp_seconds = Gauge(
+    "vuln_feed_last_refresh_timestamp_seconds",
+    "Unix timestamp (seconds) of the last successful feed refresh, by source",
+    ["source"],
+    registry=REGISTRY,
+)
+
+# --- S2.8: validation + LLM + consensus metrics ------------------------------
+vuln_intel_validation_rejected_total = Counter(
+    "vuln_intel_validation_rejected_total",
+    "Records rejected by the per-feed JSON-schema validator",
+    ["source", "reason"],
+    registry=REGISTRY,
+)
+vuln_intel_consensus_unofficial_total = Counter(
+    "vuln_intel_consensus_unofficial_total",
+    "CVE records tagged unofficial because HIGH/CRITICAL lacks cross-source consensus",
+    registry=REGISTRY,
+)
+vuln_intel_llm_calls_total = Counter(
+    "vuln_intel_llm_calls_total",
+    "LLM exploit-scoring calls, by terminal status",
+    ["status"],  # ok | schema_violation | budget_exceeded | transport_error | disabled
+    registry=REGISTRY,
+)
+vuln_intel_llm_tokens_total = Counter(
+    "vuln_intel_llm_tokens_total",
+    "LLM tokens consumed, by tenant",
+    ["tenant", "kind"],  # kind: prompt | completion
+    registry=REGISTRY,
+)
+vuln_intel_llm_budget_remaining = Gauge(
+    "vuln_intel_llm_budget_remaining",
+    "Remaining LLM token budget (per-tenant, observed at last reset)",
+    ["tenant"],
+    registry=REGISTRY,
+)
+
 
 def configure_logging(level: str = "INFO") -> None:
     """Configure stdlib + structlog logging in JSON format.
