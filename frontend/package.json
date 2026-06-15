@@ -21,7 +21,7 @@
     "lucide-react": "^0.439.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
-    "react-window": "^1.8.10",
+    "react-window": "^2.2.7",
     "reactflow": "^11.11.4"
   },
   "devDependencies": {
