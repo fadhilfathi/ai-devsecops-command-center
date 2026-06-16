@@ -86,6 +86,160 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   log, agent safety) in `docs/architecture/security-model.md`.
 - Pinned Dependabot to weekly updates with group rules per package.
 
+## Sprint 4 — Kubernetes & Infrastructure Intelligence (2026-06-16)
+
+### Added
+
+- **Infrastructure model layer** (`backend/models/infrastructure/`)
+  - `cluster.model` — Kubernetes cluster inventory (provider,
+    nodes, capacity, connection-test shape).
+  - `namespace.model` — namespace inventory with aggregated
+    pod / workload / service / restart counters.
+  - `workload.model` — abstract workload (Deployment,
+    StatefulSet, DaemonSet, ReplicaSet, CronJob, Job, Pod).
+  - `pod.model` — pod inventory with container list, last
+    termination reason (CrashLoopBackOff, OOMKilled, ...),
+    privileged / root / capabilities signals.
+  - `service.model` — Service inventory (type, ports, FQDN,
+    endpoints, ingress linkage).
+  - `deployment.model` — deployment-specific (strategy,
+    currentReplicaSet, rollout status, change-cause).
+  - `statefulset.model` — StatefulSet-specific (serviceName,
+    podManagementPolicy, volumeClaimTemplates).
+  - `daemonset.model` — DaemonSet-specific (desired / ready /
+    misscheduled counters).
+  - `ingres.model` — Ingress inventory (class, rules, TLS).
+  - `runtime-risk.model` — runtime-security finding + rollup
+    report shape.
+  - `topology.model` — node / edge model for the unified
+    topology graph.
+  - `infrastructure-health.model` — health score (0..100 +
+    A..F band) + issues + recommendations.
+  - `cost-analysis.model` — per-workload cost + finding +
+    recommendation shape.
+
+- **`kubernetes-service`** (S4-EPIC-1, port 4006) — read-only
+  K8s inventory across the tenant's onboarded clusters.
+  - Endpoints: `/v1/kubernetes/{clusters,namespaces,workloads,
+    pods,services,ingresses,deployments,statefulsets,
+    daemonsets}` + `POST /v1/kubernetes/test-connection` +
+    `/v1/kubernetes/providers`.
+  - Provider abstraction: `fixture` (deterministic in-process
+    data) and `live` (placeholder for Sprint 5).
+  - Tenant-scoped cluster repository.
+
+- **`k8s-health-service`** (S4-EPIC-2, port 4007) — health
+  scoring + detection rules.
+  - Detects: CrashLoopBackOff, ImagePullBackOff, OOMKilled,
+    Pending, Failed, restart storms, node pressure,
+    unschedulable workloads.
+  - Score = `100 - 8*critical - 4*high - 2*medium - 1*low`,
+    band A..F.
+  - Endpoints: `/v1/health/{clusters,namespaces,workloads,
+    pods,clusters/:id,issues,recommendations}`.
+
+- **`runtime-security-service`** (S4-EPIC-3, port 4008) —
+  runtime-risk detection + report generation.
+  - 9 rules: AICC-RT-001..009 (privileged, hostPath, root,
+    dangerous capability, weak SecurityContext, ServiceAccount
+    risk, RBAC risk stub, missing limits, unpinned image).
+  - Endpoints: `/v1/runtime-security/{rules,risks,risks/:id,
+    scan,report,report/cluster/:id}`.
+
+- **`inventory-service`** (S4-EPIC-4, port 4009) — unified
+  asset catalog + relationship / dependency graphs.
+  - Endpoints: `/v1/inventory/{assets,assets/:id,clusters,
+    namespaces,services,deployments,graph/asset,
+    graph/relationships,graph/dependencies,
+    graph/dependencies/:assetId}`.
+
+- **`cost-intelligence-service`** (S4-EPIC-5, port 4010) —
+  resource waste, over-provisioning, under-utilization, cost
+  optimisation recommendations.
+  - Endpoints: `/v1/cost/{analysis,analysis/cluster/:id,
+    workloads,findings,recommendations}`.
+  - Configurable USD/hour pricing via
+    `AICC_COST_CPU_USD_PER_HOUR` /
+    `AICC_COST_MEMORY_USD_PER_HOUR`.
+
+- **`topology-service`** (S4-EPIC-6, port 4011) — Service Map,
+  Application Graph, Topology Graph, per-namespace view,
+  namespace relationships.
+  - Endpoints: `/v1/topology/{graphs,service-map,
+    application-graph,graph,namespace/:name,
+    namespace-relationships}`.
+
+- **`reporting-service`** (S4-EPIC-10, port 4012) — six
+  canonical reports × {json, md, pdf}.
+  - Reports: Cluster Health, Infrastructure Risk, Runtime
+    Security, Cost Optimization, Topology, Executive Summary.
+  - Endpoints: `/v1/reports/...` per report kind.
+
+- **AI incident correlation engine extension** (S4-EPIC-7)
+  - New correlation engine in
+    `backend/services/incident/src/correlation/`.
+  - Subscribes to security / SBOM / CI/CD / K8s /
+    infrastructure / deployment / runtime / health event
+    topics.
+  - Produces `IncidentChain` (root → leaf) + `CorrelationEdge`
+    list.
+  - New endpoints: `/v1/incidents/chains`,
+    `/v1/incidents/chains/:id`, `/v1/incidents/chains/edges/all`.
+
+- **AionUi infrastructure dashboard** (S4-EPIC-8) — 9 new
+  pages under `/infrastructure/...`:
+  - Infrastructure Overview
+  - Cluster Explorer
+  - Namespace Explorer
+  - Workload Explorer
+  - Runtime Security
+  - Topology Viewer
+  - Cost Intelligence
+  - Infrastructure Health
+  - Infrastructure Incidents
+  - Sidebar gains a new "Infrastructure" section.
+  - `types/infrastructure.ts`, `lib/infrastructure.mock.ts`,
+    and 20+ new API accessors in `lib/api.ts`.
+
+- **Documentation** (Sprint 4)
+  - `docs/kubernetes/` — Kubernetes service overview.
+  - `docs/infrastructure/` — design notes for the inventory
+    layer.
+  - `docs/runtime-security/` — rule set + report shape.
+  - `docs/topology/` — graph views and edge semantics.
+  - `docs/cost-optimization/` — pricing model + finding
+    taxonomy.
+  - `docs/architecture/sprint-4/` — architecture notes for
+    the Sprint 4 workstream.
+  - `ROADMAP.md` (new) — sprint-by-sprint plan.
+
+### Changed
+
+- `components/ui/KpiTile.tsx` now supports both `{ kpi }` and
+  inline `{ label, value, hint }` shapes.
+- `lib/format.ts` gains `fmtNumber`, `fmtUsd`, `fmtBytes`,
+  `fmtCpu` helpers.
+- `incident-service` index wires the chain repository + the
+  correlation listener.
+
+### Sprint roadmap (planned)
+
+| Sprint | Focus                                                     |
+| ------ | --------------------------------------------------------- |
+| 1      | Repo, architecture, documentation, service skeletons      |
+| 2      | Auth service: users, tenants, JWT, RBAC                   |
+| 3      | Agent runtime: dispatcher, memory, contract registry      |
+| 4      | **Security service: assets, SBOM, vulnerabilities** ✅    |
+| 4      | **Infrastructure Intelligence** (Sprint 4 workstream) ✅  |
+| 5      | Live Kubernetes + Postgres persistence + Prometheus       |
+| 6      | Compliance service: control mapping, evidence, attestations |
+| 7      | Integration service: GitHub App, webhooks, outbound       |
+| 8      | Frontend: Dashboard, Assets, Incidents                    |
+| 9      | Frontend: Vulnerabilities, SBOM, Compliance               |
+| 10     | End-to-end workflows, observability, SRE playbooks       |
+| 11     | Hardening, security review, OpenSSF Scorecard pass        |
+| 12     | 0.1.0 release, public docs, demo data                    |
+
 ## Sprint 2 — Security foundation (2026-06-12)
 
 ### Added

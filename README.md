@@ -13,10 +13,17 @@
 [![CodeQL](https://img.shields.io/badge/CodeQL-pending-lightgrey)](./.github/workflows/codeql.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 1 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 4 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
+
+**Sprint 4 just shipped**: Kubernetes & Infrastructure Intelligence —
+clusters, namespaces, workloads, pods, services, ingresses,
+deployments, statefulsets, daemonsets, runtime security, cost
+optimization, topology, and 6 infrastructure reports. See
+[`docs/architecture/sprint-4/`](./docs/architecture/sprint-4/) and
+[`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 
@@ -78,6 +85,20 @@ tracking, evidence collection, audit answers. We build a system that
 | **Compliance**     | `/compliance`      | Posture per framework, evidence, attestations          |
 | **Integrations**   | `/integrations`    | GitHub, GitLab, scanners, etc.                         |
 | **Settings**       | `/settings`        | Users, roles, tenants, API tokens, audit access        |
+
+### Infrastructure Intelligence (Sprint 4)
+
+| Screen                       | Path                                | One-liner                                      |
+| ---------------------------- | ----------------------------------- | ---------------------------------------------- |
+| **Infrastructure Overview**  | `/infrastructure`                   | Fleet-wide rollup of clusters, workloads, runtime risk, cost |
+| **Cluster Explorer**         | `/infrastructure/clusters`          | Per-cluster nodes + namespaces + health        |
+| **Namespace Explorer**       | `/infrastructure/namespaces`        | Cross-cluster namespace rollup                 |
+| **Workload Explorer**        | `/infrastructure/workloads`         | Deployment / StatefulSet / DaemonSet list      |
+| **Runtime Security**         | `/infrastructure/runtime-security`  | Privileged, hostPath, root, capabilities, ...  |
+| **Topology Viewer**          | `/infrastructure/topology`          | Application / Service Map / Topology Graph     |
+| **Cost Intelligence**        | `/infrastructure/cost`              | Resource waste, over-provisioning, savings     |
+| **Infrastructure Health**    | `/infrastructure/health`            | Health rollup + issues + recommendations       |
+| **Infrastructure Incidents** | `/infrastructure/incidents`         | Incidents correlated to K8s / runtime / cost   |
 
 ## Architecture at a glance
 
