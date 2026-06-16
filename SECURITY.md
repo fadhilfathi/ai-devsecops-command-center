@@ -121,7 +121,7 @@ Please include as much of the following as you can:
 <!-- BEGIN:auto:sla -->
 > *This SLA table is auto-generated from `.github/workflows/security.yml`
 > job `sync-sla`. To change a target, update the workflow constants
-> and the bot will re-render this block. Last sync: 2026-06-12.*
+> and the bot will re-render this block. Last sync: 2026-06-16.*
 
 | Severity | Acknowledge | Triage complete | Patch released | Public disclosure |
 | -------- | ----------- | --------------- | -------------- | ----------------- |
