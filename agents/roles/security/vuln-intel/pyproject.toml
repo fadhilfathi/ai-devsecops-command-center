@@ -46,7 +46,7 @@ dependencies = [
   "opentelemetry-instrumentation-fastapi==0.50b0",
   "opentelemetry-instrumentation-httpx==0.50b0",
   # Auth — JWT validation against auth-service
-  "PyJWT[crypto]==2.10.1",
+  "PyJWT[crypto]==2.13.0",
   # Caching / rate limit tracking
   "cachetools==5.5.0",
   # S2.8 hardening: per-feed validation + safe parsers
