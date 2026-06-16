@@ -19,9 +19,12 @@ import {
 import { buildHealthRoutes } from './routes/health.js';
 import { buildIncidentRoutes } from './routes/incidents.js';
 import { buildRunbookRoutes } from './routes/runbooks.js';
+import { buildChainRoutes } from './routes/chains.js';
 import { buildIncidentRepository } from './repositories/incident.repository.js';
 import { buildRunbookRepository } from './repositories/runbook.repository.js';
 import { buildEventListeners } from './listeners/index.js';
+import { buildChainRepository } from './correlation/chain.repository.js';
+import { buildCorrelationListener } from './listeners/correlation.listener.js';
 
 const SERVICE_NAME = 'incident-service';
 const SERVICE_VERSION = '0.1.0';
@@ -38,6 +41,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
 
   const incidents = buildIncidentRepository();
   const runbooks = buildRunbookRepository();
+  const chains = buildChainRepository();
 
   const server = Fastify({
     loggerInstance: logger,
@@ -60,11 +64,16 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
   await server.register(buildHealthRoutes, { logger, cfg });
   await server.register(buildIncidentRoutes, { logger, incidents, bus });
   await server.register(buildRunbookRoutes, { logger, runbooks });
+  await server.register(buildChainRoutes, { logger, chains });
 
   // Wire the in-process event listeners (e.g. auto-open an incident
   // when a critical vulnerability is detected). The same wiring will
   // work against the broker-based bus in Sprint 2.
   await buildEventListeners({ bus, incidents, logger });
+  // Sprint 4: the correlation listener feeds every event on the bus
+  // through the AI incident correlation engine and persists the
+  // resulting chains.
+  await buildCorrelationListener({ bus, chains, logger });
 
   server.setErrorHandler((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');
