@@ -53,6 +53,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Build workspace dependencies
+        run: pnpm -r --filter "./backend/models" --filter "./backend/common/*" --filter "./backend/packages/*" build
+
       - name: Type-check
         run: pnpm typecheck
 
@@ -107,16 +110,7 @@ jobs:
         run: pnpm -r --filter "./backend/models" --filter "./backend/common/*" --filter "./backend/packages/*" build
 
       - name: Test ${{ matrix.workspace }}
-        run: pnpm --filter "./${{ matrix.workspace }}" --if-present test -- --reporter=verbose --coverage
-
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.workspace }}
-          path: ${{ matrix.workspace }}/coverage
-          if-no-files-found: ignore
-          retention-days: 14
+        run: pnpm --filter "./${{ matrix.workspace }}" --if-present test -- --reporter=verbose
 
   # ---------------------------------------------------------------------------
   # 3. Build artifacts
