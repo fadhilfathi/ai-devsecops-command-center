@@ -81,6 +81,11 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     logger: logger,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
+    // Zod-generated JSON schemas (see @aicc/models toJSONSchema) set
+    // `default` on properties ajv's strict mode considers ambiguous
+    // (e.g. inside anyOf branches). Disable strict mode rather than
+    // hand-tune every generated schema.
+    ajv: { customOptions: { strict: false } },
   });
 
   // S2.7 — service name is resolved by the @aicc/observability helper

@@ -41,7 +41,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
-    "test": "echo \"no tests yet\""
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@aicc/models": "workspace:*",

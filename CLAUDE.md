@@ -11,6 +11,7 @@ Status: pre-alpha, Sprint 5 of 12. See `ROADMAP.md`, `CHANGELOG.md`, `docs/archi
 - **Delete over add**. No speculative abstractions, no placeholder dirs/READMEs, no `.gitkeep`. YAGNI.
 - **Workflow**: work in phases (one sprint ticket or coherent step = one phase). At the end of every phase: run `reviewer`, fix blockers, commit, `git push origin main`, then pause and report to the user in a few lines (what shipped, what's next, any question). Do not start the next phase until the user says go.
 - **Communication**: terse. Questions and reports as short as possible. Ask only when a decision materially changes the work; otherwise pick the recommended option and state it.
+- **No bot commits**: the release workflow is manual-only (`workflow_dispatch`); nothing may auto-commit to `main`. Keep `CHANGELOG.md` hand-written.
 - Don't run anything from `main` in production. Don't commit secrets; `.env.example` only.
 
 ## Layout
@@ -33,8 +34,10 @@ Ports: auth 3001, agent 3002, security 3003, incident 3004, compliance 3005, int
 ## Commands
 
 ```
-corepack enable && pnpm install        # pnpm not installed globally; corepack ships with Node
+npm i -g pnpm@9 && pnpm install       # or corepack enable
 pnpm -r build                          # tsc all workspaces
+pnpm -r test                           # vitest per package (13 services + shared + models)
+pnpm --filter <pkg> test                # e.g. @aicc/security-service, add -- --coverage for coverage
 pnpm -r --if-present lint
 pnpm --filter <pkg> dev                # e.g. @aicc/security-service
 cd frontend && pnpm typecheck && pnpm build
@@ -43,7 +46,7 @@ python scripts/verify_compile.py
 make up / make down                    # docker-compose stack
 ```
 
-Known gaps (as of 2026-09-21): no `node_modules` has ever been installed here; every backend service has `"test": "echo ..."` — no TS tests exist yet. Verify `pnpm -r build` passes before trusting any change.
+Known gaps (as of 2026-09-21): Verify `pnpm -r build` and `pnpm -r test` pass before trusting any change.
 
 ## Conventions
 

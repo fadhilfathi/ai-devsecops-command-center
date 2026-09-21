@@ -50,7 +50,10 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
       },
       schema: {
         body: toJSONSchema(SbomGenerateRequestSchema),
-        response: { 200: toJSONSchema(SbomServiceResponseSchema) },
+        // No response schema: SbomServiceResponseSchema is recursive
+        // (SbomComponentSchema.pedigree nests itself via z.lazy), and
+        // fastify's response serializer (fast-json-stringify) cannot
+        // compile a $ref cycle — it blows the call stack at boot.
         tags: ['security', 'sbom'],
         summary: 'Generate an SBOM from a container image, git repo, or filesystem path',
         description: 'Proxies to sbom-pipeline-service (port 4007). Emits `security.sbom.generated` on success.',
@@ -110,7 +113,7 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
       },
       schema: {
         body: toJSONSchema(SbomAnalyzeRequestSchema),
-        response: { 200: toJSONSchema(SbomServiceResponseSchema) },
+        // No response schema — see the /sbom/generate route above.
         tags: ['security', 'sbom'],
         summary: 'Analyse an SBOM for license compatibility and outdated dependencies',
         description: 'Proxies to sbom-pipeline-service (port 4007).',

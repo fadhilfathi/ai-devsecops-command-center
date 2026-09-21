@@ -178,7 +178,10 @@ export type RiskCalculateResponse = z.infer<typeof RiskCalculateResponseSchema>;
 // ---------- JSON-Schema export helper ----------
 
 export function toJSONSchema<T extends z.ZodType>(schema: T): Record<string, unknown> {
+  // draft-07: fastify's bundled ajv validator only understands the
+  // draft-07 meta-schema out of the box; draft-2020-12 output fails
+  // route registration with "no schema with key or ref ...2020-12/schema".
   return z.toJSONSchema(schema, {
-    target: 'draft-2020-12',
+    target: 'draft-07',
   }) as Record<string, unknown>;
 }

@@ -73,7 +73,15 @@ jobs:
           - backend/services/incident
           - backend/services/compliance
           - backend/services/integration
+          - backend/services/kubernetes
+          - backend/services/k8s-health
+          - backend/services/runtime-security
+          - backend/services/inventory
+          - backend/services/cost-intelligence
+          - backend/services/topology
+          - backend/services/reporting
           - backend/packages/shared
+          - backend/models
           - frontend
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +103,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test ${{ matrix.workspace }}
-        run: pnpm --filter "./${{ matrix.workspace }}" test -- --reporter=verbose --coverage
+        run: pnpm --filter "./${{ matrix.workspace }}" --if-present test -- --reporter=verbose --coverage
 
       - name: Upload coverage
         if: always()

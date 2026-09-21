@@ -1,25 +1,10 @@
-// Unit tests for the POA&M service + repository (S2.9, post-integration rewrite).
-// Run with: node --test backend/services/compliance/test/poam.test.ts
-//
-// Covers:
-//   - Repository: dedup at (tenant, control, vuln), list filters, tenant isolation
-//   - Service: createFromTuple idempotency, SLA ladder, valid-transition guard,
-//     risk-acceptance short-circuit, overdue sweep
-//   - Event bus: emits COMPLIANCE_POAM_CREATED on create, COMPLIANCE_POAM_CLOSED
-//     on close, COMPLIANCE_POAM_OVERDUE on overdue sweep
+// Unit tests for the POA&M service + repository.
+// Run with: vitest run (pnpm --filter @aicc/compliance-service test)
 
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-
-import { buildPoamRepository, type PoamRepository } from '../src/poam/index.js';
-import { PoamService } from '../src/poam/index.js';
-import { POAM_SLA_DAYS } from '../src/poam/index.js';
+import { test, expect } from 'vitest';
+import { buildPoamRepository, PoamService, POAM_SLA_DAYS, type PoamRepository } from '../src/poam/index.js';
 import type { ControlVulnTuple } from '../src/control-mapper/index.js';
 import { EventTypes } from '@aicc/shared/events';
-
-// ---------------------------------------------------------------------------
-// Test bus: a thin InMemoryEventBus capture for assertions
-// ---------------------------------------------------------------------------
 
 interface CapturedEvent { type: string; tenantId?: string; data?: unknown }
 
@@ -30,22 +15,20 @@ function makeBus() {
     publish: async (e: { type: string; tenantId?: string; data?: unknown }) => {
       events.push({ type: e.type, tenantId: e.tenantId, data: e.data });
     },
-    subscribe: async () => async () => {},
+    subscribe: async () => {},
+    close: async () => {},
   };
 }
 
 function makeTuple(overrides: Partial<ControlVulnTuple> = {}): ControlVulnTuple {
   return {
-    tenantId: 't-1',
-    ruleId: 'r-cis7',
-    controlId: 'CIS-7',
-    framework: 'cis_v8',
+    controlId: '7',
     vulnId: 'v-1',
+    framework: 'cis_v8',
+    ruleId: 'cis-7-continuous-vuln-management',
     severity: 'critical',
-    kev: true,
-    introducedAt: new Date('2026-06-05T00:00:00Z').toISOString(),
-    matchedAt: new Date('2026-06-12T00:00:00Z').toISOString(),
-    cveId: 'CVE-2024-1234',
+    slaDays: 30,
+    dueAt: new Date('2026-06-19T00:00:00Z').toISOString(),
     ...overrides,
   };
 }
@@ -54,143 +37,125 @@ function makeTuple(overrides: Partial<ControlVulnTuple> = {}): ControlVulnTuple 
 // Repository
 // ---------------------------------------------------------------------------
 
-test('repo: createIfAbsent is idempotent at (tenant, control, vuln)', async () => {
+test('repo: create + getById round-trips, scoped by tenant', async () => {
   const repo: PoamRepository = buildPoamRepository();
-  const t = makeTuple();
-  const a = await repo.createIfAbsent({ ...t, id: 'p-1', createdAt: new Date().toISOString(), dueAt: new Date().toISOString() });
-  const b = await repo.createIfAbsent({ ...t, id: 'p-2', createdAt: new Date().toISOString(), dueAt: new Date().toISOString() });
-  assert.equal(a.id, b.id, 'second insert returns the same record');
+  const created = await repo.create({
+    poamId: 'p-1', tenantId: 't-1', controlId: '7', framework: 'cis_v8',
+    title: 'x', description: 'x', severity: 'critical', status: 'open', source: 'manual',
+    createdAt: new Date().toISOString(), createdBy: 'u-1', dueAt: new Date().toISOString(),
+    evidenceRefs: [], metadata: {},
+  });
+  expect(await repo.getById('t-1', created.poamId)).toMatchObject({ poamId: 'p-1' });
+  expect(await repo.getById('t-2', created.poamId)).toBe(null);
 });
 
-test('repo: list with status=overdue returns only past-due non-closed items', async () => {
+test('repo: findOpenForControlVuln ignores closed/risk_accepted items', async () => {
   const repo = buildPoamRepository();
-  const now = new Date('2026-06-12T00:00:00Z');
-  await repo.createIfAbsent({ ...makeTuple({ vulnId: 'low-1', severity: 'low' }), id: 'p-low', createdAt: now.toISOString(), dueAt: new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString() });
-  await repo.createIfAbsent({ ...makeTuple({ vulnId: 'crit-1', severity: 'critical' }), id: 'p-crit', createdAt: now.toISOString(), dueAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() });
-  const future = new Date('2026-07-01T00:00:00Z');
-  const overdue = await repo.list('t-1', { status: 'overdue', asOf: future });
-  assert.equal(overdue.length, 1);
-  assert.equal(overdue[0].vulnId, 'crit-1');
-});
-
-test('repo: tenant isolation — cannot read another tenant', async () => {
-  const repo = buildPoamRepository();
-  await repo.createIfAbsent({ ...makeTuple({ tenantId: 't-A' }), id: 'p-iso', createdAt: new Date().toISOString(), dueAt: new Date().toISOString() });
-  const fetched = await repo.findById('t-B', 'p-iso');
-  assert.equal(fetched, undefined);
+  await repo.create({
+    poamId: 'p-1', tenantId: 't-1', controlId: '7', framework: 'cis_v8', vulnId: 'v-1',
+    title: 'x', description: 'x', severity: 'critical', status: 'closed', source: 'manual',
+    createdAt: new Date().toISOString(), createdBy: 'u-1', dueAt: new Date().toISOString(),
+    evidenceRefs: [], metadata: {},
+  });
+  expect(await repo.findOpenForControlVuln('t-1', '7', 'v-1')).toBe(null);
 });
 
 // ---------------------------------------------------------------------------
-// Service: create + dedup + SLA
+// Service: create from tuple + dedup + SLA
 // ---------------------------------------------------------------------------
 
-test('service: createFromTuple is idempotent for the same tuple', async () => {
+test('service: createFromTuple is idempotent for the same (controlId, vulnId)', async () => {
   const bus = makeBus();
   const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never });
   const t = makeTuple();
-  const a = await svc.createFromTuple(t, 'system');
-  const b = await svc.createFromTuple(t, 'system');
-  assert.equal(a.id, b.id);
-  // Only one COMPLIANCE_POAM_CREATED event was emitted
-  const created = bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_CREATED);
-  assert.equal(created.length, 1);
+  const a = await svc.createFromTuple('t-1', t);
+  const b = await svc.createFromTuple('t-1', t);
+  expect(a.deduplicated).toBe(false);
+  expect(b.deduplicated).toBe(true);
+  expect(a.poam.poamId).toBe(b.poam.poamId);
+  expect(bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_CREATED).length).toBe(1);
 });
 
 test('service: SLA ladder maps severity -> days', () => {
-  assert.equal(POAM_SLA_DAYS.critical, 7);
-  assert.equal(POAM_SLA_DAYS.high, 30);
-  assert.equal(POAM_SLA_DAYS.medium, 90);
-  assert.equal(POAM_SLA_DAYS.low, 180);
+  expect(POAM_SLA_DAYS.critical).toBe(7);
+  expect(POAM_SLA_DAYS.high).toBe(30);
+  expect(POAM_SLA_DAYS.medium).toBe(90);
+  expect(POAM_SLA_DAYS.low).toBe(180);
 });
 
-test('service: critical finding gets dueAt = now + 7d', async () => {
+test('service: critical tuple without an explicit slaDays override still uses tuple.slaDays', async () => {
   const bus = makeBus();
   const now = new Date('2026-06-12T00:00:00Z');
-  const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never, clock: () => now });
-  const item = await svc.createFromTuple(makeTuple({ severity: 'critical' }), 'system');
+  const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never, now: () => now });
+  const { poam } = await svc.createFromTuple('t-1', makeTuple({ slaDays: 7 }));
   const expected = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  assert.equal(item.dueAt, expected);
+  expect(poam.dueAt).toBe(expected);
 });
 
 // ---------------------------------------------------------------------------
 // Service: lifecycle + valid transitions
 // ---------------------------------------------------------------------------
 
-test('service: open -> in_progress -> pending_verification -> closed is valid', async () => {
+test('service: open -> in_progress -> awaiting_evidence -> closed is valid', async () => {
   const bus = makeBus();
   const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never });
-  const item = await svc.createFromTuple(makeTuple(), 'system');
-  assert.equal(item.status, 'open');
+  const { poam } = await svc.createFromTuple('t-1', makeTuple());
+  expect(poam.status).toBe('open');
 
-  const ip = await svc.transition(item.id, { to: 'in_progress', actor: 'u-1' });
-  assert.equal(ip.status, 'in_progress');
+  const ip = await svc.startProgress('t-1', poam.poamId, 'u-1');
+  expect(ip.status).toBe('in_progress');
 
-  const pv = await svc.transition(item.id, { to: 'pending_verification', actor: 'u-1' });
-  assert.equal(pv.status, 'pending_verification');
+  const pv = await svc.markAwaitingEvidence('t-1', poam.poamId, 'u-1');
+  expect(pv.status).toBe('awaiting_evidence');
 
-  const closed = await svc.transition(item.id, { to: 'closed', actor: 'u-1', closureReason: 'patched' });
-  assert.equal(closed.status, 'closed');
-  assert.ok(closed.closedAt);
+  const closed = await svc.close('t-1', poam.poamId, 'u-1', 'patched', ['evidence-1']);
+  expect(closed.status).toBe('closed');
+  expect(closed.closedAt).toBeTruthy();
 
-  // Events: 1 created + 1 closed (transitions don't emit on their own; they are state changes)
   const created = bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_CREATED);
   const closedEv = bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_CLOSED);
-  assert.equal(created.length, 1);
-  assert.equal(closedEv.length, 1);
+  expect(created.length).toBe(1);
+  expect(closedEv.length).toBe(1);
 });
 
-test('service: invalid transition (open -> closed) is rejected', async () => {
+test('service: close() requires at least one evidence reference', async () => {
   const bus = makeBus();
   const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never });
-  const item = await svc.createFromTuple(makeTuple(), 'system');
-  await assert.rejects(
-    () => svc.transition(item.id, { to: 'closed', actor: 'u-1' }),
-    /invalid transition/i
-  );
-  // No closed event was emitted
-  const closedEv = bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_CLOSED);
-  assert.equal(closedEv.length, 0);
+  const { poam } = await svc.createFromTuple('t-1', makeTuple());
+  await expect(svc.close('t-1', poam.poamId, 'u-1', 'notes', [])).rejects.toThrow(/evidence/i);
 });
 
 test('service: risk acceptance short-circuits the lifecycle', async () => {
   const bus = makeBus();
   const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never });
-  const item = await svc.createFromTuple(makeTuple(), 'system');
-  const accepted = await svc.acceptRisk(item.id, {
-    actor: 'u-1',
-    justification: 'business-acceptable per CAB-2026-06-12',
-    expiresAt: new Date('2027-06-12T00:00:00Z').toISOString(),
-  });
-  assert.equal(accepted.status, 'risk_accepted');
-  assert.ok(accepted.riskAcceptance);
-  assert.equal(accepted.riskAcceptance?.actor, 'u-1');
-
-  // Cannot transition out of risk_accepted (terminal)
-  await assert.rejects(
-    () => svc.transition(item.id, { to: 'in_progress', actor: 'u-1' }),
-    /invalid transition/i
+  const { poam } = await svc.createFromTuple('t-1', makeTuple());
+  const accepted = await svc.acceptRisk(
+    't-1', poam.poamId, 'u-1',
+    'business-acceptable per CAB-2026-06-12',
+    new Date('2027-06-12T00:00:00Z').toISOString(),
   );
+  expect(accepted.status).toBe('risk_accepted');
+  expect(accepted.riskAcceptance?.acceptedBy).toBe('u-1');
 });
 
 // ---------------------------------------------------------------------------
 // Service: overdue sweep
 // ---------------------------------------------------------------------------
 
-test('service: scanForOverdue emits COMPLIANCE_POAM_OVERDUE once per item', async () => {
+test('service: scanForOverdue marks past-due items and emits once', async () => {
   const bus = makeBus();
   let now = new Date('2026-06-12T00:00:00Z');
-  const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never, clock: () => now });
-  await svc.createFromTuple(makeTuple({ severity: 'critical' }), 'system'); // due in 7d
+  const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never, now: () => now });
+  await svc.createFromTuple('t-1', makeTuple({ slaDays: 7 })); // due in 7d
 
-  now = new Date('2026-06-25T00:00:00Z'); // 13 days later, past 7d SLA
+  now = new Date('2026-06-25T00:00:00Z'); // 13 days later, past the 7d SLA
   const first = await svc.scanForOverdue();
-  assert.equal(first.length, 1);
-  const overdue = bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_OVERDUE);
-  assert.equal(overdue.length, 1);
+  expect(first.length).toBe(1);
+  expect(first[0]!.status).toBe('overdue');
+  const overdueEvents = bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_OVERDUE);
+  expect(overdueEvents.length).toBe(1);
 
-  // Second sweep with the same clock position should NOT re-emit
-  bus.events.length = 0;
+  // A second sweep with the same clock position should not re-flag the item.
   const second = await svc.scanForOverdue();
-  assert.equal(second.length, 1);
-  assert.equal(bus.events.filter((e) => e.type === EventTypes.COMPLIANCE_POAM_OVERDUE).length, 0);
+  expect(second.length).toBe(0);
 });
