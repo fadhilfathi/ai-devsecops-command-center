@@ -102,6 +102,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace dependencies
+        run: pnpm -r --filter "./backend/models" --filter "./backend/common/*" --filter "./backend/packages/*" build
+
       - name: Test ${{ matrix.workspace }}
         run: pnpm --filter "./${{ matrix.workspace }}" --if-present test -- --reporter=verbose --coverage
 
