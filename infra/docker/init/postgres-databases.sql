@@ -7,3 +7,4 @@ SELECT 'CREATE DATABASE aicc_security'  WHERE NOT EXISTS (SELECT FROM pg_databas
 SELECT 'CREATE DATABASE aicc_incident'  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'aicc_incident') \gexec
 SELECT 'CREATE DATABASE aicc_compliance' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'aicc_compliance') \gexec
 SELECT 'CREATE DATABASE aicc_integration' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'aicc_integration') \gexec
+SELECT 'CREATE DATABASE aicc_kubernetes' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'aicc_kubernetes') \gexec

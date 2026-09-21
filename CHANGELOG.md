@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-3: Postgres persistence (clusters, incidents, runbooks, chains)
+
+- Added `@aicc/shared/db`: a minimal `Queryable` interface, `createPool()`,
+  and a hand-rolled `migrate()` (tracks applied migrations in
+  `schema_migrations`, applies the rest in a transaction each) — no ORM.
+- `kubernetes-service`: `buildPgClusterRepository()` backs the cluster
+  registry when `DATABASE_URL` is set; in-memory stays the default.
+- `incident-service`: `buildPgIncidentRepository()`,
+  `buildPgRunbookRepository()`, and `buildPgChainRepository()`, wired the
+  same way.
+- Migrations live as TS modules (`src/db/migrations.ts`) so they ship in
+  `dist/` with no copy step. Every table's nested/variable-shape data is
+  `jsonb`; only filter/sort keys get real columns.
+- Tests run the in-memory and Postgres implementations through the same
+  `describe.each` suite against `@electric-sql/pglite` (in-process
+  Postgres, no Docker).
+- Added `aicc_kubernetes` to `infra/docker/init/postgres-databases.sql`;
+  `DATABASE_URL` in each service's `.env.example`.
+- See `docs/adr/0010-postgres-persistence.md`.
+
 ### Sprint 5 — S5-0: build baseline
 
 - Monorepo now installs and builds: added package manifests for

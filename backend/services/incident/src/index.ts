@@ -16,15 +16,23 @@ import {
   type EventBus,
   type Logger,
 } from '@aicc/shared';
+import { createPool, migrate } from '@aicc/shared/db';
 import { buildHealthRoutes } from './routes/health.js';
 import { buildIncidentRoutes } from './routes/incidents.js';
 import { buildRunbookRoutes } from './routes/runbooks.js';
 import { buildChainRoutes } from './routes/chains.js';
-import { buildIncidentRepository } from './repositories/incident.repository.js';
-import { buildRunbookRepository } from './repositories/runbook.repository.js';
+import {
+  buildIncidentRepository,
+  buildPgIncidentRepository,
+} from './repositories/incident.repository.js';
+import {
+  buildRunbookRepository,
+  buildPgRunbookRepository,
+} from './repositories/runbook.repository.js';
 import { buildEventListeners } from './listeners/index.js';
-import { buildChainRepository } from './correlation/chain.repository.js';
+import { buildChainRepository, buildPgChainRepository } from './correlation/chain.repository.js';
 import { buildCorrelationListener } from './listeners/correlation.listener.js';
+import { MIGRATIONS } from './db/migrations.js';
 
 const SERVICE_NAME = 'incident-service';
 const SERVICE_VERSION = '0.1.0';
@@ -40,9 +48,11 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? new InMemoryEventBus();
 
-  const incidents = buildIncidentRepository();
-  const runbooks = buildRunbookRepository();
-  const chains = buildChainRepository();
+  const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
+  if (db) await migrate(db, MIGRATIONS);
+  const incidents = db ? buildPgIncidentRepository(db) : buildIncidentRepository();
+  const runbooks = db ? buildPgRunbookRepository(db) : buildRunbookRepository();
+  const chains = db ? buildPgChainRepository(db) : buildChainRepository();
 
   const server = Fastify({
     logger: logger,
@@ -62,7 +72,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
     req.userId = (req.headers['x-user-id'] as string) ?? '';
   });
 
-  await server.register(buildHealthRoutes, { logger, cfg });
+  await server.register(buildHealthRoutes, { logger, cfg, db });
   await server.register(buildIncidentRoutes, { logger, incidents, bus });
   await server.register(buildRunbookRoutes, { logger, runbooks });
   await server.register(buildChainRoutes, { logger, chains });
@@ -85,15 +95,21 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
     });
   });
 
+  if (db) {
+    server.addHook('onClose', async () => {
+      await db.end();
+    });
+  }
+
   return server;
 }
 
 async function main(): Promise<void> {
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger = createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
-  const server = await buildServer({ logger });
-  registerGracefulShutdown(server, logger);
   try {
+    const server = await buildServer({ logger });
+    registerGracefulShutdown(server, logger);
     await server.listen({ port: cfg.port, host: cfg.host });
     logger.info({ port: cfg.port, host: cfg.host }, `${SERVICE_NAME} listening`);
   } catch (err) {

@@ -25,6 +25,10 @@
       "types": "./dist/http/index.d.ts",
       "default": "./dist/http/index.js"
     },
+    "./db": {
+      "types": "./dist/db/index.d.ts",
+      "default": "./dist/db/index.js"
+    },
     "./security": {
       "types": "./dist/security/index.d.ts",
       "default": "./dist/security/index.js"
@@ -45,11 +49,13 @@
   },
   "dependencies": {
     "@aicc/models": "workspace:*",
+    "pg": "^8.23.0",
     "pino": "^9.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/pg": "^8.11.0",
     "fastify": "^4.27.0",
     "typescript": "^5.4.0"
   }

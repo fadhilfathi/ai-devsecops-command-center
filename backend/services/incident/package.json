@@ -1,7 +1,7 @@
 {
   "name": "@aicc/incident-service",
   "version": "0.1.0",
-  "description": "AICC Incident Service — incident lifecycle, runbooks, on-call assignments",
+  "description": "AICC Incident Service \u2014 incident lifecycle, runbooks, on-call assignments",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

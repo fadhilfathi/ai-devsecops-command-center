@@ -53,5 +53,6 @@ Known gaps (as of 2026-09-21): Verify `pnpm -r build` and `pnpm -r test` pass be
 - TypeScript strict, ESM, Fastify plugins per route file under `src/routes/`, repositories under `src/repositories/`, providers (external systems) under `src/providers/` with an in-memory mock.
 - Frontend: no `fetch` in components — go through `src/lib/api.ts`; mock data lives in `src/lib/*.mock.ts`.
 - Python: `src/<pkg>/` layout, pydantic models, pytest in `tests/`.
+- Persistence: interface + in-memory builder (default) + `buildPg<X>Repository` using `@aicc/shared/db`'s `Queryable`/`migrate()`; no ORM; migrations as TS modules (`src/db/migrations.ts`); tests run both implementations via `describe.each` against `@electric-sql/pglite`.
 - New ADR for any architectural decision: `docs/adr/NNNN-title.md`.
 - Update `CHANGELOG.md` (Unreleased section) in the same commit as the feature.

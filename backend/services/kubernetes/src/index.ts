@@ -19,11 +19,16 @@ import {
   type EventBus,
   type Logger,
 } from '@aicc/shared';
+import { createPool, migrate } from '@aicc/shared/db';
 import { buildHealthRoutes } from './routes/health.js';
 import { buildKubernetesRoutes } from './routes/kubernetes.js';
 import { buildConnectionTestRoutes } from './routes/connection-test.js';
 import { buildProviderRegistry } from './providers/registry.js';
-import { buildClusterRepository } from './repositories/cluster.repository.js';
+import {
+  buildClusterRepository,
+  buildPgClusterRepository,
+} from './repositories/cluster.repository.js';
+import { MIGRATIONS } from './db/migrations.js';
 
 const SERVICE_NAME = 'kubernetes-service';
 const SERVICE_VERSION = '0.1.0';
@@ -39,7 +44,9 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? new InMemoryEventBus();
 
-  const clusters = buildClusterRepository();
+  const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
+  if (db) await migrate(db, MIGRATIONS);
+  const clusters = db ? buildPgClusterRepository(db) : buildClusterRepository();
   const providers = buildProviderRegistry({ logger, clusters });
 
   const server = Fastify({
@@ -60,7 +67,7 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
     req.userId = (req.headers['x-user-id'] as string) ?? '';
   });
 
-  await server.register(buildHealthRoutes, { logger, cfg });
+  await server.register(buildHealthRoutes, { logger, cfg, db });
   await server.register(buildKubernetesRoutes, { logger, clusters, providers, bus });
   await server.register(buildConnectionTestRoutes, { logger, clusters, providers });
 
@@ -73,15 +80,21 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
     });
   });
 
+  if (db) {
+    server.addHook('onClose', async () => {
+      await db.end();
+    });
+  }
+
   return server;
 }
 
 async function main(): Promise<void> {
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger = createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
-  const server = await buildServer({ logger });
-  registerGracefulShutdown(server, logger);
   try {
+    const server = await buildServer({ logger });
+    registerGracefulShutdown(server, logger);
     await server.listen({ port: cfg.port, host: cfg.host });
     logger.info({ port: cfg.port, host: cfg.host }, `${SERVICE_NAME} listening`);
   } catch (err) {

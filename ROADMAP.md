@@ -75,8 +75,10 @@ Status: **planned**.
 - ✅ S5-2: wire the live `KubernetesProvider` using
   `@kubernetes/client-node`.
 - Add Prometheus metrics to every service.
-- Move the cluster registry, chain repository, and
-  correlation buffer to Postgres.
+- ✅ S5-3: move the cluster registry, incidents, runbooks, and
+  chain repository to Postgres (in-memory stays the default;
+  correlation buffer stays in-memory — sliding window, not
+  a source of truth).
 - Add network-policy inference and Istio / Linkerd
   service-mesh edge discovery to the topology engine.
 - Replace the heuristic utilisation estimates in the cost

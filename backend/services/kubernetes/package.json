@@ -1,7 +1,7 @@
 {
   "name": "@aicc/kubernetes-service",
   "version": "0.1.0",
-  "description": "AICC Kubernetes Service — cluster inventory, namespace/workload/pod/service/ingress/deployment/statefulset/daemonset inventory, connection test",
+  "description": "AICC Kubernetes Service \u2014 cluster inventory, namespace/workload/pod/service/ingress/deployment/statefulset/daemonset inventory, connection test",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

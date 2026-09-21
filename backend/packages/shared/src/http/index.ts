@@ -24,6 +24,8 @@ export interface ServiceConfig {
   host: string;
   environment: string;
   logLevel: string;
+  /** Postgres connection string. When unset, services fall back to in-memory stores. */
+  databaseUrl?: string;
 }
 
 export function loadServiceConfig(name: string, version: string): ServiceConfig {
@@ -34,6 +36,7 @@ export function loadServiceConfig(name: string, version: string): ServiceConfig 
     host: process.env.HOST ?? '0.0.0.0',
     environment: process.env.NODE_ENV ?? 'development',
     logLevel: process.env.LOG_LEVEL ?? 'info',
+    databaseUrl: process.env.DATABASE_URL,
   };
 }
 
