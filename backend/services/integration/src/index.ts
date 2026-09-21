@@ -43,7 +43,7 @@ export async function buildServer(deps?: Partial<IntegrationServiceDeps>): Promi
   const providers = buildProviderRegistry({ bus, logger, syncs });
 
   const server = Fastify({
-    loggerInstance: logger,
+    logger: logger,
     trustProxy: true,
     bodyLimit: 5 * 1024 * 1024, // 5 MiB for webhook payloads
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),

@@ -60,6 +60,5 @@ export type DeploymentListResponse = z.infer<typeof DeploymentListResponseSchema
 export function toDeploymentJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(DeploymentSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/deployment' },
   }) as Record<string, unknown>;
 }

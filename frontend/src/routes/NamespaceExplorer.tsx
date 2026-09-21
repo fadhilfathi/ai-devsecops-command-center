@@ -19,6 +19,7 @@ export function NamespaceExplorer() {
   const { data: namespaces } = useFetch(
     () => api.kubernetesNamespaces(clusterId),
     { items: [], total: 0 },
+    [clusterId],
   );
 
   const columns: Column<Namespace & { key: string }>[] = [

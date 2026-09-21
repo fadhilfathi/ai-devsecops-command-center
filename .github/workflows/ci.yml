@@ -73,7 +73,7 @@ jobs:
           - backend/services/incident
           - backend/services/compliance
           - backend/services/integration
-          - backend/shared
+          - backend/packages/shared
           - frontend
     steps:
       - uses: actions/checkout@v4
@@ -134,7 +134,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build contracts first
-        run: pnpm -r --filter "./backend/shared" build
+        run: pnpm -r --filter "...{./backend/packages/shared}" build
 
       - name: Build all
         run: pnpm -r build
@@ -146,7 +146,7 @@ jobs:
           name: build-output
           path: |
             backend/services/*/dist
-            backend/shared/dist
+            backend/packages/shared/dist
             frontend/dist
           if-no-files-found: ignore
           retention-days: 7

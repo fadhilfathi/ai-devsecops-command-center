@@ -32,6 +32,7 @@ import {
   type IngressTls,
   type Deployment,
   type DeploymentRolloutStatus,
+  DeploymentRolloutStatusSchema,
   type StatefulSet,
   type DaemonSet,
 } from '@aicc/models';
@@ -235,12 +236,12 @@ function healthFromReplicas(ready: number, desired: number): WorkloadHealth {
   return 'degraded';
 }
 
-function makeWorkload(args: {
+function makeWorkload<K extends 'deployment' | 'statefulset' | 'daemonset'>(args: {
   tenantId: string;
   clusterId: string;
   clusterName: string;
   namespace: string;
-  kind: 'deployment' | 'statefulset' | 'daemonset';
+  kind: K;
   name: string;
   image: string;
   desired: number;
@@ -248,7 +249,7 @@ function makeWorkload(args: {
   updated: number;
   available: number;
   resources: { cpuReq: number; cpuLim: number; memReq: number; memLim: number };
-}): Workload {
+}): Omit<Workload, 'kind'> & { kind: K } {
   return {
     id: uuid(),
     tenantId: args.tenantId,
@@ -440,7 +441,7 @@ function buildFixtureStatefulSets(_tenantId: string, opts: ListOptions): Statefu
       podManagementPolicy: 'ordered_ready',
       updateStrategy: 'rolling_update',
       volumeClaimTemplates: [
-        { name: 'data', storageClassName: 'gp3', sizeBytes: 100 * 1024 * 1024 * 1024 },
+        { name: 'data', storageClassName: 'gp3', sizeBytes: 100 * 1024 * 1024 * 1024, accessModes: ['ReadWriteOnce'] },
       ],
       currentRevision: 'postgres-7d4f8b',
       updateRevision: 'postgres-7d4f8b',

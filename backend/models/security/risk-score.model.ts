@@ -25,19 +25,8 @@ import { z } from 'zod';
 
 // ---------- factor breakdown (shared with dependency-graph.model.ts) ----------
 
-export const RiskFactorBreakdownSchema = z.object({
-  /** 0..1 — normalised severity (cvss / 10) */
-  severity: z.number().min(0).max(1),
-  /** 0..1 — EPSS exploit prediction probability */
-  epss: z.number().min(0).max(1),
-  /** 0..1 — CISA KEV flag (1.0 if listed, else 0.0) */
-  kev: z.number().min(0).max(1),
-  /** 0..1 — code reachability */
-  reachability: z.number().min(0).max(1),
-  /** 0..1 — network/internet exposure */
-  exposure: z.number().min(0).max(1),
-});
-export type RiskFactorBreakdown = z.infer<typeof RiskFactorBreakdownSchema>;
+export { RiskFactorBreakdownSchema, type RiskFactorBreakdown } from './dependency-graph.model.js';
+import { RiskFactorBreakdownSchema, type RiskFactorBreakdown } from './dependency-graph.model.js';
 
 export const RiskFactorWeightsSchema = z.object({
   severity: z.number().min(0).max(1),
@@ -62,22 +51,22 @@ export const DEFAULT_RISK_FACTOR_WEIGHTS: RiskFactorWeights = {
 
 // ---------- subject identification ----------
 
-export const RiskSubjectKindSchema = z.enum(['component', 'sbom', 'vulnerability', 'tenant']);
-export type RiskSubjectKind = z.infer<typeof RiskSubjectKindSchema>;
+export const SecurityRiskSubjectKindSchema = z.enum(['component', 'sbom', 'vulnerability', 'tenant']);
+export type SecurityRiskSubjectKind = z.infer<typeof SecurityRiskSubjectKindSchema>;
 
-export const RiskSubjectSchema = z.object({
-  kind: RiskSubjectKindSchema,
+export const SecurityRiskSubjectSchema = z.object({
+  kind: SecurityRiskSubjectKindSchema,
   /** Component: `bom-ref`. SBOM: `serialNumber` (urn:uuid) or graphId. Vulnerability: `cve_id`/`ghsa_id`. */
   id: z.string().min(1),
   /** Human label for dashboards (component name, SBOM name, etc.) */
   label: z.string().optional(),
 });
-export type RiskSubject = z.infer<typeof RiskSubjectSchema>;
+export type SecurityRiskSubject = z.infer<typeof SecurityRiskSubjectSchema>;
 
 // ---------- top-level RiskScore ----------
 
 export const RiskScoreSchema = z.object({
-  subject: RiskSubjectSchema,
+  subject: SecurityRiskSubjectSchema,
   /** Composite 0-100 score (integer, higher = riskier) */
   compositeScore: z.number().int().min(0).max(100),
   factors: RiskFactorBreakdownSchema,
@@ -201,9 +190,4 @@ export type SecurityDashboardResponse = z.infer<typeof SecurityDashboardResponse
 
 // ---------- JSON-Schema export helper ----------
 
-export function toJSONSchema<T extends z.ZodType>(schema: T): Record<string, unknown> {
-  return z.toJSONSchema(schema, {
-    target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/security/' },
-  }) as Record<string, unknown>;
-}
+export { toJSONSchema } from './dependency-graph.model.js';

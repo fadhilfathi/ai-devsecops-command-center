@@ -62,7 +62,7 @@ export const IngressSchema = z.object({
   rules: z.array(IngressRuleSchema).default([]),
   tls: z.array(IngressTlsSchema).default([]),
   defaultBackend: IngressBackendSchema.optional(),
-  labels: z.record(z.string()).default({}),
+  labels: z.record(z.string(), z.string()).default({}),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   lastSyncedAt: z.string().datetime({ offset: true }).optional(),
@@ -78,6 +78,5 @@ export type IngressListResponse = z.infer<typeof IngressListResponseSchema>;
 export function toIngressJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(IngressSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/ingress' },
   }) as Record<string, unknown>;
 }

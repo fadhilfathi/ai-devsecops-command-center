@@ -9,7 +9,7 @@
 // The engine is pure: no I/O, no event emission. Callers wire the
 // engine to persistence, event bus, and POA&M creation.
 
-import type { VulnerabilityFinding, ComplianceControlStatus } from '@aicc/shared/types/domain';
+import type { VulnerabilityFinding, ComplianceControlStatus, Framework } from '@aicc/shared/types/domain';
 import type {
   ControlMapping,
   ControlVulnTuple,
@@ -32,7 +32,7 @@ import { evaluatePredicate } from './predicates.js';
  * Tolerates missing optional fields and applies sensible defaults.
  */
 export function toMappingInput(finding: VulnerabilityFinding): MappingInput {
-  const enriched = finding as VulnerabilityFinding & Partial<Omit<MappingInput, 'vulnId' | 'tenantId' | 'assetId' | 'severity' | 'kind' | 'kev'>>;
+  const enriched = finding as VulnerabilityFinding & Partial<Omit<MappingInput, 'vulnId' | 'tenantId' | 'severity'>>;
 
   return {
     vulnId: finding.id,
@@ -42,9 +42,9 @@ export function toMappingInput(finding: VulnerabilityFinding): MappingInput {
     kind: normalizeKind(enriched.kind),
     kev: Boolean(enriched.kev),
     introducedAt: enriched.introducedAt,
-    assetId: finding.assetId ?? 'unknown',
-    componentId: finding.componentId,
-    metadata: finding.metadata,
+    assetId: enriched.assetId ?? 'unknown',
+    componentId: enriched.componentId,
+    metadata: enriched.metadata,
   };
 }
 
@@ -143,7 +143,7 @@ export class MappingEngine {
     // Build control summary.
     const controlSummaryMap = new Map<
       string,
-      { controlId: string; framework: MappingInput['tenantId'] extends never ? never : import('./mapping.types.js').VulnSeverity extends never ? never : import('@aicc/shared/types/domain').Framework; vulnIds: string[]; highestSeverity: VulnSeverity }
+      { controlId: string; framework: Framework; vulnIds: string[]; highestSeverity: VulnSeverity }
     >();
 
     const tuples: ControlVulnTuple[] = [];

@@ -54,7 +54,7 @@ export const TopologyNodeSchema = z.object({
   tags: z.array(z.string()).default([]),
   /** Optional positional hints from the layout engine. */
   position: z.object({ x: z.number(), y: z.number() }).optional(),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
 });
 export type TopologyNode = z.infer<typeof TopologyNodeSchema>;
 
@@ -67,7 +67,7 @@ export const TopologyEdgeSchema = z.object({
   weight: z.number().min(0).max(10).default(1.0),
   /** Edge label (e.g. `GET /users`). */
   label: z.string().optional(),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
 });
 export type TopologyEdge = z.infer<typeof TopologyEdgeSchema>;
 
@@ -97,6 +97,5 @@ export type TopologyListResponse = z.infer<typeof TopologyListResponseSchema>;
 export function toTopologyJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(TopologyGraphSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/topology' },
   }) as Record<string, unknown>;
 }

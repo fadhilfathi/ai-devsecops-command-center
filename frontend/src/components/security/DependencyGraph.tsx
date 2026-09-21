@@ -46,7 +46,11 @@ export function DependencyGraph({ sbomId }: { sbomId: string }) {
 }
 
 function DependencyGraphInner({ sbomId }: { sbomId: string }) {
-  const { data, loading } = useFetch(() => api.graphData(sbomId), [sbomId]);
+  const { data, loading } = useFetch(
+    () => api.graphData(sbomId),
+    { sbomId, nodes: [], edges: [] },
+    [sbomId],
+  );
   const [selected, setSelected] = useState<GraphNode | null>(null);
 
   // Build reactflow nodes/edges with a depth-based hierarchical layout.

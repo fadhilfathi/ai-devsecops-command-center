@@ -24,7 +24,7 @@ const EnvelopeSchema = z.object({
   tenantId: z.string().uuid(),
   integrationId: z.string().uuid(),
   type: z.string().min(1),
-  payload: z.record(z.unknown()).default({}),
+  payload: z.record(z.string(), z.unknown()).default({}),
 });
 
 export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
@@ -61,7 +61,7 @@ export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
         { bus, logger, syncs },
       );
       await integrations.recordSync(body.integrationId, body.tenantId, new Date().toISOString());
-      reply.code(202).send({ accepted: true });
+      return reply.code(202).send({ accepted: true });
     },
   );
 

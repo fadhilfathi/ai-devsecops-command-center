@@ -52,7 +52,7 @@ export const buildIncidentRoutes: FastifyPluginAsync<Deps> = async (server: Fast
       severity: incident.severity,
       data: { incidentId: incident.id, title: incident.title, severity: incident.severity },
     });
-    reply.code(201).send({ incident });
+    return reply.code(201).send({ incident });
   });
 
   server.get<{ Params: { id: string } }>('/v1/incidents/:id', async (req) => {

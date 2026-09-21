@@ -49,7 +49,7 @@ export const ServiceSchema = z.object({
   type: ServiceTypeSchema.default('cluster_ip'),
   clusterIp: z.string().optional(),
   externalIp: z.array(z.string()).default([]),
-  selector: z.record(z.string()).default({}),
+  selector: z.record(z.string(), z.string()).default({}),
   ports: z.array(ServicePortSchema).default([]),
   endpoints: z.array(ServiceEndpointSchema).default([]),
   /** Stable, normalised FQDN (`<svc>.<ns>.svc.cluster.local`). */
@@ -60,7 +60,7 @@ export const ServiceSchema = z.object({
   hasReadyEndpoints: z.boolean().default(false),
   /** Ingress ids that route traffic to this service. */
   ingressIds: z.array(z.string().uuid()).default([]),
-  labels: z.record(z.string()).default({}),
+  labels: z.record(z.string(), z.string()).default({}),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   lastSyncedAt: z.string().datetime({ offset: true }).optional(),
@@ -76,6 +76,5 @@ export type ServiceListResponse = z.infer<typeof ServiceListResponseSchema>;
 export function toServiceJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(ServiceSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/service' },
   }) as Record<string, unknown>;
 }

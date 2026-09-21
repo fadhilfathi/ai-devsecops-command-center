@@ -1,12 +1,21 @@
 {
   "files": [],
   "references": [
+    { "path": "./models" },
+    { "path": "./common/observability" },
     { "path": "./packages/shared" },
     { "path": "./services/auth" },
     { "path": "./services/agent" },
     { "path": "./services/security" },
     { "path": "./services/incident" },
     { "path": "./services/compliance" },
-    { "path": "./services/integration" }
+    { "path": "./services/integration" },
+    { "path": "./services/cost-intelligence" },
+    { "path": "./services/inventory" },
+    { "path": "./services/k8s-health" },
+    { "path": "./services/kubernetes" },
+    { "path": "./services/reporting" },
+    { "path": "./services/runtime-security" },
+    { "path": "./services/topology" }
   ]
 }

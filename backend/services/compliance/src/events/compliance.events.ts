@@ -56,10 +56,13 @@ export interface ComplianceControlViolatedEvent {
   tenantId: string;
   controlId: string;
   framework: 'cis_v8' | 'nist_800_53' | 'soc2' | 'iso_27001';
-  maxSeverity: Severity;
-  findingIds: string[];
-  scanId: string;
-  assetId: string;
+  status: 'fail';
+  violatingVulnIds: string[];
+  firstObservedAt: string;
+  highestSeverity: Severity;
+  ruleIds: string[];
+  scanId?: string;
+  assetId?: string;
 }
 
 /** Emitted each time a new evidence record is appended for a control. */

@@ -26,7 +26,11 @@ const ROW_HEIGHT = 56;
  * Virtualization: react-window. Row height fixed at 44px.
  */
 export function SbomViewer({ sbomId }: { sbomId: string }) {
-  const { data, loading } = useFetch(() => api.sbomDocument(sbomId), [sbomId]);
+  const { data, loading } = useFetch(
+    () => api.sbomDocument(sbomId),
+    { id: sbomId, assetId: "", assetName: "", generatedAt: "", format: "CycloneDX-1.5" as const, componentCount: 0, components: [] },
+    [sbomId],
+  );
 
   const [search, setSearch] = useState("");
   const [ecosystemFilter, setEcosystemFilter] = useState<Set<Ecosystem>>(new Set());

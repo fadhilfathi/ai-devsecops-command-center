@@ -3,3 +3,4 @@ packages:
   - "backend/services/*"
   - "backend/packages/*"
   - "backend/common/*"
+  - "backend/models"

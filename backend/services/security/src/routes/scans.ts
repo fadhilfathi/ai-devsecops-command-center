@@ -73,7 +73,7 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
       data: { scanId: scan.id, assetId: asset.id, findingsCount: 0 },
     });
 
-    reply.code(202).send({ scan });
+    return reply.code(202).send({ scan });
   });
 
   server.post<{ Params: { id: string } }>('/v1/scans/:id/complete', async (req) => {

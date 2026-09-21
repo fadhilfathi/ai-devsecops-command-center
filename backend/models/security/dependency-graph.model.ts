@@ -65,7 +65,7 @@ export const GraphNodeSchema = z.object({
    *   - `sbom`:          `{ serialNumber? }`
    *   - `vulnerability`: `{ cveId?, severity?, cvssScore? }`
    */
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   /**
    * The SBOM `bom-ref` of the component this node represents, for
    * join-key consistency across the graph and the SBOM service.
@@ -180,6 +180,5 @@ export type RiskCalculateResponse = z.infer<typeof RiskCalculateResponseSchema>;
 export function toJSONSchema<T extends z.ZodType>(schema: T): Record<string, unknown> {
   return z.toJSONSchema(schema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/security/' },
   }) as Record<string, unknown>;
 }

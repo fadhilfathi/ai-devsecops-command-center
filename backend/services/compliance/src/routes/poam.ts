@@ -28,7 +28,7 @@ const CreatePoamSchema = z.object({
   severity: z.enum(['critical', 'high', 'medium', 'low']),
   slaDays: z.number().int().positive().max(365).optional(),
   vulnId: z.string().min(1).max(64).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const ClosePoamSchema = z.object({
@@ -62,10 +62,10 @@ function requireTenantUser(req: FastifyRequest): { tenantId: string; userId: str
   const tenantId = req.headers['x-tenant-id'];
   const userId = req.headers['x-user-id'];
   if (typeof tenantId !== 'string' || !tenantId) {
-    throw new AppError('UNAUTHORIZED', 'Missing x-tenant-id header', 401);
+    throw new AppError('UNAUTHENTICATED', 'Missing x-tenant-id header');
   }
   if (typeof userId !== 'string' || !userId) {
-    throw new AppError('UNAUTHORIZED', 'Missing x-user-id header', 401);
+    throw new AppError('UNAUTHENTICATED', 'Missing x-user-id header');
   }
   return { tenantId, userId };
 }
@@ -78,7 +78,7 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId, userId } = requireTenantUser(req);
     const parsed = CreatePoamSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid POA&M body', 400, parsed.error.flatten());
+      throw new AppError('VALIDATION_ERROR', 'Invalid POA&M body', { details: parsed.error.flatten() });
     }
     const poam = await poamService.createManual(tenantId, parsed.data, userId);
     reply.code(201).send(poam);
@@ -89,7 +89,7 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId } = requireTenantUser(req);
     const parsed = ListQuerySchema.safeParse(req.query);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid query', 400, parsed.error.flatten());
+      throw new AppError('VALIDATION_ERROR', 'Invalid query', { details: parsed.error.flatten() });
     }
     return poamService.list(tenantId, parsed.data);
   });
@@ -119,17 +119,17 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId, userId } = requireTenantUser(req);
     const parsed = ClosePoamSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid close body', 400, parsed.error.flatten());
+      throw new AppError('VALIDATION_ERROR', 'Invalid close body', { details: parsed.error.flatten() });
     }
     try {
       return await poamService.close(tenantId, req.params.id, userId, parsed.data.resolutionNotes, parsed.data.evidenceRefs);
     } catch (err) {
       const msg = (err as Error).message;
       if (msg.includes('requires at least one evidence')) {
-        throw new AppError('VALIDATION_ERROR', msg, 400);
+        throw new AppError('VALIDATION_ERROR', msg);
       }
       if (msg.includes('not found')) throw new NotFoundError('PoamItem', req.params.id);
-      if (msg.includes('Invalid')) throw new AppError('VALIDATION_ERROR', msg, 400);
+      if (msg.includes('Invalid')) throw new AppError('VALIDATION_ERROR', msg);
       logger.error({ err, poamId: req.params.id }, 'poam_close_failed');
       throw err;
     }
@@ -140,7 +140,7 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId, userId } = requireTenantUser(req);
     const parsed = AcceptRiskSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid accept-risk body', 400, parsed.error.flatten());
+      throw new AppError('VALIDATION_ERROR', 'Invalid accept-risk body', { details: parsed.error.flatten() });
     }
     try {
       return await poamService.acceptRisk(
@@ -154,7 +154,7 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     } catch (err) {
       const msg = (err as Error).message;
       if (msg.includes('not found')) throw new NotFoundError('PoamItem', req.params.id);
-      if (msg.includes('Invalid')) throw new AppError('VALIDATION_ERROR', msg, 400);
+      if (msg.includes('Invalid')) throw new AppError('VALIDATION_ERROR', msg);
       throw err;
     }
   });

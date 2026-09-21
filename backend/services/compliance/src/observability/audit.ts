@@ -28,7 +28,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createLogger } from '@aicc/shared/logger';
 
-const log = createLogger({ service: 'compliance-service', level: 'info' });
+const log = createLogger({ service: 'compliance-service', version: '0.1.0', level: 'info' });
 
 // ---------------------------------------------------------------------------
 // Local Prometheus registry (one per service process).

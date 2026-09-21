@@ -99,7 +99,10 @@ export type SbomLicense = z.infer<typeof SbomLicenseSchema>;
  * wire format. Access in TS as `component['bom-ref']`. The Pydantic
  * mirror uses `Field(alias="bom-ref")`.
  */
-export const SbomComponentSchema = z.object({
+// ponytail: recursive schema (pedigree.ancestors/descendants/variants self-reference)
+// needs an explicit type to break the circular inference; upgrade to a hand-written
+// interface if callers ever need precise typing of nested pedigree components.
+export const SbomComponentSchema: z.ZodType<any> = z.object({
   type: SbomComponentTypeSchema,
   'bom-ref': z.string().min(1),
   name: z.string().min(1),
@@ -226,6 +229,8 @@ export type SbomGenerateRequest = z.infer<typeof SbomGenerateRequestSchema>;
  */
 export const SbomAnalyzeRequestSchema = z.object({
   sbom: SbomSchema,
+  /** Optional tenant scoping; defaults to request header */
+  tenantId: z.string().uuid().optional(),
   /** Components to focus on; default = all root components */
   focus: z.array(z.string()).optional(),
   /** Whether to compute license compatibility matrix (default false) */
@@ -280,9 +285,4 @@ export type SbomServiceResponse = z.infer<typeof SbomServiceResponseSchema>;
  *   - security-service's OpenAPI registration (`@fastify/swagger`)
  *   - Python Pydantic codegen (manual, not in this file)
  */
-export function toJSONSchema<T extends z.ZodType>(schema: T): Record<string, unknown> {
-  return z.toJSONSchema(schema, {
-    target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/security/' },
-  }) as Record<string, unknown>;
-}
+export { toJSONSchema } from './dependency-graph.model.js';

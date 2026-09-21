@@ -6,9 +6,9 @@ import { DataTable, type Column } from "@/components/ui/DataTable";
 import { api } from "@/lib/api";
 import { useFetch } from "@/hooks/useFetch";
 import { fmtNumber, titleCase, fmtBytes } from "@/lib/format";
-import type { Cluster, Node } from "@/types/infrastructure";
+import type { ClusterNode } from "@/types/infrastructure";
 
-const nodeColumns: Column<Node & { key: string }>[] = [
+const nodeColumns: Column<ClusterNode & { key: string }>[] = [
   { key: "name", header: "Node", cell: (n) => <span className="font-medium">{n.name}</span> },
   { key: "roles", header: "Roles", cell: (n) => n.roles.join(", ") || "—" },
   { key: "kubeletVersion", header: "Kubelet", cell: (n) => n.kubeletVersion ?? "—" },
@@ -35,7 +35,11 @@ const nodeColumns: Column<Node & { key: string }>[] = [
 export function ClusterExplorer() {
   const { data: clusters } = useFetch(api.kubernetesClusters, { items: [], total: 0 });
   const firstId = clusters.items[0]?.id;
-  const { data: namespaces } = useFetch(() => firstId ? api.kubernetesNamespaces(firstId) : { items: [], total: 0 }, { items: [], total: 0 });
+  const { data: namespaces } = useFetch(
+    () => (firstId ? api.kubernetesNamespaces(firstId) : Promise.resolve({ items: [], total: 0 })),
+    { items: [], total: 0 },
+    [firstId],
+  );
   const { data: health } = useFetch(api.healthClusters, { items: [], total: 0 });
   const cluster = clusters.items[0];
   const clusterHealth = health.items.find((h) => h.subject.clusterId === cluster?.id);

@@ -12,6 +12,7 @@ import { VulnerabilityKindSchema } from '@aicc/models/security/vulnerability.mod
 
 export type UserRole =
   | 'platform_admin'
+  | 'security_engineer'
   | 'security_analyst'
   | 'compliance_officer'
   | 'developer'
@@ -122,13 +123,17 @@ export interface Runbook extends BaseEntity, TenantScoped {
 }
 
 export type ComplianceFramework = 'cis_v8' | 'nist_800_53' | 'soc2' | 'iso_27001';
+/** Alias used throughout the compliance-service. */
+export type Framework = ComplianceFramework;
+
+export type ComplianceControlStatus = 'pass' | 'fail' | 'not_applicable' | 'manual_review';
 
 export interface ComplianceControl extends BaseEntity, TenantScoped {
   framework: ComplianceFramework;
   controlId: string;
   title: string;
   description: string;
-  status: 'pass' | 'fail' | 'not_applicable' | 'manual_review';
+  status: ComplianceControlStatus;
   evidenceRefs: string[];
 }
 

@@ -24,13 +24,13 @@ function healthFromReplicas(ready: number, desired: number): WorkloadHealth {
   return 'degraded';
 }
 
-function makeWorkload(args: {
+function makeWorkload<K extends 'deployment' | 'statefulset' | 'daemonset'>(args: {
   tenantId: string; clusterId: string; namespace: string;
-  kind: 'deployment' | 'statefulset' | 'daemonset';
+  kind: K;
   name: string; image: string; imageDigest?: string;
   desired: number; ready: number; updated: number; available: number;
   resources: { cpuReq: number; cpuLim: number; memReq: number; memLim: number };
-}): Workload {
+}): Omit<Workload, 'kind'> & { kind: K } {
   return {
     id: uuid(), tenantId: args.tenantId, clusterId: args.clusterId,
     clusterName: 'fixture', namespace: args.namespace,

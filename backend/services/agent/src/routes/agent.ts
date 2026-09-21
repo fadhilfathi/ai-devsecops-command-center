@@ -16,7 +16,7 @@ interface Deps {
 
 const TaskSchema = z.object({
   kind: z.string().min(1),
-  payload: z.record(z.unknown()).default({}),
+  payload: z.record(z.string(), z.unknown()).default({}),
   tenantId: z.string().uuid().optional(),
 });
 
@@ -51,7 +51,7 @@ export const buildAgentRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
       data: { taskId: task.id, kind: body.kind },
     });
     logger.info({ taskId: task.id, kind: body.kind, tenantId }, 'agent task submitted');
-    reply.code(202).send({ task });
+    return reply.code(202).send({ task });
   });
 
   server.get<{ Params: { id: string } }>('/v1/agents/tasks/:id', async (req) => {

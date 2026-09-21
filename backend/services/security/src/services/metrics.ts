@@ -40,11 +40,11 @@ import {
   type CreateCounterOptions,
   type CreateHistogramOptions,
 } from '@aicc/observability';
-import type { EventBus } from '@aicc/shared';
+import type { EventBus, Severity } from '@aicc/shared';
 
 // Re-export the helper's `serviceName` and the default registry so
 // the /metrics endpoint and other consumers in this service can use them.
-export { serviceName, renderMetrics };
+export { serviceName, renderMetrics, withService };
 export const metricsRegistry = _defaultRegistry;
 
 // ---------- 1. Proxy request latency (security-service → Python service hop) ----------
@@ -120,12 +120,12 @@ export async function publishInstrumented(
     version?: number;
     source: string;
     tenantId: string;
-    severity: string;
+    severity: Severity;
     data: unknown;
   },
 ): Promise<unknown> {
   try {
-    const result = await bus.publish(payload);
+    const result = await bus.publish({ ...payload, version: payload.version ?? 1 });
     eventbusPublishTotal.inc(withService({ topic: payload.type, result: 'success' }));
     return result;
   } catch (err) {

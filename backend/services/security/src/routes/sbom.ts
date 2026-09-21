@@ -51,7 +51,7 @@ export const buildSbomRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
       severity: 'info',
       data: { kind: 'sbom.created', sbomId: record.id, assetId: body.assetId, format: body.format },
     });
-    reply.code(201).send({ sbom: record });
+    return reply.code(201).send({ sbom: record });
   });
 
   server.get<{ Params: { id: string } }>('/v1/sboms/:id', async (req) => {

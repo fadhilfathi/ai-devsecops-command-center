@@ -13,7 +13,7 @@ interface Deps {
 const CreateIntegrationSchema = z.object({
   provider: z.enum(['github', 'gitlab', 'bitbucket', 'jira', 'slack']),
   name: z.string().min(1).max(200),
-  config: z.record(z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}),
   enabled: z.boolean().default(true),
 });
 
@@ -42,7 +42,7 @@ export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (server: F
       return { code: 'VALIDATION_ERROR', message: `unknown provider: ${body.provider}` };
     }
     const integration = await integrations.create({ ...body, tenantId: tenantId as UUID });
-    reply.code(201).send({ integration });
+    return reply.code(201).send({ integration });
   });
 
   server.get<{ Params: { id: string } }>('/v1/integrations/:id', async (req) => {

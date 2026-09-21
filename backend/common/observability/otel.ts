@@ -12,6 +12,7 @@
 // =============================================================================
 
 import { NodeSDK } from "@opentelemetry/sdk-node";
+import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-grpc";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-grpc";
@@ -50,8 +51,9 @@ export function startOtel(opts: OtelBootstrapOptions): void {
     }),
 
     traceExporter: new OTLPTraceExporter({ url: `${endpoint}` }),
-    metricExporter: new OTLPMetricExporter({ url: `${endpoint}` }),
-    logRecordProcessor: undefined, // log exporter is wired in via the pino bridge
+    metricReader: new PeriodicExportingMetricReader({
+      exporter: new OTLPMetricExporter({ url: `${endpoint}` }),
+    }),
 
     instrumentations: [
       getNodeAutoInstrumentations({
@@ -65,7 +67,8 @@ export function startOtel(opts: OtelBootstrapOptions): void {
         },
         "@opentelemetry/instrumentation-pg": { enabled: true },
         "@opentelemetry/instrumentation-ioredis": { enabled: true },
-        "@opentelemetry/instrumentation-nats": { enabled: true },
+        // No upstream @opentelemetry/instrumentation-nats package exists in
+        // auto-instrumentations-node's config map — nothing to enable here.
       }),
     ],
   });

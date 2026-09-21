@@ -184,7 +184,7 @@ export const mockIncidents: Incident[] = [
     createdAt: ago(60 * 12), updatedAt: ago(60 * 10),
     summary: "Sentinel-Agent blocked an internal-looking package from a typo-squatted registry." },
   { id: "inc-9004", title: "CIS control 5.4 regression on prod", severity: "low",
-    status: "open", assignee: "unassigned", source: "system",
+    status: "open", assignee: "unassigned", source: "agent",
     createdAt: ago(60 * 30), updatedAt: ago(60 * 30),
     summary: "MFA enforcement drifted on 2 service accounts; auto-remediation queued." },
 ];

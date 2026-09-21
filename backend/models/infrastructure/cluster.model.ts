@@ -82,7 +82,7 @@ export const ClusterSchema = z.object({
   /** Integration that owns this cluster. */
   integrationId: z.string().uuid().optional(),
   /** Free-form labels propagated from the cluster. */
-  labels: z.record(z.string()).default({}),
+  labels: z.record(z.string(), z.string()).default({}),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   lastSyncedAt: z.string().datetime({ offset: true }).optional(),
@@ -125,6 +125,5 @@ export type ClusterConnectionTestResponse = z.infer<typeof ClusterConnectionTest
 export function toClusterJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(ClusterSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/cluster' },
   }) as Record<string, unknown>;
 }

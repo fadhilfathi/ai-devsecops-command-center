@@ -116,7 +116,7 @@ export const RuntimeSecurityReportSchema = z.object({
     low: z.number().int().nonnegative(),
   }),
   /** Per-category counters. */
-  categoryCounts: z.record(z.number().int().nonnegative()).default({}),
+  categoryCounts: z.record(z.string(), z.number().int().nonnegative()).default({}),
   findings: z.array(RuntimeRiskSchema),
   /** Top remediation recommendations. */
   recommendations: z.array(z.object({
@@ -132,6 +132,5 @@ export type RuntimeSecurityReport = z.infer<typeof RuntimeSecurityReportSchema>;
 export function toRuntimeRiskJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(RuntimeRiskSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/runtime-risk' },
   }) as Record<string, unknown>;
 }

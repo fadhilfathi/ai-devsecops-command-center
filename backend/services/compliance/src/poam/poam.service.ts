@@ -314,7 +314,7 @@ export class PoamService {
         evidenceRefs: poam.evidenceRefs,
         tenantId: poam.tenantId,
       },
-      severity: 'notice',
+      severity: 'info',
     };
     await withAudit(
       { tenantId: poam.tenantId, auditKind: 'poam.closed', subjectId: poam.poamId, detail: { controlId: poam.controlId, closedBy: userId, evidenceCount: poam.evidenceRefs.length } },
@@ -352,9 +352,9 @@ export class PoamService {
 function severityFromPoam(severity: PoamSeverity): Severity {
   switch (severity) {
     case 'critical': return 'critical';
-    case 'high': return 'alert';
-    case 'medium': return 'warning';
-    case 'low': return 'info';
+    case 'high': return 'high';
+    case 'medium': return 'medium';
+    case 'low': return 'low';
   }
 }
 

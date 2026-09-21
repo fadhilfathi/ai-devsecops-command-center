@@ -42,7 +42,7 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
   const providers = buildProviderRegistry({ logger });
 
   const server = Fastify({
-    loggerInstance: logger,
+    logger: logger,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
   });

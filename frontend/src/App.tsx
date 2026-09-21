@@ -6,14 +6,14 @@ import { AppShell as Layout } from "./components/layout/AppShell";
 // page-path convention. S2.6 follow-up (R1 from the S2 retro) moved
 // the Sprint 1 page stubs out of src/pages/ into src/routes/.
 import { Dashboard } from "./routes/Dashboard";
-import { Assets } from "./routes/Assets";
-import { Incidents } from "./routes/Incidents";
+import { AssetsPage as Assets } from "./routes/Assets";
+import { IncidentsPage as Incidents } from "./routes/Incidents";
 import { Vulnerabilities } from "./routes/Vulnerabilities";
 import { SBOM } from "./routes/SBOM";
-import { Compliance } from "./routes/Compliance";
-import { Integrations } from "./routes/Integrations";
-import { Settings } from "./routes/Settings";
-import { NotFound } from "./routes/NotFound";
+import { CompliancePage as Compliance } from "./routes/Compliance";
+import { IntegrationsPage as Integrations } from "./routes/Integrations";
+import { SettingsPage as Settings } from "./routes/Settings";
+import { NotFoundPage as NotFound } from "./routes/NotFound";
 
 /**
  * DependencyGraph (and its `reactflow` + dagre-style layout bundle)

@@ -12,7 +12,7 @@ const CreateAssetSchema = z.object({
   type: z.enum(['repository', 'service', 'container', 'vm', 'saas']),
   name: z.string().min(1).max(200),
   ownerId: z.string().uuid(),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
   tags: z.array(z.string()).default([]),
 });
 
@@ -34,7 +34,7 @@ export const buildAssetRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
     }
     const body = CreateAssetSchema.parse(req.body);
     const asset = await assets.create({ ...body, tenantId: tenantId as UUID });
-    reply.code(201).send({ asset });
+    return reply.code(201).send({ asset });
   });
 
   server.get<{ Params: { id: string } }>('/v1/assets/:id', async (req) => {

@@ -97,7 +97,7 @@ export const CostFindingSchema = z.object({
   /** Estimated monthly savings if the issue is addressed. */
   monthlySavingsUsd: z.number().nonnegative().default(0),
   /** Free-form data (utilisation snapshots, ratios, etc.). */
-  data: z.record(z.unknown()).default({}),
+  data: z.record(z.string(), z.unknown()).default({}),
   detectedAt: z.string().datetime({ offset: true }),
 });
 export type CostFinding = z.infer<typeof CostFindingSchema>;
@@ -115,7 +115,7 @@ export const CostRecommendationSchema = z.object({
   /** Annualised savings (USD). */
   annualSavingsUsd: z.number().nonnegative(),
   /** Action payload — a hint for the operator. */
-  actionPayload: z.record(z.unknown()).default({}),
+  actionPayload: z.record(z.string(), z.unknown()).default({}),
   createdAt: z.string().datetime({ offset: true }),
 });
 export type CostRecommendation = z.infer<typeof CostRecommendationSchema>;
@@ -153,6 +153,5 @@ export type CostAnalysisListResponse = z.infer<typeof CostAnalysisListResponseSc
 export function toCostAnalysisJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(CostAnalysisSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/cost-analysis' },
   }) as Record<string, unknown>;
 }

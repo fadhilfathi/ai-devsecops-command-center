@@ -9,6 +9,8 @@ Status: pre-alpha, Sprint 5 of 12. See `ROADMAP.md`, `CHANGELOG.md`, `docs/archi
 - **Zero cost**: no paid APIs, no cloud accounts, no SaaS trials. Everything runs locally (docker-compose, SQLite/Postgres in Docker, mocked providers) or on free GitHub Actions. LLM features must have a no-key fallback (heuristic / stub).
 - **Model split**: Opus 5 (main session) plans, orchestrates, reviews plans, does small edits. Heavy work — implementing, fixing, coding, reviewing diffs — goes to the Sonnet 5 subagents in `.claude/agents/` (`executor`, `reviewer`). Every executor task gets a `reviewer` pass before commit.
 - **Delete over add**. No speculative abstractions, no placeholder dirs/READMEs, no `.gitkeep`. YAGNI.
+- **Workflow**: work in phases (one sprint ticket or coherent step = one phase). At the end of every phase: run `reviewer`, fix blockers, commit, `git push origin main`, then pause and report to the user in a few lines (what shipped, what's next, any question). Do not start the next phase until the user says go.
+- **Communication**: terse. Questions and reports as short as possible. Ask only when a decision materially changes the work; otherwise pick the recommended option and state it.
 - Don't run anything from `main` in production. Don't commit secrets; `.env.example` only.
 
 ## Layout

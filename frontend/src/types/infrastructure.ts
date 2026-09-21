@@ -44,6 +44,15 @@ export type RiskLevel = "critical" | "high" | "medium" | "low";
 
 // ---- Cluster / Namespace / Workload / Pod / Service / Deployment ----
 
+export interface ClusterNode {
+  name: string;
+  roles: string[];
+  kubeletVersion?: string;
+  architecture?: string;
+  conditions: string[];
+  unschedulable: boolean;
+}
+
 export interface Cluster {
   id: string;
   tenantId: string;
@@ -58,14 +67,7 @@ export interface Cluster {
   readyNodes: number;
   totalCpuCores: number;
   totalMemoryBytes: number;
-  nodes: Array<{
-    name: string;
-    roles: string[];
-    kubeletVersion?: string;
-    architecture?: string;
-    conditions: string[];
-    unschedulable: boolean;
-  }>;
+  nodes: ClusterNode[];
   labels: Record<string, string>;
   lastSyncedAt?: string;
 }
@@ -251,6 +253,16 @@ export interface HealthScore {
   generatedAt: string;
 }
 
+export interface HealthRecommendation {
+  id: string;
+  priority: "p0" | "p1" | "p2" | "p3";
+  title: string;
+  detail: string;
+  action?: string;
+  ruleIds: string[];
+  affectedCount: number;
+}
+
 export interface InfrastructureHealth {
   id: string;
   tenantId: string;
@@ -258,15 +270,7 @@ export interface InfrastructureHealth {
   subject: { kind: string; name: string; namespace?: string; clusterId?: string };
   score: HealthScore;
   issues: HealthIssue[];
-  recommendations: Array<{
-    id: string;
-    priority: "p0" | "p1" | "p2" | "p3";
-    title: string;
-    detail: string;
-    action?: string;
-    ruleIds: string[];
-    affectedCount: number;
-  }>;
+  recommendations: HealthRecommendation[];
   generatedAt: string;
 }
 

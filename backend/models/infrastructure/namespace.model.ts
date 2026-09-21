@@ -35,9 +35,9 @@ export const NamespaceSchema = z.object({
   /** Last 1h restart count across all pods in the namespace. */
   restartsLast1h: z.number().int().nonnegative().default(0),
   /** Labels propagated from the namespace. */
-  labels: z.record(z.string()).default({}),
+  labels: z.record(z.string(), z.string()).default({}),
   /** Annotations propagated from the namespace. */
-  annotations: z.record(z.string()).default({}),
+  annotations: z.record(z.string(), z.string()).default({}),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   lastSyncedAt: z.string().datetime({ offset: true }).optional(),
@@ -53,6 +53,5 @@ export type NamespaceListResponse = z.infer<typeof NamespaceListResponseSchema>;
 export function toNamespaceJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(NamespaceSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/namespace' },
   }) as Record<string, unknown>;
 }

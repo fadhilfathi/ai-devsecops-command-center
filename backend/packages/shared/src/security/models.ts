@@ -9,4 +9,4 @@
  * in Pydantic at `agents/sbom_pipeline/models.py` and
  * `agents/vuln_intel/models.py` (or the equivalent per-agent path).
  */
-export * from '../../../../models/security/index.js';
+export * from '@aicc/models/security/index.js';

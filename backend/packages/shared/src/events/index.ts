@@ -9,7 +9,9 @@
  * the transport is a one-line change.
  */
 
-import type { UUID, ISO8601, Severity } from '../types/index.js';
+import type { UUID, ISOTimestamp, Severity } from '../types/index.js';
+
+export type { UUID, ISOTimestamp, Severity };
 
 export interface EventEnvelope<T = unknown> {
   /** Unique event id, useful for idempotency. */
@@ -21,7 +23,7 @@ export interface EventEnvelope<T = unknown> {
   /** Origin service that produced the event. */
   source: string;
   /** When the event was produced. */
-  occurredAt: ISO8601;
+  occurredAt: ISOTimestamp;
   /** Tenant scope for multi-tenant isolation. */
   tenantId: UUID;
   /** Optional correlation id for tracing across services. */

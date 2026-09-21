@@ -47,7 +47,7 @@ export const buildEvidenceRoutes: FastifyPluginAsync<Deps> = async (server: Fast
     });
     // Attach the evidence reference to the control automatically.
     await controls.addEvidence(control.id, tenantId, record.ref);
-    reply.code(201).send({ evidence: record });
+    return reply.code(201).send({ evidence: record });
   });
 
   server.get<{ Params: { id: string } }>('/v1/evidence/:id', async (req) => {

@@ -89,6 +89,7 @@ function makeRisk(args: {
   evidencePath?: string;
   evidenceValue?: string | number | boolean | null;
   level?: RiskLevel;
+  severity?: RuntimeRisk['severity'];
 }): RuntimeRisk {
   return {
     id: crypto.randomUUID(),
@@ -103,7 +104,7 @@ function makeRisk(args: {
     ruleName: args.rule.name,
     category: args.rule.category,
     level: args.level ?? args.rule.level,
-    severity: args.rule.severity,
+    severity: args.severity ?? args.rule.severity,
     message: args.message,
     evidencePath: args.evidencePath,
     evidenceValue: args.evidenceValue ?? null,

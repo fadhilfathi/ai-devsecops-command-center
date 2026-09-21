@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-0: build baseline
+
+- Monorepo now installs and builds: added package manifests for
+  `@aicc/shared`, `@aicc/models`, `@aicc/observability`; services use
+  `workspace:*` deps; removed tsconfig `paths` aliases and dead
+  `backend/package.json`; committed `pnpm-lock.yaml`.
+- Unified `zod` to v4 across all packages; fixed `z.record` call sites.
+- Fixed pre-existing compile and logic errors surfaced by the first real
+  build: Fastify v4 `logger` option, missing `return` in route handlers,
+  duplicate model exports, k8s-health pods-per-workload lookup,
+  runtime-security hostPath severity override, `useFetch` signature,
+  `date-fns` dependency, dead `frontend/src/routes.tsx`.
+- Rewrote `compliance-service` entrypoint to the shared `buildServer()`
+  pattern used by every other service.
+- CI: fixed workspace paths and dependency-aware contracts build filter.
+
+## [Unreleased]
+
 ### Added
 
 - **Repository skeleton** (Sprint 1)

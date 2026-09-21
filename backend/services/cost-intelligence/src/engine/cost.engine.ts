@@ -280,7 +280,7 @@ export function buildCostEngine(deps: CostEngineDeps): CostEngine {
             break;
         }
         const key = `${action}::${title}`;
-        if (seen.has(key) || action === 'unknown') continue;
+        if (seen.has(key)) continue;
         seen.add(key);
         recs.push({
           id: randomUUID(),

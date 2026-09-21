@@ -40,6 +40,5 @@ export type DaemonSetListResponse = z.infer<typeof DaemonSetListResponseSchema>;
 export function toDaemonSetJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(DaemonSetSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/daemonset' },
   }) as Record<string, unknown>;
 }

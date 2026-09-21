@@ -38,7 +38,7 @@ export const buildRunbookRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
     }
     const body = CreateRunbookSchema.parse(req.body);
     const runbook = await runbooks.create({ ...body, tenantId: tenantId as UUID });
-    reply.code(201).send({ runbook });
+    return reply.code(201).send({ runbook });
   });
 
   server.get<{ Params: { id: string } }>('/v1/runbooks/:id', async (req) => {

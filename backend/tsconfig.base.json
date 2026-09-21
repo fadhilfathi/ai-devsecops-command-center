@@ -21,15 +21,6 @@
     "noFallthroughCasesInSwitch": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false,
-    "baseUrl": ".",
-    "paths": {
-      "@aicc/shared": ["packages/shared/src/index.ts"],
-      "@aicc/shared/*": ["packages/shared/src/*"],
-      "@aicc/models": ["../models/index.ts"],
-      "@aicc/models/*": ["../models/*"],
-      "@aicc/observability": ["common/observability/index.ts"],
-      "@aicc/observability/*": ["common/observability/*"]
-    }
+    "useDefineForClassFields": false
   }
 }

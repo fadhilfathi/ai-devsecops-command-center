@@ -4,7 +4,7 @@
  * Sprint 1 ships a simple FIFO. Sprint 2 will use a durable queue
  * (BullMQ / Postgres-backed) per the SREEngineer's plan.
  */
-import type { UUID, ISO8601 } from '@aicc/shared';
+import type { UUID, ISOTimestamp } from '@aicc/shared';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -16,9 +16,9 @@ export interface AgentTask {
   input: Record<string, unknown>;
   result?: unknown;
   error?: string;
-  createdAt: ISO8601;
-  startedAt?: ISO8601;
-  finishedAt?: ISO8601;
+  createdAt: ISOTimestamp;
+  startedAt?: ISOTimestamp;
+  finishedAt?: ISOTimestamp;
 }
 
 export interface TaskQueue {

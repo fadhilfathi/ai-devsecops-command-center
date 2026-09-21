@@ -49,7 +49,7 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
       severity: 'info',
       data: { controlId: control.id, framework: control.framework, status: control.status, kind: 'created' },
     });
-    reply.code(201).send({ control });
+    return reply.code(201).send({ control });
   });
 
   server.get<{ Params: { id: string } }>('/v1/controls/:id', async (req) => {

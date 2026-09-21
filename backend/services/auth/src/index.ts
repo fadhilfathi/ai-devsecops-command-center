@@ -43,7 +43,7 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
   });
 
   const server = Fastify({
-    loggerInstance: logger,
+    logger: logger,
     disableRequestLogging: false,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),

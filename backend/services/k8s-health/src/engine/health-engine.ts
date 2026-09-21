@@ -380,7 +380,7 @@ export function buildHealthEngine(deps: HealthEngineDeps): HealthEngine {
 
     scoreCluster(cluster, pods, workloads) {
       const podIssues = pods.flatMap(detectPodIssues);
-      const wlIssues = workloads.flatMap(detectWorkloadIssues);
+      const wlIssues = workloads.flatMap((w) => detectWorkloadIssues(w, pods.filter((p) => p.ownerName === w.name)));
       const nodeIssues = detectNodeIssues(cluster);
       const issues = [...podIssues, ...wlIssues, ...nodeIssues];
       const score = buildScore(issues);
@@ -398,7 +398,7 @@ export function buildHealthEngine(deps: HealthEngineDeps): HealthEngine {
 
     scoreNamespace(ns, pods, workloads) {
       const podIssues = pods.flatMap(detectPodIssues);
-      const wlIssues = workloads.flatMap(detectWorkloadIssues);
+      const wlIssues = workloads.flatMap((w) => detectWorkloadIssues(w, pods.filter((p) => p.ownerName === w.name)));
       const issues = [...podIssues, ...wlIssues];
       const score = buildScore(issues);
       return {

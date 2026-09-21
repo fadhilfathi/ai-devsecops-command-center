@@ -58,7 +58,7 @@ export const WorkloadSchema = z.object({
     message: z.string().optional(),
     lastTransitionTime: z.string().datetime({ offset: true }).optional(),
   })).default([]),
-  labels: z.record(z.string()).default({}),
+  labels: z.record(z.string(), z.string()).default({}),
   /** Container resource requests & limits (merged across containers). */
   resources: z.object({
     cpuRequestsMillicores: z.number().int().nonnegative().default(0),
@@ -90,6 +90,5 @@ export type WorkloadListResponse = z.infer<typeof WorkloadListResponseSchema>;
 export function toWorkloadJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(WorkloadSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/workload' },
   }) as Record<string, unknown>;
 }

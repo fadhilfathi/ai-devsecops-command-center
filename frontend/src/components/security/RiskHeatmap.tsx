@@ -26,7 +26,7 @@ const SEVERITIES: Severity[] = ["critical", "high", "medium", "low", "info"];
  *    the numeric count and the severity label.
  */
 export function RiskHeatmap() {
-  const { data, loading } = useFetch(api.riskHeatmap, []);
+  const { data, loading } = useFetch(api.riskHeatmap, { cells: [], ecosystems: [], totalVulns: 0, generatedAt: "" });
 
   const ecosystems = data?.ecosystems ?? [];
   const cellMap = useMemo(() => {

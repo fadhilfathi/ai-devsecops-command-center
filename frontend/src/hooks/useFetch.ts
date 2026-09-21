@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
  * against mocks. The hook keeps a stable API for the eventual swap
  * to the gateway, including loading/error states.
  */
-export function useFetch<T>(loader: () => Promise<T>, deps: unknown[] = []) {
-  const [data, setData] = useState<T | null>(null);
+export function useFetch<T>(loader: () => Promise<T>, defaultValue: T, deps: unknown[] = []) {
+  const [data, setData] = useState<T>(defaultValue);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
 

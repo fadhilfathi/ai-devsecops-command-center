@@ -23,7 +23,7 @@
  * pass-through from the rich schema.
  */
 import type { Vulnerability, VulnerabilityGitOpsRecord } from '@aicc/shared/security';
-import type { Logger } from 'pino';
+import type { Logger } from '@aicc/shared';
 
 /**
  * Project a rich `Vulnerability` to the GitOps wire format.

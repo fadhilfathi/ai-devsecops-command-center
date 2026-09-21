@@ -88,7 +88,7 @@ export function CompliancePage() {
     (acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }),
     {}
   );
-  const chartData = [
+  const chartData: Array<{ status: ComplianceControl["status"]; count: number }> = [
     { status: "pass", count: counts.pass ?? 0 },
     { status: "partial", count: counts.partial ?? 0 },
     { status: "fail", count: counts.fail ?? 0 },

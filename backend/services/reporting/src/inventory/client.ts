@@ -84,7 +84,7 @@ function buildSyntheticRuntime(tenantId: string, clusters: Cluster[], pods: Pod[
     counts: { critical: findings.filter((f) => f.level === 'critical').length, high: findings.filter((f) => f.level === 'high').length, medium: 0, low: 0 },
     categoryCounts: { unsafe_security_context: findings.length },
     findings,
-    recommendations: findings.length > 0 ? [{ id: 'rec-synth-1', title: 'Investigate recent terminations', detail: 'Restart the affected workloads after inspecting logs.', level: 'high' as const, affectedCount: findings.length }] : [],
+    recommendations: findings.length > 0 ? [{ title: 'Investigate recent terminations', detail: 'Restart the affected workloads after inspecting logs.', level: 'high' as const, affectedCount: findings.length }] : [],
     generatedAt: new Date().toISOString(),
   };
 }
@@ -120,9 +120,9 @@ function buildSyntheticCost(tenantId: string, cluster: Cluster, workloads: Workl
 
 function buildSyntheticTopology(tenantId: string, cluster: Cluster, workloads: Workload[], services: Service[], ingresses: Ingress[]): TopologyGraph {
   const nodes = [
-    ...ingresses.map((i) => ({ id: i.id, label: i.name, kind: 'ingress' as const, namespace: i.namespace, clusterId: i.clusterId, clusterName: i.clusterName, tags: [`class=${i.className}`], metadata: {} })),
-    ...services.map((s) => ({ id: s.id, label: s.name, kind: 'service' as const, namespace: s.namespace, clusterId: s.clusterId, clusterName: s.clusterName, tags: Object.entries(s.selector).map(([k, v]) => `${k}=${v}`), metadata: {} })),
-    ...workloads.map((w) => ({ id: w.id, label: w.name, kind: 'workload' as const, namespace: w.namespace, clusterId: w.clusterId, clusterName: w.clusterName, tags: [`kind=${w.kind}`], metadata: {} })),
+    ...ingresses.map((i) => ({ id: i.id, label: i.name, kind: 'ingress' as const, riskScore: 0, namespace: i.namespace, clusterId: i.clusterId, clusterName: i.clusterName, tags: [`class=${i.className}`], metadata: {} })),
+    ...services.map((s) => ({ id: s.id, label: s.name, kind: 'service' as const, riskScore: 0, namespace: s.namespace, clusterId: s.clusterId, clusterName: s.clusterName, tags: Object.entries(s.selector).map(([k, v]) => `${k}=${v}`), metadata: {} })),
+    ...workloads.map((w) => ({ id: w.id, label: w.name, kind: 'workload' as const, riskScore: 0, namespace: w.namespace, clusterId: w.clusterId, clusterName: w.clusterName, tags: [`kind=${w.kind}`], metadata: {} })),
   ];
   const edges: Array<{ id: string; source: string; target: string; kind: 'routes_to' | 'selects'; weight: number; label?: string; metadata: Record<string, unknown> }> = [];
   for (const ing of ingresses) {

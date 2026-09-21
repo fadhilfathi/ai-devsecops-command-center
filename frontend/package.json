@@ -22,7 +22,8 @@
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
     "react-window": "^1.8.10",
-    "reactflow": "^11.11.4"
+    "reactflow": "^11.11.4",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

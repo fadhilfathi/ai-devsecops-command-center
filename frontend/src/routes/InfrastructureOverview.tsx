@@ -79,7 +79,7 @@ export function InfrastructureOverview() {
             <Card.Header
               title={c.name}
               subtitle={`${c.provider} · ${c.k8sVersion ?? "?"} · ${c.region ?? "—"}`}
-              actions={<Badge variant="severity" severity={c.phase === "active" ? "info" : "warn"}>{titleCase(c.phase)}</Badge>}
+              actions={<Badge variant="severity" severity={c.phase === "active" ? "info" : "medium"}>{titleCase(c.phase)}</Badge>}
             />
             <Card.Body>
               <div className="grid grid-cols-2 gap-2 text-xs">

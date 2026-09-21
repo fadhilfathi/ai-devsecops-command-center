@@ -26,7 +26,7 @@ export const LogEntrySchema = z.object({
   span_id: z.string().regex(/^[0-9a-f]{16}$/).optional(),
   user_id: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   message: z.string().min(1).max(2048),
-  context: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+  context: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 // ---------- Redaction patterns ----------

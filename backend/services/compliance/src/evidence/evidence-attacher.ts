@@ -172,7 +172,7 @@ export class EvidenceAttacher {
   // Event emission
   // -------------------------------------------------------------------------
 
-  private async emitControlViolated(data: import('./compliance.events.js').ComplianceControlViolatedData): Promise<void> {
+  private async emitControlViolated(data: import('../events/compliance.events.js').ComplianceControlViolatedEvent): Promise<void> {
     const envelope: Omit<EventEnvelope<unknown>, 'eventId' | 'occurredAt'> = {
       type: EventTypes.COMPLIANCE_CONTROL_VIOLATED,
       version: 1,
@@ -222,9 +222,9 @@ export class EvidenceAttacher {
 function severityFromVuln(s: string): Severity {
   switch (s) {
     case 'critical': return 'critical';
-    case 'high': return 'alert';
-    case 'medium': return 'warning';
-    case 'low': return 'info';
+    case 'high': return 'high';
+    case 'medium': return 'medium';
+    case 'low': return 'low';
     default: return 'info';
   }
 }

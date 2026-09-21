@@ -125,6 +125,5 @@ export type InfrastructureHealthListResponse = z.infer<typeof InfrastructureHeal
 export function toInfrastructureHealthJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(InfrastructureHealthSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/health' },
   }) as Record<string, unknown>;
 }

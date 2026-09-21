@@ -50,6 +50,5 @@ export type StatefulSetListResponse = z.infer<typeof StatefulSetListResponseSche
 export function toStatefulSetJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(StatefulSetSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/statefulset' },
   }) as Record<string, unknown>;
 }

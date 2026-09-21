@@ -128,7 +128,7 @@ export function buildAuthHook(opts: {
       // and leave `req.user` unset. The route's `requireAuth` middleware will reject.
       const msg = (err as Error).message?.toLowerCase() ?? '';
       const reason = msg.includes('expired') ? 'expired' : 'invalid_signature';
-      authFailureTotal.inc({ route, reason, tenant_id_hash: hashTenantId(undefined) });
+      authFailureTotal.inc(withService({ route, reason }));
     }
   };
 }

@@ -20,6 +20,7 @@ export function WorkloadExplorer() {
   const { data: workloads } = useFetch(
     () => api.kubernetesWorkloads(clusterId, namespace),
     { items: [], total: 0 },
+    [clusterId, namespace],
   );
 
   const columns: Column<Workload & { key: string }>[] = [

@@ -116,8 +116,8 @@ export const PodSchema = z.object({
   startedAt: z.string().datetime({ offset: true }).optional(),
   /** Aggregate of `lastTerminationReason` across containers. */
   lastTerminationReason: PodTerminationReasonSchema.default('unknown'),
-  labels: z.record(z.string()).default({}),
-  annotations: z.record(z.string()).default({}),
+  labels: z.record(z.string(), z.string()).default({}),
+  annotations: z.record(z.string(), z.string()).default({}),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   lastSyncedAt: z.string().datetime({ offset: true }).optional(),
@@ -133,6 +133,5 @@ export type PodListResponse = z.infer<typeof PodListResponseSchema>;
 export function toPodJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(PodSchema, {
     target: 'draft-2020-12',
-    metadata: { $id: 'https://aicc.local/schemas/infrastructure/pod' },
   }) as Record<string, unknown>;
 }

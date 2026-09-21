@@ -44,7 +44,7 @@ const SEVERITY_COLORS: Record<Severity, string> = {
  */
 export function VulnTimeline() {
   const [range, setRange] = useState<VulnTimelineRange>("30d");
-  const { data, loading } = useFetch(() => api.vulnTimeline(range), [range]);
+  const { data, loading } = useFetch(() => api.vulnTimeline(range), [], [range]);
 
   return (
     <Card>

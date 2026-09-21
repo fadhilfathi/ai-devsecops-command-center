@@ -6,6 +6,17 @@
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from '../logger/index.js';
 
+// Every service decorates the request with `tenantId`/`userId` from the
+// `x-tenant-id`/`x-user-id` headers in an `onRequest` hook (see each
+// service's `src/index.ts`). Declared once here so all services that
+// import `@aicc/shared` get the augmented `FastifyRequest` type.
+declare module 'fastify' {
+  interface FastifyRequest {
+    tenantId: string;
+    userId: string;
+  }
+}
+
 export interface ServiceConfig {
   name: string;
   version: string;

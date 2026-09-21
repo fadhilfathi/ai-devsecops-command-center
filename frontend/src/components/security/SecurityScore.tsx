@@ -31,7 +31,7 @@ const BAND_VARIANT: Record<SecurityScore["band"], "ok" | "info" | "warn" | "dang
  * Consumes `GET /api/security/score` (S2.5 contract).
  */
 export function SecurityScore() {
-  const { data, loading } = useFetch(api.securityScore, []);
+  const { data, loading } = useFetch(api.securityScore, { composite: 0, band: "F", subMetrics: [], generatedAt: "" });
 
   if (loading || !data) {
     return (

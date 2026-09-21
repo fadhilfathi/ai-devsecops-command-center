@@ -11,7 +11,8 @@
 //   - by (tenantId, status, dueAt) for the overdue scheduler
 
 import { randomUUID } from 'node:crypto';
-import type { PoamItem, ListPoamFilter, PoamStatus, Framework } from './poam.types.js';
+import type { PoamItem, ListPoamFilter, PoamStatus } from './poam.types.js';
+import type { Framework } from '@aicc/shared/types/domain';
 
 export interface PoamRepository {
   create(item: PoamItem): Promise<PoamItem>;

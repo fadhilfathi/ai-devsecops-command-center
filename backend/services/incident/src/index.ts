@@ -44,7 +44,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
   const chains = buildChainRepository();
 
   const server = Fastify({
-    loggerInstance: logger,
+    logger: logger,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
   });
