@@ -38,7 +38,7 @@ frontend/
 - **Component-first**: a screen composes components. No business logic in JSX.
 - **Hooks for state**: data fetching, mutations, and live subscriptions all
   live in custom hooks.
-- **No direct `fetch`** in components — go through `src/services/`.
+- **No direct `fetch`** in components — go through `src/lib/api.ts`.
 - **Strict accessibility**: every interactive element is reachable by
   keyboard and has an accessible name.
 - **Strict TypeScript**: `strict`, `noUncheckedIndexedAccess`,

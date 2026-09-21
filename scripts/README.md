@@ -1,15 +1,11 @@
 # Scripts
 
-> Utility scripts for setup, deployment, CI helpers, and dev workflows.
+Local helper scripts. Run from the repository root.
 
-```
-scripts/
-├── setup/      # first-time setup (deps, certs, local stack)
-├── deploy/     # deploy to staging / prod
-├── ci/         # invoked from GitHub Actions
-└── dev/        # local dev helpers (db:reset, etc.)
-```
-
-All scripts are written in **Node.js + TypeScript** (compiled) or
-**Bash** (when shelling out is simpler), and are run via `make` targets
-or directly (`pnpm tsx scripts/setup/bootstrap.ts`).
+| Script | Purpose |
+|---|---|
+| `verify_compile.py` | Byte-compile every Python module in `agents/` and `backend/` |
+| `smoke_boot_services.py` | Boot each backend service and hit `/health` |
+| `smoke_e2e_security.py` | End-to-end smoke of the security pipeline (SBOM -> vuln -> risk) |
+| `smoke_vuln_intel.py` | Smoke test for the `vuln-intel` agent |
+| `examples.sh` | Example `curl` calls against a running stack |

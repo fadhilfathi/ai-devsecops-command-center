@@ -13,7 +13,7 @@
 - **Reviewer:** Lead (Architect)
 - **Priority:** P0
 - **Effort:** 3–5 days
-- **Source draft:** `docs/drafts/sbom-pipeline-service-v2/`
+- **Source draft:** `docs/drafts/sbom-pipeline-service-v2/` (removed 2026-09-21; recover from git `55e7950`)
 - **Acceptance criteria:**
   1. `src/sbom_pipeline/syft_wrapper.py` exists and matches the contract
      defined by `tests/test_syft_wrapper.py` and the imports in

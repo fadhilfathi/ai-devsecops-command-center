@@ -134,7 +134,7 @@ tracking, evidence collection, audit answers. We build a system that
 
 ```
 .
-├── .github/              GitHub workflows, issue templates, CODEOWNERS
+├── .github/              GitHub workflows, issue templates
 ├── docs/                 All documentation (architecture, agents, compliance, …)
 │   ├── adr/              Architecture Decision Records
 │   ├── architecture/     System design
@@ -155,7 +155,6 @@ tracking, evidence collection, audit answers. We build a system that
 │   ├── packages/         # Shared libraries (contracts, events, types, utils)
 │   └── common/           # Cross-cutting modules (observability, etc.)
 ├── agents/               Agent definitions
-│   ├── core/             Framework-agnostic agent core
 │   ├── roles/            security, incident, compliance, integration
 │   └── skills/           Reusable skills
 ├── infra/                Kubernetes, Terraform, observability

@@ -3,7 +3,7 @@
 > **Status:** Sprint 3 P0 ticket
 > **Owner:** SBOMPipelineAgent
 > **Reviewer:** Lead (Architect)
-> **Source draft:** `docs/drafts/sbom-pipeline-service-v2/`
+> **Source draft:** `docs/drafts/sbom-pipeline-service-v2/` (removed 2026-09-21; recover from git `55e7950`)
 > **Created:** 2026-06-12 (Sprint 2 closeout)
 > **Due:** Sprint 3 mid (2026-06-22)
 

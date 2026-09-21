@@ -1,7 +1,7 @@
 # Security Policy
 
 > **Status:** Active
-> **Owner:** GitOpsManager (`@aicc/gitops-manager` — see [`CODEOWNERS`](.github/CODEOWNERS))
+> **Owner:** GitOpsManager (repository maintainer)
 > **Auto-updated:** Yes — sections between `<!-- BEGIN:auto -->` and `<!-- END:auto -->` markers are managed by `.github/workflows/security.yml`. Do not hand-edit inside the fence. Sections outside the fence are human-maintained.
 
 This document describes how security vulnerabilities are handled in

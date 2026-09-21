@@ -76,7 +76,7 @@ Open <http://localhost:5173> for the UI and <http://localhost:3001> for Grafana
 5. **Push and open a PR** against `develop`. Use the PR template.
 6. **Pass CI and code review.** A PR needs:
    - At least one approving review from a code owner
-     (see [`.github/CODEOWNERS`](./.github/CODEOWNERS))
+     (solo maintainer; review via PR)
    - All CI checks green
    - No unresolved review comments
 7. **Squash-merge** with a Conventional Commit message.
@@ -126,7 +126,7 @@ Open <http://localhost:5173> for the UI and <http://localhost:3001> for Grafana
   `frontend/src/components/`. No business logic in JSX.
 - **Hooks for state**: data fetching, mutations, and event subscriptions all
   live in custom hooks under `frontend/src/hooks/`.
-- **No direct `fetch`** in components — go through `frontend/src/services/`.
+- **No direct `fetch`** in components — go through `frontend/src/lib/api.ts`.
 - **Strict accessibility**: every interactive element is reachable by keyboard
   and has an accessible name.
 

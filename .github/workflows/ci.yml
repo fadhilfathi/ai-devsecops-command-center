@@ -75,7 +75,6 @@ jobs:
           - backend/services/integration
           - backend/shared
           - frontend
-          - agents/core
     steps:
       - uses: actions/checkout@v4
         with:
