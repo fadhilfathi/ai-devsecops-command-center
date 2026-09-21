@@ -55,6 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every service `tsconfig.json` now excludes `**/*.test.ts` from the `tsc`
   build.
 
+### Sprint 5 — S5-2: live Kubernetes provider
+
+- Wired `LiveProvider` (`backend/services/kubernetes/src/providers/live.provider.ts`)
+  to `@kubernetes/client-node`: one cached client set per cluster,
+  `testConnection` via `VersionApi.getCode()`, and `list*` calls mapped
+  through pure, schema-validated mappers (`k8s-mappers.ts`).
+- `ClusterRepository` gained `getConnection()`; `getProviderIdForCluster()`
+  now routes onboarded clusters to `live` based on their actual
+  `ClusterProvider`, instead of always returning `fixture`.
+- `buildProviderRegistry()` takes `clusters` in its context; default
+  provider stays `fixture` (`AICC_K8S_PROVIDER`).
+- See `docs/adr/0009-live-kubernetes-provider.md`.
+
 ## [Unreleased]
 
 ### Added

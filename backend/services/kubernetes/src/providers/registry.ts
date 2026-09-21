@@ -37,6 +37,8 @@ import {
   type DaemonSet,
 } from '@aicc/models';
 import type { Logger } from '@aicc/shared';
+import type { ClusterRepository } from '../repositories/cluster.repository.js';
+import { LiveProvider } from './live.provider.js';
 
 export class UnsupportedError extends Error {
   readonly statusCode = 501;
@@ -49,6 +51,7 @@ export class UnsupportedError extends Error {
 
 export interface ProviderContext {
   logger: Logger;
+  clusters: ClusterRepository;
 }
 
 export interface ListOptions {
@@ -157,45 +160,6 @@ class FixtureProvider implements KubernetesProvider {
   }
 }
 
-class LiveProvider implements KubernetesProvider {
-  readonly id = 'live';
-  readonly name = 'Live Kubernetes API';
-  readonly readOnly = true;
-
-  async testConnection(_input: TestConnectionInput): Promise<TestConnectionResult> {
-    throw new UnsupportedError(
-      'live kubernetes provider is wired in Sprint 5; configure a fixture provider for now',
-    );
-  }
-  async listClusters(): Promise<Cluster[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listNamespaces(): Promise<Namespace[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listWorkloads(): Promise<Workload[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listPods(): Promise<Pod[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listServices(): Promise<Service[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listIngresses(): Promise<Ingress[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listDeployments(): Promise<Deployment[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listStatefulSets(): Promise<StatefulSet[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-  async listDaemonSets(): Promise<DaemonSet[]> {
-    throw new UnsupportedError('live kubernetes provider is wired in Sprint 5');
-  }
-}
-
 export interface ProviderRegistry {
   list(): KubernetesProvider[];
   get(id: string): KubernetesProvider | undefined;
@@ -203,8 +167,11 @@ export interface ProviderRegistry {
   defaultId(): string;
 }
 
-export function buildProviderRegistry(_ctx: ProviderContext): ProviderRegistry {
-  const providers: KubernetesProvider[] = [new FixtureProvider(), new LiveProvider()];
+export function buildProviderRegistry(ctx: ProviderContext): ProviderRegistry {
+  const providers: KubernetesProvider[] = [
+    new FixtureProvider(),
+    new LiveProvider({ clusters: ctx.clusters, logger: ctx.logger }),
+  ];
   return {
     list() {
       return providers;

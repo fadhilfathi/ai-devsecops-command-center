@@ -39,7 +39,7 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
   const bus = deps?.bus ?? new InMemoryEventBus();
 
   const clusters = buildClusterRepository();
-  const providers = buildProviderRegistry({ logger });
+  const providers = buildProviderRegistry({ logger, clusters });
 
   const server = Fastify({
     logger: logger,

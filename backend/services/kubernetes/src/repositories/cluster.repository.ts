@@ -24,6 +24,14 @@ export interface CreateClusterInput {
   insecureSkipVerify?: boolean;
 }
 
+/** Connection details needed to build a live Kubernetes API client. */
+export interface ClusterConnection {
+  server: string;
+  token?: string;
+  caBundle?: string;
+  insecureSkipVerify?: boolean;
+}
+
 export interface ClusterRepository {
   list(tenantId: UUID): Promise<Cluster[]>;
   findById(id: UUID, tenantId: UUID): Promise<Cluster | undefined>;
@@ -31,6 +39,8 @@ export interface ClusterRepository {
   remove(id: UUID, tenantId: UUID): Promise<boolean>;
   /** Returns the provider id, or `undefined` if not configured. */
   getProviderIdForCluster(id: UUID, tenantId: UUID): Promise<string | undefined>;
+  /** Returns connection details for the live provider, or `undefined` if unavailable. */
+  getConnection(id: UUID, tenantId: UUID): Promise<ClusterConnection | undefined>;
 }
 
 interface StoredCluster extends Cluster {
@@ -91,9 +101,20 @@ export function buildClusterRepository(): ClusterRepository {
     async getProviderIdForCluster(id, tenantId) {
       const c = store.get(id);
       if (!c || c.tenantId !== tenantId) return undefined;
-      // Sprint 4: only the fixture provider is wired; the live
-      // provider is reserved for Sprint 5.
-      return 'fixture';
+      // `ClusterProvider` enumerates cloud vendors (eks/gke/aks/...);
+      // any onboarded cluster is routed to the live provider unless
+      // explicitly marked 'fixture'.
+      return (c.provider as string) === 'fixture' ? 'fixture' : 'live';
+    },
+    async getConnection(id, tenantId) {
+      const c = store.get(id);
+      if (!c || c.tenantId !== tenantId || !c.server) return undefined;
+      return {
+        server: c.server,
+        token: c._credentials?.token,
+        caBundle: c._credentials?.caBundle,
+        insecureSkipVerify: c._credentials?.insecureSkipVerify,
+      };
     },
   };
 }

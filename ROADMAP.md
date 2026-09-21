@@ -72,7 +72,7 @@ Status: **complete** (2026-06-16).
 
 Status: **planned**.
 
-- Wire the live `KubernetesProvider` using
+- ✅ S5-2: wire the live `KubernetesProvider` using
   `@kubernetes/client-node`.
 - Add Prometheus metrics to every service.
 - Move the cluster registry, chain repository, and
