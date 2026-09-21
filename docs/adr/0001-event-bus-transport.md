@@ -54,11 +54,13 @@ transport-agnostic `EventBus` interface. Plan to migrate to
 ## Consequences
 
 ### Positive
+
 - Lower operational overhead in Sprint 1.
 - No new team skills required.
 - Clean migration path defined.
 
 ### Negative
+
 - Redis Streams has weaker ecosystem tooling than Kafka (e.g.
   connectors, schema registry maturity). We mitigate with Avro/JSON
   Schema + Apicurio.
@@ -66,9 +68,10 @@ transport-agnostic `EventBus` interface. Plan to migrate to
   interface discipline high.
 
 ### Risks
-- *Throughput ceiling reached earlier than expected.* Mitigation:
+
+- _Throughput ceiling reached earlier than expected._ Mitigation:
   load tests in Sprint 2; pre-provisioned migration playbook.
-- *Vendor-style lock-in to Redis semantics* creeping into application
+- _Vendor-style lock-in to Redis semantics_ creeping into application
   code. Mitigation: lint rule forbidding `ioredis`/`node-redis`
   imports outside `@cdc/event-bus`.
 

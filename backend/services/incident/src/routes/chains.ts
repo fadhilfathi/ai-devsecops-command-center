@@ -10,7 +10,10 @@ import { type Logger, type UUID } from '@aicc/shared';
 import type { IncidentChain, CorrelationEdge } from '../correlation/correlation-engine.js';
 import type { ChainRepository } from '../correlation/chain.repository.js';
 
-interface Deps { logger: Logger; chains: ChainRepository; }
+interface Deps {
+  logger: Logger;
+  chains: ChainRepository;
+}
 
 function requireTenant(tenantId: string): UUID {
   if (!tenantId) {

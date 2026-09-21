@@ -1,8 +1,8 @@
 # Project Description
 
 > The full product description of the **AI-DevSecOps Command Center**.
-> Read this for the *what* and the *why*; read
-> [`README.md`](./README.md) for the *how* (in 30 seconds) and
+> Read this for the _what_ and the _why_; read
+> [`README.md`](./README.md) for the _how_ (in 30 seconds) and
 > [`docs/architecture/`](./docs/architecture/) for the deep design.
 
 ## 1. One-paragraph pitch
@@ -33,22 +33,22 @@ collection) so humans can focus on the decisions only humans can make.
 
 ### Non-personas (explicit non-goals)
 
-- **End-user / consumer of a product** is *not* a user. The Command
+- **End-user / consumer of a product** is _not_ a user. The Command
   Center is for the people who build and protect the product.
-- **CISO of a Fortune 500 looking for a SIEM replacement** is *not* a
+- **CISO of a Fortune 500 looking for a SIEM replacement** is _not_ a
   target. We integrate with SIEMs; we are not one.
 
 ## 3. What problems it solves
 
-| Pain                                                | What we do                                     |
-| --------------------------------------------------- | ---------------------------------------------- |
-| Too many findings, no dedup, no context            | Correlate, dedup, surface prior remediation    |
-| Vulnerabilities live in PRs, in trackers, in scanners, in inboxes | One inbox-of-record with live updates |
-| "Are we compliant?" is a quarterly fire drill       | Continuous posture with signed evidence        |
-| Postmortems are written days after the fact         | Drafted from the incident timeline as it runs  |
-| Agents are toys / shadow IT                        | Typed, auditable, policy-enforced, scoped      |
-| Audit answers take weeks                            | One API call: produce a signed attestation     |
-| Onboarding a new repo is a copy-paste of YAML       | Connect the GitHub App once; the platform does the rest |
+| Pain                                                              | What we do                                              |
+| ----------------------------------------------------------------- | ------------------------------------------------------- |
+| Too many findings, no dedup, no context                           | Correlate, dedup, surface prior remediation             |
+| Vulnerabilities live in PRs, in trackers, in scanners, in inboxes | One inbox-of-record with live updates                   |
+| "Are we compliant?" is a quarterly fire drill                     | Continuous posture with signed evidence                 |
+| Postmortems are written days after the fact                       | Drafted from the incident timeline as it runs           |
+| Agents are toys / shadow IT                                       | Typed, auditable, policy-enforced, scoped               |
+| Audit answers take weeks                                          | One API call: produce a signed attestation              |
+| Onboarding a new repo is a copy-paste of YAML                     | Connect the GitHub App once; the platform does the rest |
 
 ## 4. The user experience
 
@@ -189,7 +189,7 @@ sprint-by-sprint plan. Headline milestones:
   point in time, linked back to the source event(s).
 - **Attestation** — a signed, hash-chained artifact that an auditor
   can verify offline.
-- **Blast radius** — what an agent is *allowed* to do (read-only,
+- **Blast radius** — what an agent is _allowed_ to do (read-only,
   write findings, open incidents, close incidents, …).
 - **Playbook** — a structured, declarative response flow for an
   incident class. May invoke tools, agents, or human approvals.
@@ -197,5 +197,5 @@ sprint-by-sprint plan. Headline milestones:
 ---
 
 > This is a living document. Edit it when the product changes.
-> Source of truth for *why* we are building it lives in the
+> Source of truth for _why_ we are building it lives in the
 > [`docs/adr/`](./docs/adr/).

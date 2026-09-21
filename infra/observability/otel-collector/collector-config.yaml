@@ -46,7 +46,6 @@ receivers:
     auth_type: serviceAccount
 
 processors:
-
   # ---------- Batching ----------
   batch:
     send_batch_size: 1024
@@ -115,7 +114,7 @@ processors:
         type: string_attribute
         string_attribute:
           key: security.review
-          values: ["true"]
+          values: ['true']
       # Keep 5% of the rest for baseline
       - name: baseline
         type: probabilistic
@@ -153,9 +152,9 @@ processors:
       exclude:
         match_type: regexp
         metric_names:
-          - "go_gc_.*"
-          - "process_.*"
-          - "promhttp_.*"
+          - 'go_gc_.*'
+          - 'process_.*'
+          - 'promhttp_.*'
 
   # ---------- Resource detection ----------
   resourcedetection:
@@ -229,7 +228,6 @@ service:
     logs:
       level: info
   pipelines:
-
     # -------- Traces --------
     traces:
       receivers: [otlp]

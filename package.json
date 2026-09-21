@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "author": "MiniMax / AionRs",
   "engines": {
-    "node": ">=20.18.0",
+    "node": ">=22.12.0",
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@9.12.0",
@@ -21,7 +21,7 @@
     "dev": "pnpm run -r --parallel dev",
     "test": "pnpm -r test",
     "test:e2e": "pnpm -r --if-present test:e2e",
-    "lint": "pnpm -r --if-present lint",
+    "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "typecheck": "pnpm -r --if-present typecheck",
@@ -35,14 +35,18 @@
     "prerelease": "pnpm build && pnpm test"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^20.14.0",
     "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
     "husky": "^9.1.0",
     "lint-staged": "^15.2.0",
     "prettier": "^3.3.0",
     "rimraf": "^6.0.1",
     "standard-version": "^9.5.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^2.1.0"
   },
   "lint-staged": {

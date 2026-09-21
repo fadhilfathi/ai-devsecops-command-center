@@ -43,32 +43,32 @@ field-by-field mapping is in the message threads with
 `SBOMPipelineAgent` and `VulnerabilityIntelligenceAgent` (Sprint 2
 kickoff). Compatibility rules:
 
-| Rule | Description |
-|---|---|
-| **Field names** | Match the wire format exactly. `bom-ref` is kebab in JSON; Zod uses the kebab key `'bom-ref'`. Pydantic uses `Field(alias="bom-ref")` with `populate_by_name=True`. |
-| **Optional fields** | Default to `None` (Python) / `undefined` (TS), never `null`. Use `.optional()` not `.nullable()` in Zod. |
-| **Top-level passthrough** | The top-level Zod schemas use `.passthrough()` so upstream extensions round-trip cleanly. Pydantic uses `model_config = ConfigDict(extra="allow")`. |
-| **JSON Schema export** | Each module exports `toJSONSchema(schema)` for OpenAPI registration in `security-service` and as a stable reference for Pydantic codegen. |
-| **Timestamps** | ISO 8601 with offset (`z.string().datetime({ offset: true })`). |
-| **Semver** | `SemverRangeSchema.expression` is a string (e.g. `>=1.0.0, <1.2.0`); `events[]` is the OSV-style structured alternative. |
+| Rule                      | Description                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Field names**           | Match the wire format exactly. `bom-ref` is kebab in JSON; Zod uses the kebab key `'bom-ref'`. Pydantic uses `Field(alias="bom-ref")` with `populate_by_name=True`. |
+| **Optional fields**       | Default to `None` (Python) / `undefined` (TS), never `null`. Use `.optional()` not `.nullable()` in Zod.                                                            |
+| **Top-level passthrough** | The top-level Zod schemas use `.passthrough()` so upstream extensions round-trip cleanly. Pydantic uses `model_config = ConfigDict(extra="allow")`.                 |
+| **JSON Schema export**    | Each module exports `toJSONSchema(schema)` for OpenAPI registration in `security-service` and as a stable reference for Pydantic codegen.                           |
+| **Timestamps**            | ISO 8601 with offset (`z.string().datetime({ offset: true })`).                                                                                                     |
+| **Semver**                | `SemverRangeSchema.expression` is a string (e.g. `>=1.0.0, <1.2.0`); `events[]` is the OSV-style structured alternative.                                            |
 
 ## Event topic constants (consumed by `@aicc/shared/security`)
 
-| Constant | Value | Emitted when |
-|---|---|---|
-| `SBOM_TOPIC` | `security.sbom.generated` | A new SBOM is generated and stored |
+| Constant     | Value                             | Emitted when                                 |
+| ------------ | --------------------------------- | -------------------------------------------- |
+| `SBOM_TOPIC` | `security.sbom.generated`         | A new SBOM is generated and stored           |
 | `VULN_TOPIC` | `security.vulnerability.detected` | A vulnerability is correlated to a component |
-| `RISK_TOPIC` | `security.risk.calculated` | A composite risk score is computed |
+| `RISK_TOPIC` | `security.risk.calculated`        | A composite risk score is computed           |
 
 ## Validation matrix
 
-| Source of truth | Zod | Python | JSON wire |
-|---|---|---|---|
-| SBOM shape | `SbomSchema` | `Sbom` (Pydantic) | CycloneDX 1.5/1.6 |
-| Vulnerability shape | `VulnerabilitySchema` | `Vulnerability` (Pydantic) | OSV + extensions |
-| Graph shape | `DependencyGraphSchema` | `DependencyGraph` (Pydantic) | internal |
-| Risk score | `RiskScoreSchema` | `RiskScore` (Pydantic) | internal |
-| Dashboard | `SecurityDashboardResponseSchema` | n/a (TS-only) | internal |
+| Source of truth     | Zod                               | Python                       | JSON wire         |
+| ------------------- | --------------------------------- | ---------------------------- | ----------------- |
+| SBOM shape          | `SbomSchema`                      | `Sbom` (Pydantic)            | CycloneDX 1.5/1.6 |
+| Vulnerability shape | `VulnerabilitySchema`             | `Vulnerability` (Pydantic)   | OSV + extensions  |
+| Graph shape         | `DependencyGraphSchema`           | `DependencyGraph` (Pydantic) | internal          |
+| Risk score          | `RiskScoreSchema`                 | `RiskScore` (Pydantic)       | internal          |
+| Dashboard           | `SecurityDashboardResponseSchema` | n/a (TS-only)                | internal          |
 
 ## Coordinate via these message threads
 

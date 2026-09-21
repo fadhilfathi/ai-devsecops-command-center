@@ -8,10 +8,10 @@ optimization recommendations with projected savings.
 
 ## Endpoints
 
-| Method | Path                                            | Description                          |
-| ------ | ----------------------------------------------- | ------------------------------------ |
-| GET    | `/v1/cost/analysis`                             | Per-cluster / tenant cost analysis   |
-| GET    | `/v1/cost/analysis/cluster/:id`                 | Per-cluster cost analysis            |
-| GET    | `/v1/cost/workloads`                            | Per-workload cost breakdown          |
-| GET    | `/v1/cost/findings`                             | Waste / over-provisioning findings   |
-| GET    | `/v1/cost/recommendations`                      | Optimisation recommendations         |
+| Method | Path                            | Description                        |
+| ------ | ------------------------------- | ---------------------------------- |
+| GET    | `/v1/cost/analysis`             | Per-cluster / tenant cost analysis |
+| GET    | `/v1/cost/analysis/cluster/:id` | Per-cluster cost analysis          |
+| GET    | `/v1/cost/workloads`            | Per-workload cost breakdown        |
+| GET    | `/v1/cost/findings`             | Waste / over-provisioning findings |
+| GET    | `/v1/cost/recommendations`      | Optimisation recommendations       |

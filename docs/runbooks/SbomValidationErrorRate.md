@@ -33,7 +33,7 @@ that's rejecting previously-valid SBOMs.**
    metric has a `tenant_id_hash` label. Cross-reference the error
    spike with a specific tenant's traffic.
 3. **Check the validation code for recent changes:** `git log
-   backend/services/security-service/src/validation/` should show
+backend/services/security-service/src/validation/` should show
    any recent commits.
 4. **Look for a coordinated spike across multiple rejection codes:**
    if multiple codes are spiking, it's likely a client regression

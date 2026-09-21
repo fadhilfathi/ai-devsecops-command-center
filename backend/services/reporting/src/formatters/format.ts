@@ -41,7 +41,9 @@ export function toMarkdown(report: Report): string {
     lines.push(`| ${table.columns.join(' | ')} |`);
     lines.push(`| ${table.columns.map(() => '---').join(' | ')} |`);
     for (const row of table.rows) {
-      lines.push(`| ${row.map((c) => (c === null || c === undefined ? '—' : String(c))).join(' | ')} |`);
+      lines.push(
+        `| ${row.map((c) => (c === null || c === undefined ? '—' : String(c))).join(' | ')} |`,
+      );
     }
     lines.push('');
   }
@@ -71,7 +73,10 @@ export function toPdf(report: Report): Buffer {
     lines.push({ text: table.title, size: 12, bold: true });
     lines.push({ text: table.columns.join(' | '), size: 9, bold: true });
     for (const row of table.rows) {
-      lines.push({ text: row.map((c) => (c === null || c === undefined ? '—' : String(c))).join(' | '), size: 9 });
+      lines.push({
+        text: row.map((c) => (c === null || c === undefined ? '—' : String(c))).join(' | '),
+        size: 9,
+      });
     }
     lines.push({ text: '', size: 8 });
   }
@@ -88,7 +93,10 @@ export function toPdf(report: Report): Buffer {
     if (y < margin) break; // single-page; truncate if needed
     const font = line.bold ? '/F2' : '/F1';
     const size = line.size;
-    const text = (line.text ?? '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    const text = (line.text ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
     ops.push(`BT ${font} ${size} Tf 50 ${y} Td (${text}) Tj ET`);
     y -= lineHeight;
   }

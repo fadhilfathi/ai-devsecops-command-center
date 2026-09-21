@@ -1,4 +1,4 @@
-import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
+import { Line, LineChart, ResponsiveContainer, YAxis } from 'recharts';
 
 /**
  * Sparkline — minimal, axis-free trend line.
@@ -9,7 +9,7 @@ import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
  */
 export function Sparkline({
   data,
-  color = "hsl(var(--accent))",
+  color = 'hsl(var(--accent))',
   height = 28,
   ariaLabel,
 }: {
@@ -25,7 +25,7 @@ export function Sparkline({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={series} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-        <YAxis hide domain={["dataMin", "dataMax"]} />
+        <YAxis hide domain={['dataMin', 'dataMax']} />
         <Line
           type="monotone"
           dataKey="v"

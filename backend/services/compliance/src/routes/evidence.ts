@@ -17,7 +17,10 @@ const CreateEvidenceSchema = z.object({
   ref: z.string().min(1),
 });
 
-export const buildEvidenceRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildEvidenceRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, evidence, controls } = opts;
 
   server.get('/v1/evidence', async (req) => {

@@ -6,7 +6,10 @@ interface Deps {
   cfg: { name: string; version: string };
 }
 
-export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, cfg } = opts;
 
   server.get('/healthz', async () => ({ status: 'ok' }));

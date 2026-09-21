@@ -55,14 +55,14 @@ PlatformArchitect Decision #11 (locked by SRE 2026-06-12). Cardinality is
 bounded by #tenants × #routes × #targets; well under the 50k-series
 per-service budget for the expected Sprint 2 scale (≤50 tenants).
 
-| Metric | Type | Labels | Purpose |
-|---|---|---|---|
-| `devsecops_proxy_request_duration_seconds` | Histogram | `service`, `route`, `target_service`, `result` | security-service → Python service proxy hop latency |
-| `devsecops_proxy_request_total` | Counter | `service`, `route`, `target_service`, `status_code` | All proxy requests (success + 4xx + 5xx + timeout) |
-| `devsecops_eventbus_publish_total` | Counter | `service`, `topic`, `result` | Event-bus publish attempts (`success` \| `error`) |
-| `devsecops_rate_limit_rejections_total` | Counter | `service`, `route`, `bucket` | 429 responses from per-route/global rate limiting (renamed from `rate_limit_triggered_total` per SRE §3.8.4 coordination, 2026-06-12). Sprint 2 ships with `bucket='global'`; Sprint 3 can widen to 3 (D1) or 5 (D7) values. |
-| `devsecops_auth_failure_total` | Counter | `service`, `route`, `reason` | Auth/authz failures (`reason` = `missing_token` \| `invalid_signature` \| `expired` \| `forbidden_role` \| `tenant_mismatch`) |
-| `devsecops_dashboard_query_duration_seconds` | Histogram | `service`, `endpoint` | GET /security/dashboard aggregation latency |
+| Metric                                       | Type      | Labels                                              | Purpose                                                                                                                                                                                                                      |
+| -------------------------------------------- | --------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devsecops_proxy_request_duration_seconds`   | Histogram | `service`, `route`, `target_service`, `result`      | security-service → Python service proxy hop latency                                                                                                                                                                          |
+| `devsecops_proxy_request_total`              | Counter   | `service`, `route`, `target_service`, `status_code` | All proxy requests (success + 4xx + 5xx + timeout)                                                                                                                                                                           |
+| `devsecops_eventbus_publish_total`           | Counter   | `service`, `topic`, `result`                        | Event-bus publish attempts (`success` \| `error`)                                                                                                                                                                            |
+| `devsecops_rate_limit_rejections_total`      | Counter   | `service`, `route`, `bucket`                        | 429 responses from per-route/global rate limiting (renamed from `rate_limit_triggered_total` per SRE §3.8.4 coordination, 2026-06-12). Sprint 2 ships with `bucket='global'`; Sprint 3 can widen to 3 (D1) or 5 (D7) values. |
+| `devsecops_auth_failure_total`               | Counter   | `service`, `route`, `reason`                        | Auth/authz failures (`reason` = `missing_token` \| `invalid_signature` \| `expired` \| `forbidden_role` \| `tenant_mismatch`)                                                                                                |
+| `devsecops_dashboard_query_duration_seconds` | Histogram | `service`, `endpoint`                               | GET /security/dashboard aggregation latency                                                                                                                                                                                  |
 
 **Ownership map (S2.7 locked):** security-service :4003 owns these 6
 metrics. The 3 Python services own their own metrics
@@ -167,8 +167,8 @@ curl -sS -X POST http://localhost:4003/sbom/generate \
     "version": 1,
     "serialNumber": "urn:uuid:22222222-2222-4222-8222-222222222222",
     "metadata": { "timestamp": "2025-01-15T10:00:42.000Z" },
-    "components": [ /* … */ ],
-    "dependencies": [ /* … */ ]
+    "components": [/* … */],
+    "dependencies": [/* … */]
   }
 }
 ```
@@ -189,7 +189,7 @@ Proxies to `sbom-pipeline-service` (port 4007).
 
 ```json
 {
-  "sbom": { /* Sbom object — same shape as /sbom/generate response */ },
+  "sbom": {/* Sbom object — same shape as /sbom/generate response */},
   "outdated": true,
   "licenseMatrix": true
 }
@@ -268,12 +268,10 @@ curl -sS -X POST http://localhost:4003/vulnerabilities/ingest \
       "affected": [
         {
           "package": { "name": "log4j-core", "ecosystem": "Maven" },
-          "vulnerableRanges": [
-            { "kind": "semver", "expression": ">=2.0, <2.15.0" }
-          ]
+          "vulnerableRanges": [{ "kind": "semver", "expression": ">=2.0, <2.15.0" }]
         }
       ],
-      "references": [ /* … */ ],
+      "references": [/* … */],
       "descriptions": [{ "lang": "en", "value": "Apache Log4j2 JNDI features…" }],
       "publishedAt": "2021-12-10T00:00:00.000Z",
       "lastModifiedAt": "2024-04-15T00:00:00.000Z",
@@ -300,11 +298,14 @@ Proxies to `dependency-intel-service` (port 4009).
 
 ```json
 {
-  "sbom": { /* Sbom object */ },
-  "vulnerabilities": [ /* Vulnerability[] from vuln-intel-service */ ],
+  "sbom": {/* Sbom object */},
+  "vulnerabilities": [/* Vulnerability[] from vuln-intel-service */],
   "factorWeights": {
-    "severity": 0.35, "epss": 0.20, "kev": 0.20,
-    "reachability": 0.15, "exposure": 0.10
+    "severity": 0.35,
+    "epss": 0.2,
+    "kev": 0.2,
+    "reachability": 0.15,
+    "exposure": 0.1
   }
 }
 ```
@@ -343,9 +344,9 @@ top 5 riskiest components, recent activity, security score + 7-day trend.
 
 **Query parameters:**
 
-| Name       | Type   | Required | Description                                |
-|------------|--------|----------|--------------------------------------------|
-| `tenantId` | UUID   | no       | Defaults to the JWT `tenantId` claim       |
+| Name       | Type | Required | Description                          |
+| ---------- | ---- | -------- | ------------------------------------ |
+| `tenantId` | UUID | no       | Defaults to the JWT `tenantId` claim |
 
 **Example:**
 
@@ -362,8 +363,12 @@ curl -sS http://localhost:4003/security/dashboard \
   "tenantId": "00000000-0000-4000-8000-000000000000",
   "sbomCount": 42,
   "vulnCountBySeverity": {
-    "critical": 3, "high": 12, "medium": 47,
-    "low": 89, "info": 23, "unknown": 0
+    "critical": 3,
+    "high": 12,
+    "medium": 47,
+    "low": 89,
+    "info": 23,
+    "unknown": 0
   },
   "totalVulnCount": 174,
   "topRiskyComponents": [
@@ -427,29 +432,29 @@ Or use the `auth-service`'s `POST /v1/auth/dev-login` from Sprint 1.
 ## Health
 
 - `GET /healthz` — liveness
-- `GET /readyz`  — readiness + dependency checks
+- `GET /readyz` — readiness + dependency checks
 - `GET /version` — service + version + start time
 - `GET /metrics` — Prometheus text format
-- `GET /docs`    — Swagger UI
+- `GET /docs` — Swagger UI
 
 ## Environment
 
 See `.env.example`. Critical vars for S2.5:
 
-| Variable               | Default                            | Description |
-|------------------------|------------------------------------|-------------|
-| `PORT`                 | `4003`                             | Service port |
-| `SBOM_PIPELINE_URL`    | `http://localhost:4007`            | Downstream SBOM pipeline |
-| `VULN_INTEL_URL`       | `http://localhost:4008`            | Downstream vuln intel |
-| `DEPENDENCY_INTEL_URL` | `http://localhost:4009`            | Downstream dep intel |
-| `RATE_LIMIT_MAX`       | `10`                               | Per-route req/s cap |
-| `RATE_LIMIT_WINDOW_MS` | `1000`                             | Per-route window |
-| `METRICS_ENABLED`      | `true`                             | Master switch for prom-client metrics (S2.7) |
-| `OTEL_SERVICE_NAME`   | `security-service`                 | Injected as the `service` label on every metric (per metrics-spec.md §5.1.1) |
-| `METRICS_EXPOSE_ENDPOINT` | `true`                          | Expose `GET /metrics` for Prometheus scrape |
-| `JWT_ALG`              | `HS256`                            | `RS256` in prod via `@aicc/auth` |
-| `JWT_SECRET`           | dev-only                           | HS256 dev secret (Sprint 2 stub) |
-| `JWT_PUBLIC_KEY`       | unset                              | RS256 public key (Sprint 2.1) |
+| Variable                  | Default                 | Description                                                                  |
+| ------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
+| `PORT`                    | `4003`                  | Service port                                                                 |
+| `SBOM_PIPELINE_URL`       | `http://localhost:4007` | Downstream SBOM pipeline                                                     |
+| `VULN_INTEL_URL`          | `http://localhost:4008` | Downstream vuln intel                                                        |
+| `DEPENDENCY_INTEL_URL`    | `http://localhost:4009` | Downstream dep intel                                                         |
+| `RATE_LIMIT_MAX`          | `10`                    | Per-route req/s cap                                                          |
+| `RATE_LIMIT_WINDOW_MS`    | `1000`                  | Per-route window                                                             |
+| `METRICS_ENABLED`         | `true`                  | Master switch for prom-client metrics (S2.7)                                 |
+| `OTEL_SERVICE_NAME`       | `security-service`      | Injected as the `service` label on every metric (per metrics-spec.md §5.1.1) |
+| `METRICS_EXPOSE_ENDPOINT` | `true`                  | Expose `GET /metrics` for Prometheus scrape                                  |
+| `JWT_ALG`                 | `HS256`                 | `RS256` in prod via `@aicc/auth`                                             |
+| `JWT_SECRET`              | dev-only                | HS256 dev secret (Sprint 2 stub)                                             |
+| `JWT_PUBLIC_KEY`          | unset                   | RS256 public key (Sprint 2.1)                                                |
 
 ## Events emitted (S2.5 + S2.10)
 
@@ -457,24 +462,19 @@ The service publishes four CloudEvents-style envelopes on the in-process
 event bus (Sprint 2) and, in Sprint 2.1, on the Redis Streams subjects
 shown in the **wire** column:
 
-| Internal topic const    | Wire (Redis Stream subject)              | Triggered by                              |
-|-------------------------|------------------------------------------|-------------------------------------------|
-| `SBOM_TOPIC`            | `security.sbom.generated.v1`             | `POST /sbom/generate` success             |
-| `VULN_TOPIC`            | `security.vulnerability.detected.v1`     | `POST /vulnerabilities` ingest            |
-| `RISK_TOPIC`            | `security.risk.calculated.v1`            | `POST /risk/calculate` top-5 emit         |
-| `SCAN_TOPIC` (S2.9+)    | `security.scan.completed.v1`             | Posted by external scanners (Sprint 2.1)  |
+| Internal topic const | Wire (Redis Stream subject)          | Triggered by                             |
+| -------------------- | ------------------------------------ | ---------------------------------------- |
+| `SBOM_TOPIC`         | `security.sbom.generated.v1`         | `POST /sbom/generate` success            |
+| `VULN_TOPIC`         | `security.vulnerability.detected.v1` | `POST /vulnerabilities` ingest           |
+| `RISK_TOPIC`         | `security.risk.calculated.v1`        | `POST /risk/calculate` top-5 emit        |
+| `SCAN_TOPIC` (S2.9+) | `security.scan.completed.v1`         | Posted by external scanners (Sprint 2.1) |
 
 Topic constants live in `@aicc/shared/security`. The `.v1` suffix is the
 **Redis Stream subject version**, not the GitHub `repository_dispatch`
 event type — those are two separate namespaces.
 
 ```ts
-import {
-  SBOM_TOPIC,
-  VULN_TOPIC,
-  RISK_TOPIC,
-  SCAN_TOPIC,
-} from '@aicc/shared/security';
+import { SBOM_TOPIC, VULN_TOPIC, RISK_TOPIC, SCAN_TOPIC } from '@aicc/shared/security';
 ```
 
 ### Payload shape — GitOps wire format (S2.10)
@@ -502,25 +502,25 @@ contract is owned by `GitOpsManager` and reviewed in
 
 ### Field mapping (camelCase internal → snake_case wire)
 
-| Internal (`VulnerabilitySchema`) | Wire (`VulnerabilityGitOpsRecordSchema`) | Notes |
-|----------------------------------|------------------------------------------|-------|
-| `id`                            | `id`                                     | UUID v4 |
-| `source` (e.g. `'ghsa'`)        | `source` (e.g. `'github-advisory'`)      | `ghsa` → `github-advisory`; other values pass through |
-| `severity`                      | `severity`                               | enum unchanged |
-| `cvssV3.baseScore`              | `cvss_v3`                                | **flat number** (not nested object) |
-| `affected[].package.name`       | `package`                                | string (no version suffix) |
-| `affected[].package.ecosystem`  | `ecosystem`                              | enum unchanged |
-| `affected[].introducedIn`       | `introduced_in`                          | per-affected-entry; first version affected |
-| `affected[].fixedIn`            | `fixed_in`                               | array of versions |
-| `affected[].vulnerableRange`    | `vulnerable_range`                       | semver range string |
-| `summary`                       | `summary`                                | human-readable one-liner |
-| `references[].url`              | `references`                             | flattened to `string[]` of URLs |
-| `detectedAt`                    | `detected_at`                            | ISO-8601 with offset |
-| `gitSha`                        | `git_sha`                                | commit SHA the scan ran against |
-| `kind`                          | `kind`                                   | `'sca' \| 'sast' \| 'runtime' \| 'secret'` |
-| `autoActionable` (computed)     | `auto_actionable`                        | **3-condition gate** (see below) |
-| `tenantId` (from JWT)           | `tenant_id`                              | stamped at the boundary; not from upstream feeds |
-| `kev`                           | (omitted)                                | consumed by the `auto_actionable` gate only |
+| Internal (`VulnerabilitySchema`) | Wire (`VulnerabilityGitOpsRecordSchema`) | Notes                                                 |
+| -------------------------------- | ---------------------------------------- | ----------------------------------------------------- |
+| `id`                             | `id`                                     | UUID v4                                               |
+| `source` (e.g. `'ghsa'`)         | `source` (e.g. `'github-advisory'`)      | `ghsa` → `github-advisory`; other values pass through |
+| `severity`                       | `severity`                               | enum unchanged                                        |
+| `cvssV3.baseScore`               | `cvss_v3`                                | **flat number** (not nested object)                   |
+| `affected[].package.name`        | `package`                                | string (no version suffix)                            |
+| `affected[].package.ecosystem`   | `ecosystem`                              | enum unchanged                                        |
+| `affected[].introducedIn`        | `introduced_in`                          | per-affected-entry; first version affected            |
+| `affected[].fixedIn`             | `fixed_in`                               | array of versions                                     |
+| `affected[].vulnerableRange`     | `vulnerable_range`                       | semver range string                                   |
+| `summary`                        | `summary`                                | human-readable one-liner                              |
+| `references[].url`               | `references`                             | flattened to `string[]` of URLs                       |
+| `detectedAt`                     | `detected_at`                            | ISO-8601 with offset                                  |
+| `gitSha`                         | `git_sha`                                | commit SHA the scan ran against                       |
+| `kind`                           | `kind`                                   | `'sca' \| 'sast' \| 'runtime' \| 'secret'`            |
+| `autoActionable` (computed)      | `auto_actionable`                        | **3-condition gate** (see below)                      |
+| `tenantId` (from JWT)            | `tenant_id`                              | stamped at the boundary; not from upstream feeds      |
+| `kev`                            | (omitted)                                | consumed by the `auto_actionable` gate only           |
 
 ### `auto_actionable` — 3-condition gate
 
@@ -553,7 +553,7 @@ The internal `source` enum is the **feed identifier** (e.g. `'ghsa'`,
 classification**:
 
 | Internal | Wire              |
-|----------|-------------------|
+| -------- | ----------------- |
 | `ghsa`   | `github-advisory` |
 | `osv`    | `osv`             |
 | `nvd`    | `nvd`             |

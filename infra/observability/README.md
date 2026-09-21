@@ -37,14 +37,14 @@ The same files work for both **dev** (docker-compose) and **prod**
 (k8s/Helm). The split is in **env vars at startup**, not in **file
 location**:
 
-| Variable                  | Dev (docker-compose)        | Prod (k8s)                 |
-| ------------------------- | --------------------------- | -------------------------- |
-| `RUNBOOK_BASE_URL`        | `https://runbooks.example.com/observability` | real host |
-| `DASHBOARD_BASE_URL`      | `http://localhost:3001`     | real Grafana host          |
-| `LOKI_URL`                | `http://loki:3100`          | real Loki endpoint         |
-| `TEMPO_URL`               | `http://tempo:4317`         | real Tempo endpoint        |
-| `PROM_REMOTE_WRITE_URL`   | `http://prometheus:9090/api/v1/write` | real remote write |
-| `ALERTMANAGER_URL`        | `http://alertmanager:9093`  | real Alertmanager endpoint |
+| Variable                | Dev (docker-compose)                         | Prod (k8s)                 |
+| ----------------------- | -------------------------------------------- | -------------------------- |
+| `RUNBOOK_BASE_URL`      | `https://runbooks.example.com/observability` | real host                  |
+| `DASHBOARD_BASE_URL`    | `http://localhost:3001`                      | real Grafana host          |
+| `LOKI_URL`              | `http://loki:3100`                           | real Loki endpoint         |
+| `TEMPO_URL`             | `http://tempo:4317`                          | real Tempo endpoint        |
+| `PROM_REMOTE_WRITE_URL` | `http://prometheus:9090/api/v1/write`        | real remote write          |
+| `ALERTMANAGER_URL`      | `http://alertmanager:9093`                   | real Alertmanager endpoint |
 
 `RUNBOOK_BASE_URL` and `DASHBOARD_BASE_URL` are exposed as Prometheus
 `external_labels` so the alert rules can reference them via

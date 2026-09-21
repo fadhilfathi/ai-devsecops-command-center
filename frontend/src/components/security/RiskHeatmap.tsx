@@ -1,12 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import clsx from "clsx";
-import { Card } from "@/components/ui/Card";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { titleCase } from "@/lib/format";
-import type { Ecosystem, RiskHeatmap, RiskHeatmapCell, Severity } from "@/types";
+import { useCallback, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
+import { Card } from '@/components/ui/Card';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { titleCase } from '@/lib/format';
+import type { Ecosystem, RiskHeatmap, RiskHeatmapCell, Severity } from '@/types';
 
-const SEVERITIES: Severity[] = ["critical", "high", "medium", "low", "info"];
+const SEVERITIES: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
 
 /**
  * RiskHeatmap — 2D ecosystem × severity heatmap, custom SVG grid.
@@ -26,7 +26,12 @@ const SEVERITIES: Severity[] = ["critical", "high", "medium", "low", "info"];
  *    the numeric count and the severity label.
  */
 export function RiskHeatmap() {
-  const { data, loading } = useFetch(api.riskHeatmap, { cells: [], ecosystems: [], totalVulns: 0, generatedAt: "" });
+  const { data, loading } = useFetch(api.riskHeatmap, {
+    cells: [],
+    ecosystems: [],
+    totalVulns: 0,
+    generatedAt: '',
+  });
 
   const ecosystems = data?.ecosystems ?? [];
   const cellMap = useMemo(() => {
@@ -53,7 +58,7 @@ export function RiskHeatmap() {
         sev: clamp(f.sev + dRow, 0, Math.max(0, SEVERITIES.length - 1)),
       }));
     },
-    [ecosystems.length]
+    [ecosystems.length],
   );
 
   const activate = useCallback((eco: Ecosystem, sev: Severity) => {
@@ -64,16 +69,40 @@ export function RiskHeatmap() {
 
   const onKey = (e: React.KeyboardEvent<SVGGElement>) => {
     switch (e.key) {
-      case "ArrowRight": e.preventDefault(); move(1, 0); break;
-      case "ArrowLeft":  e.preventDefault(); move(-1, 0); break;
-      case "ArrowDown":  e.preventDefault(); move(0, 1); break;
-      case "ArrowUp":    e.preventDefault(); move(0, -1); break;
-      case "Home":       e.preventDefault(); setFocus((f) => ({ eco: 0,                sev: f.sev })); break;
-      case "End":        e.preventDefault(); setFocus((f) => ({ eco: ecosystems.length - 1, sev: f.sev })); break;
-      case "PageDown":   e.preventDefault(); move(0, 5); break;
-      case "PageUp":     e.preventDefault(); move(0, -5); break;
-      case "Enter":
-      case " ":
+      case 'ArrowRight':
+        e.preventDefault();
+        move(1, 0);
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        move(-1, 0);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        move(0, 1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        move(0, -1);
+        break;
+      case 'Home':
+        e.preventDefault();
+        setFocus((f) => ({ eco: 0, sev: f.sev }));
+        break;
+      case 'End':
+        e.preventDefault();
+        setFocus((f) => ({ eco: ecosystems.length - 1, sev: f.sev }));
+        break;
+      case 'PageDown':
+        e.preventDefault();
+        move(0, 5);
+        break;
+      case 'PageUp':
+        e.preventDefault();
+        move(0, -5);
+        break;
+      case 'Enter':
+      case ' ':
         e.preventDefault();
         activate(ecosystems[focus.eco], SEVERITIES[focus.sev]);
         break;
@@ -95,9 +124,7 @@ export function RiskHeatmap() {
       />
       <Card.Body>
         {loading || !data ? (
-          <div className="grid h-72 place-items-center text-sm text-muted">
-            Loading heatmap…
-          </div>
+          <div className="grid h-72 place-items-center text-sm text-muted">Loading heatmap…</div>
         ) : (
           <div className="overflow-x-auto">
             <svg
@@ -124,20 +151,13 @@ export function RiskHeatmap() {
 
               {/* Rows */}
               {SEVERITIES.map((sev, sIdx) => (
-                <g
-                  key={sev}
-                  role="row"
-                  aria-rowindex={sIdx + 1}
-                >
+                <g key={sev} role="row" aria-rowindex={sIdx + 1}>
                   {/* Row label */}
                   <text
                     x={LABEL_X}
                     y={CELL_Y(sIdx) + CELL_H / 2 + 3}
                     textAnchor="end"
-                    className={clsx(
-                      "fill-muted",
-                      focus.sev === sIdx && "fill-text"
-                    )}
+                    className={clsx('fill-muted', focus.sev === sIdx && 'fill-text')}
                   >
                     {titleCase(sev)}
                   </text>
@@ -160,7 +180,7 @@ export function RiskHeatmap() {
                         onKeyDown={onKey}
                         onClick={() => activate(eco, sev)}
                         onFocus={() => setFocus({ eco: eIdx, sev: sIdx })}
-                        style={{ cursor: "pointer", outline: "none" }}
+                        style={{ cursor: 'pointer', outline: 'none' }}
                         className="focus:outline-none"
                       >
                         <rect
@@ -170,7 +190,7 @@ export function RiskHeatmap() {
                           height={CELL_H}
                           rx={3}
                           fill={cellColor(count, max, sev)}
-                          stroke={isFocused ? "hsl(var(--accent))" : "hsl(var(--border))"}
+                          stroke={isFocused ? 'hsl(var(--accent))' : 'hsl(var(--border))'}
                           strokeWidth={isFocused ? 2 : 1}
                         />
                         <text
@@ -199,10 +219,10 @@ export function RiskHeatmap() {
 // Layout constants and helpers
 // -------------------------------------------------------------------------
 
-const LABEL_W   = 72;
-const HEADER_H  = 24;
-const CELL_W    = 88;
-const CELL_H    = 44;
+const LABEL_W = 72;
+const HEADER_H = 24;
+const CELL_W = 88;
+const CELL_H = 44;
 const PADDING_X = 8;
 const PADDING_Y = 8;
 
@@ -218,12 +238,16 @@ function clamp(n: number, lo: number, hi: number) {
 
 /** Map count + max + severity to a heat color. Green -> red. */
 function cellColor(count: number, max: number, sev: Severity): string {
-  if (count === 0) return "hsl(var(--surface-2))";
+  if (count === 0) return 'hsl(var(--surface-2))';
   const t = max > 0 ? Math.min(1, count / max) : 0;
   // Bias by severity: critical starts further along the gradient so
   // a low-count critical cell still reads as "red-ish".
   const bias: Record<Severity, number> = {
-    critical: 0.55, high: 0.4, medium: 0.25, low: 0.15, info: 0.05,
+    critical: 0.55,
+    high: 0.4,
+    medium: 0.25,
+    low: 0.15,
+    info: 0.05,
   };
   const x = Math.min(1, t + bias[sev]);
   // Single linear gradient: green (140) -> red (0).
@@ -233,7 +257,7 @@ function cellColor(count: number, max: number, sev: Severity): string {
 
 function textColor(): string {
   // Cell lightness is ~38%, so light text reads well.
-  return "hsl(var(--text))";
+  return 'hsl(var(--text))';
 }
 
 // Silence unused-export warning; tCellColor was used by the previous
@@ -245,7 +269,11 @@ function tCellColor(count: number, max: number, sev: Severity): number {
   if (count === 0) return 0;
   const t = max > 0 ? Math.min(1, count / max) : 0;
   const bias: Record<Severity, number> = {
-    critical: 0.5, high: 0.4, medium: 0.3, low: 0.2, info: 0.1,
+    critical: 0.5,
+    high: 0.4,
+    medium: 0.3,
+    low: 0.2,
+    info: 0.1,
   };
   return Math.min(1, t + bias[sev]);
 }

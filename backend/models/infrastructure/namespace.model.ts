@@ -22,7 +22,11 @@ export const NamespaceSchema = z.object({
   /** Cluster name — denormalised for list views. */
   clusterName: z.string().min(1),
   /** Namespace name. */
-  name: z.string().min(1).max(253).regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/),
+  name: z
+    .string()
+    .min(1)
+    .max(253)
+    .regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/),
   uid: z.string().optional(),
   phase: NamespacePhaseSchema.default('active'),
   /** Aggregate workload counts (deployments + statefulsets + daemonsets + cronjobs). */

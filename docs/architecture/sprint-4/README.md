@@ -8,20 +8,20 @@ posture, and operational risk.
 
 ## Service map
 
-| Port  | Service                | Role                                            |
-| ----- | ---------------------- | ----------------------------------------------- |
-| 4001  | `auth-service`         | (Sprint 2) Users, tenants, JWT, RBAC            |
-| 4002  | `agent-service`        | (Sprint 3) Agent dispatcher + memory            |
-| 4003  | `security-service`     | (Sprint 2) SBOM, vulnerabilities               |
-| 4004  | `incident-service`     | (Sprint 1+) Incidents, runbooks, **chains**    |
-| 4005  | `compliance-service`   | (Sprint 1+) Controls, evidence, POA&Ms         |
-| 4006  | `kubernetes-service`   | **NEW** Read-only K8s inventory                 |
-| 4007  | `k8s-health-service`   | **NEW** Health scoring + recommendations        |
-| 4008  | `runtime-security-service` | **NEW** Runtime security findings + reports |
-| 4009  | `inventory-service`    | **NEW** Asset catalog + graph                   |
-| 4010  | `cost-intelligence-service` | **NEW** Cost analysis + recommendations     |
-| 4011  | `topology-service`     | **NEW** Service Map / Application Graph         |
-| 4012  | `reporting-service`    | **NEW** 6 reports × {json, md, pdf}             |
+| Port | Service                     | Role                                        |
+| ---- | --------------------------- | ------------------------------------------- |
+| 4001 | `auth-service`              | (Sprint 2) Users, tenants, JWT, RBAC        |
+| 4002 | `agent-service`             | (Sprint 3) Agent dispatcher + memory        |
+| 4003 | `security-service`          | (Sprint 2) SBOM, vulnerabilities            |
+| 4004 | `incident-service`          | (Sprint 1+) Incidents, runbooks, **chains** |
+| 4005 | `compliance-service`        | (Sprint 1+) Controls, evidence, POA&Ms      |
+| 4006 | `kubernetes-service`        | **NEW** Read-only K8s inventory             |
+| 4007 | `k8s-health-service`        | **NEW** Health scoring + recommendations    |
+| 4008 | `runtime-security-service`  | **NEW** Runtime security findings + reports |
+| 4009 | `inventory-service`         | **NEW** Asset catalog + graph               |
+| 4010 | `cost-intelligence-service` | **NEW** Cost analysis + recommendations     |
+| 4011 | `topology-service`          | **NEW** Service Map / Application Graph     |
+| 4012 | `reporting-service`         | **NEW** 6 reports × {json, md, pdf}         |
 
 ## Key design decisions
 
@@ -32,8 +32,7 @@ Each of the inventory-consuming services (`k8s-health`,
 `topology`, `reporting`) talks to a `KubernetesProvider`
 interface, with two implementations:
 
-- `fixture` — deterministic in-process data, used in Sprint
-  4. Allows each service to be developed and tested without
+- `fixture` — deterministic in-process data, used in Sprint 4. Allows each service to be developed and tested without
   a live cluster.
 - `live` — placeholder, throws `UnsupportedError` until
   Sprint 5 wires in `@kubernetes/client-node`.
@@ -80,7 +79,7 @@ correlate events from:
 - Runtime risks (`runtime.risk`)
 - Health recommendations (`health.recommendation`)
 
-The engine produces a *causal* chain (root → leaf) and
+The engine produces a _causal_ chain (root → leaf) and
 makes it queryable via `/v1/incidents/chains`.
 
 ### 5. Reporting

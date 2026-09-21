@@ -52,7 +52,8 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
         response: { 200: toJSONSchema(VulnerabilityIngestResponseSchema) },
         tags: ['security', 'vulnerabilities'],
         summary: 'Ingest vulnerabilities by id (CVE/GHSA/OSV) and normalise across sources',
-        description: 'Proxies to vuln-intel-service (port 4008). Emits `security.vulnerability.detected` for each ingested vulnerability.',
+        description:
+          'Proxies to vuln-intel-service (port 4008). Emits `security.vulnerability.detected` for each ingested vulnerability.',
       },
     },
     async (req: FastifyRequest<{ Body: unknown }>, reply) => {
@@ -89,7 +90,9 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
           const event: SecurityVulnerabilityDetectedEvent = {
             vulnerabilityId: v.id,
             tenantId,
-            affectedBomRefs: v.affected.map((a) => a.package.purl ?? `${a.package.ecosystem}/${a.package.name}`),
+            affectedBomRefs: v.affected.map(
+              (a) => a.package.purl ?? `${a.package.ecosystem}/${a.package.name}`,
+            ),
             severity: v.severity,
             cvssScore: v.cvssV3?.baseScore,
             kev: v.kev,
@@ -101,10 +104,16 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
             version: 1,
             source: 'security-service',
             tenantId,
-            severity: v.severity === 'critical' ? 'critical' :
-                      v.severity === 'high' ? 'high' :
-                      v.severity === 'medium' ? 'medium' :
-                      v.severity === 'low' ? 'low' : 'info',
+            severity:
+              v.severity === 'critical'
+                ? 'critical'
+                : v.severity === 'high'
+                  ? 'high'
+                  : v.severity === 'medium'
+                    ? 'medium'
+                    : v.severity === 'low'
+                      ? 'low'
+                      : 'info',
             data: event,
           });
 
@@ -121,7 +130,12 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
               logger,
             });
             logger.debug(
-              { vulnId: v.id, package: affected.package.name, ecosystem: affected.package.ecosystem, autoActionable: gitOpsRecord.auto_actionable },
+              {
+                vulnId: v.id,
+                package: affected.package.name,
+                ecosystem: affected.package.ecosystem,
+                autoActionable: gitOpsRecord.auto_actionable,
+              },
               'projected vulnerability to GitOps wire format (security-service :4003 boundary)',
             );
             // NOTE: the bus emits the rich `data: event` shape above; the GitOps

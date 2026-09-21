@@ -39,7 +39,10 @@ test('testConnection returns ok with server version on success', async () => {
   const clientFactory: ClientFactory = () => clients;
   const provider = new LiveProvider({ clusters: buildClusterRepository(), logger, clientFactory });
 
-  const res = await provider.testConnection({ server: 'https://api.example.com', token: 'secret-token' });
+  const res = await provider.testConnection({
+    server: 'https://api.example.com',
+    token: 'secret-token',
+  });
 
   expect(res.ok).toBe(true);
   expect(res.serverVersion).toBe('v1.29.4');
@@ -52,7 +55,10 @@ test('testConnection returns ok:false and never leaks the token on failure', asy
   };
   const provider = new LiveProvider({ clusters: buildClusterRepository(), logger, clientFactory });
 
-  const res = await provider.testConnection({ server: 'https://api.example.com', token: 'super-secret' });
+  const res = await provider.testConnection({
+    server: 'https://api.example.com',
+    token: 'super-secret',
+  });
 
   expect(res.ok).toBe(false);
   expect(res.message).not.toContain('super-secret');
@@ -85,7 +91,12 @@ test('listNamespaces builds a client from the cluster connection and maps namesp
   const clients = fakeClients({
     core: {
       listNamespace: vi.fn(async () => ({
-        items: [{ metadata: { uid: '33333333-3333-4333-8333-333333333333', name: 'default' }, status: { phase: 'Active' } }],
+        items: [
+          {
+            metadata: { uid: '33333333-3333-4333-8333-333333333333', name: 'default' },
+            status: { phase: 'Active' },
+          },
+        ],
       })),
     } as unknown as K8sClients['core'],
   });
@@ -96,7 +107,9 @@ test('listNamespaces builds a client from the cluster connection and maps namesp
 
   expect(namespaces).toHaveLength(1);
   expect(namespaces[0]?.name).toBe('default');
-  expect(clientFactory).toHaveBeenCalledWith(expect.objectContaining({ server: cluster.server, token: 'tok' }));
+  expect(clientFactory).toHaveBeenCalledWith(
+    expect.objectContaining({ server: cluster.server, token: 'tok' }),
+  );
 });
 
 test('listPods passes namespace and labelSelector through to the namespaced call', async () => {
@@ -113,9 +126,16 @@ test('listPods passes namespace and labelSelector through to the namespaced call
   const clientFactory: ClientFactory = () => clients;
   const provider = new LiveProvider({ clusters, logger, clientFactory });
 
-  await provider.listPods(TENANT, { clusterId: cluster.id, namespace: 'prod-ns', labelSelector: 'app=payments' });
+  await provider.listPods(TENANT, {
+    clusterId: cluster.id,
+    namespace: 'prod-ns',
+    labelSelector: 'app=payments',
+  });
 
-  expect(listNamespacedPod).toHaveBeenCalledWith({ namespace: 'prod-ns', labelSelector: 'app=payments' });
+  expect(listNamespacedPod).toHaveBeenCalledWith({
+    namespace: 'prod-ns',
+    labelSelector: 'app=payments',
+  });
 });
 
 test('listPods with no namespace calls listPodForAllNamespaces', async () => {
@@ -128,7 +148,9 @@ test('listPods with no namespace calls listPodForAllNamespaces', async () => {
     token: 'tok',
   });
   const listPodForAllNamespaces = vi.fn(async () => ({ items: [] }));
-  const clients = fakeClients({ core: { listPodForAllNamespaces } as unknown as K8sClients['core'] });
+  const clients = fakeClients({
+    core: { listPodForAllNamespaces } as unknown as K8sClients['core'],
+  });
   const provider = new LiveProvider({ clusters, logger, clientFactory: () => clients });
 
   await provider.listPods(TENANT, { clusterId: cluster.id });
@@ -138,8 +160,18 @@ test('listPods with no namespace calls listPodForAllNamespaces', async () => {
 
 test('listClusters filters out fixture-provider clusters', async () => {
   const clusters = buildClusterRepository();
-  await clusters.create({ tenantId: TENANT, name: 'fx', server: 'https://fixture.example.com', provider: 'unknown' });
-  const live = await clusters.create({ tenantId: TENANT, name: 'prod', server: 'https://api.prod.example.com', provider: 'eks' });
+  await clusters.create({
+    tenantId: TENANT,
+    name: 'fx',
+    server: 'https://fixture.example.com',
+    provider: 'unknown',
+  });
+  const live = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+  });
 
   const provider = new LiveProvider({ clusters, logger, clientFactory: () => fakeClients() });
   const items = await provider.listClusters(TENANT);
@@ -160,13 +192,36 @@ test('listWorkloads unions deployments, statefulsets, and daemonsets', async () 
   const clients = fakeClients({
     apps: {
       listDeploymentForAllNamespaces: vi.fn(async () => ({
-        items: [{ metadata: { name: 'dep' }, spec: { replicas: 1, template: { spec: { containers: [] } } }, status: {} }],
+        items: [
+          {
+            metadata: { name: 'dep' },
+            spec: { replicas: 1, template: { spec: { containers: [] } } },
+            status: {},
+          },
+        ],
       })),
       listStatefulSetForAllNamespaces: vi.fn(async () => ({
-        items: [{ metadata: { name: 'sts' }, spec: { serviceName: 'sts-hl', template: { spec: { containers: [] } } }, status: { replicas: 1 } }],
+        items: [
+          {
+            metadata: { name: 'sts' },
+            spec: { serviceName: 'sts-hl', template: { spec: { containers: [] } } },
+            status: { replicas: 1 },
+          },
+        ],
       })),
       listDaemonSetForAllNamespaces: vi.fn(async () => ({
-        items: [{ metadata: { name: 'ds' }, spec: { template: { spec: { containers: [] } } }, status: { desiredNumberScheduled: 1, currentNumberScheduled: 1, numberReady: 1, numberMisscheduled: 0 } }],
+        items: [
+          {
+            metadata: { name: 'ds' },
+            spec: { template: { spec: { containers: [] } } },
+            status: {
+              desiredNumberScheduled: 1,
+              currentNumberScheduled: 1,
+              numberReady: 1,
+              numberMisscheduled: 0,
+            },
+          },
+        ],
       })),
     } as unknown as K8sClients['apps'],
   });

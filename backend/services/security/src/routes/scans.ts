@@ -51,7 +51,11 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
     const asset = await assets.findById(body.assetId, tenantId);
     if (!asset) throw new NotFoundError('Asset', body.assetId);
 
-    const scan = await scans.create({ assetId: body.assetId, tenantId: tenantId as UUID, scanner: body.scanner });
+    const scan = await scans.create({
+      assetId: body.assetId,
+      tenantId: tenantId as UUID,
+      scanner: body.scanner,
+    });
     await bus.publish({
       type: EventTypes.SCAN_STARTED,
       version: 1,

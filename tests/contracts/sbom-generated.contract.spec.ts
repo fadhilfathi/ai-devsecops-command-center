@@ -7,7 +7,7 @@
  * Operator mirror: security/README.md § "security.sbom.generated.v1 event payload (LOCKED)"
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import Ajv, { type ValidateFunction } from 'ajv';
+import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -21,21 +21,23 @@ type Example = {
 };
 
 const examplesPath = resolve(__dirname, 'fixtures/sbom-generated.examples.json');
-const examples: Example[] = JSON.parse(readFileSync(examplesPath, 'utf8'));
+const examples: Example[] = JSON.parse(readFileSync(examplesPath, 'utf8')).examples;
 
 // ---------- schema ----------
 
-const schemaPath = resolve(
-  __dirname,
-  '../../security/wire-format/sbom-generated.schema.json',
-);
+const schemaPath = resolve(__dirname, '../../security/wire-format/sbom-generated.schema.json');
 const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 
 let validate: ValidateFunction;
 
 beforeAll(() => {
-  const ajv = new Ajv({ allErrors: true, strict: true });
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
   addFormats(ajv);
+  // Vendor extensions used by the O-3.7.1 deprecation convention (see schema
+  // header). Not validation keywords — registered as no-ops so strict mode
+  // doesn't reject them.
+  ajv.addKeyword('x-deprecated-values-convention');
+  ajv.addKeyword('x-deprecated-values');
   validate = ajv.compile(schema);
 });
 
@@ -104,15 +106,9 @@ describe('sbom_fingerprint envelope', () => {
   it('sbom_fingerprint regex matches sha256 | sha512 | blake3 with hex', () => {
     const valid = examples.find((e) => e.expected === 'valid')!.record;
     // Good fingerprints
-    expect(
-      validate({ ...valid, sbom_fingerprint: 'sha256:' + 'a'.repeat(64) }),
-    ).toBe(true);
-    expect(
-      validate({ ...valid, sbom_fingerprint: 'sha512:' + 'a'.repeat(128) }),
-    ).toBe(true);
-    expect(
-      validate({ ...valid, sbom_fingerprint: 'blake3:' + 'a'.repeat(64) }),
-    ).toBe(true);
+    expect(validate({ ...valid, sbom_fingerprint: 'sha256:' + 'a'.repeat(64) })).toBe(true);
+    expect(validate({ ...valid, sbom_fingerprint: 'sha512:' + 'a'.repeat(128) })).toBe(true);
+    expect(validate({ ...valid, sbom_fingerprint: 'blake3:' + 'a'.repeat(64) })).toBe(true);
     // Bad fingerprints
     expect(validate({ ...valid, sbom_fingerprint: 'md5:abcdef' })).toBe(false);
     expect(validate({ ...valid, sbom_fingerprint: 'sha256:not-hex' })).toBe(false);
@@ -127,9 +123,7 @@ describe('sbom_id schema', () => {
     const valid = examples.find((e) => e.expected === 'valid')!.record;
     // Good ids
     for (const scope of ['monorepo', 'service', 'package', 'container', 'fs', 'git-tree']) {
-      expect(
-        validate({ ...valid, sbom_id: `sbom-2026-06-12-a1b2c3d-${scope}` }),
-      ).toBe(true);
+      expect(validate({ ...valid, sbom_id: `sbom-2026-06-12-a1b2c3d-${scope}` })).toBe(true);
     }
     // Bad ids
     expect(validate({ ...valid, sbom_id: '2026-06-12-a1b2c3d-monorepo' })).toBe(false); // missing sbom- prefix

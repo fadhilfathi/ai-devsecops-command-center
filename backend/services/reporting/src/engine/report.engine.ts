@@ -19,9 +19,22 @@
  */
 import { randomUUID } from 'node:crypto';
 import type {
-  Cluster, Namespace, Workload, Pod, Service, Deployment, StatefulSet, DaemonSet, Ingress,
-  InfrastructureHealth, RuntimeSecurityReport, CostAnalysis, TopologyGraph,
-  RuntimeRisk, CostFinding, CostRecommendation,
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
+  Ingress,
+  InfrastructureHealth,
+  RuntimeSecurityReport,
+  CostAnalysis,
+  TopologyGraph,
+  RuntimeRisk,
+  CostFinding,
+  CostRecommendation,
 } from '@aicc/models';
 import type { UUID } from '@aicc/shared';
 
@@ -109,7 +122,10 @@ export function buildReportEngine(): ReportEngine {
       sections.push({
         title: 'Overview',
         body: `${clusters.length} cluster(s) on file; ${clusterHealth.length} cluster health record(s) present.`,
-        bullets: clusterHealth.map((h) => `${h.subject.name}: ${h.score.score}/100 (band ${h.score.band}, status ${h.score.status}) — ${h.score.counts.critical} critical, ${h.score.counts.high} high`),
+        bullets: clusterHealth.map(
+          (h) =>
+            `${h.subject.name}: ${h.score.score}/100 (band ${h.score.band}, status ${h.score.status}) — ${h.score.counts.critical} critical, ${h.score.counts.high} high`,
+        ),
       });
       tables.push({
         title: 'Cluster health summary',
@@ -129,19 +145,23 @@ export function buildReportEngine(): ReportEngine {
       tables.push({
         title: 'Top issues',
         columns: ['Cluster', 'Kind', 'Severity', 'Subject', 'Message'],
-        rows: allIssues.slice(0, 25).map((i) => [
-          i.subject.clusterId ?? '—',
-          i.kind,
-          i.severity,
-          `${i.subject.kind}/${i.subject.name}`,
-          i.message,
-        ]),
+        rows: allIssues
+          .slice(0, 25)
+          .map((i) => [
+            i.subject.clusterId ?? '—',
+            i.kind,
+            i.severity,
+            `${i.subject.kind}/${i.subject.name}`,
+            i.message,
+          ]),
       });
       const allRecs = clusterHealth.flatMap((h) => h.recommendations);
       sections.push({
         title: 'Top recommendations',
         body: `${allRecs.length} recommendation(s) generated.`,
-        bullets: allRecs.slice(0, 10).map((r) => `[${r.priority.toUpperCase()}] ${r.title} — ${r.detail}`),
+        bullets: allRecs
+          .slice(0, 10)
+          .map((r) => `[${r.priority.toUpperCase()}] ${r.title} — ${r.detail}`),
       });
       return {
         id: randomUUID(),
@@ -171,8 +191,12 @@ export function buildReportEngine(): ReportEngine {
         title: 'Risk summary',
         body: 'Aggregate risk across runtime security, cost, and cluster health.',
         bullets: [
-          runtime ? `Runtime security: ${runtime.riskLevel} (score ${runtime.score}/100)` : 'Runtime security: no data',
-          cost ? `Cost: $${fmt(cost.potentialMonthlySavingsUsd)}/mo potential savings across ${cost.workloads.length} workload(s)` : 'Cost: no data',
+          runtime
+            ? `Runtime security: ${runtime.riskLevel} (score ${runtime.score}/100)`
+            : 'Runtime security: no data',
+          cost
+            ? `Cost: $${fmt(cost.potentialMonthlySavingsUsd)}/mo potential savings across ${cost.workloads.length} workload(s)`
+            : 'Cost: no data',
           `Cluster health: ${health.length} health record(s)`,
           `Open issues: ${allIssues.length}`,
         ],
@@ -180,23 +204,27 @@ export function buildReportEngine(): ReportEngine {
       tables.push({
         title: 'Runtime risks',
         columns: ['Rule', 'Level', 'Subject', 'Message'],
-        rows: runtimeFindings.slice(0, 25).map((r) => [
-          `${r.ruleId} ${r.ruleName}`,
-          r.level,
-          `${r.namespace}/${r.subjectName}`,
-          r.message,
-        ]),
+        rows: runtimeFindings
+          .slice(0, 25)
+          .map((r) => [
+            `${r.ruleId} ${r.ruleName}`,
+            r.level,
+            `${r.namespace}/${r.subjectName}`,
+            r.message,
+          ]),
       });
       tables.push({
         title: 'Cost findings',
         columns: ['Kind', 'Severity', 'Subject', 'Monthly $', 'Message'],
-        rows: costFindings.slice(0, 25).map((f) => [
-          f.kind,
-          f.severity,
-          `${f.namespace ?? '—'}/${f.workloadName ?? '—'}`,
-          money(f.monthlySavingsUsd),
-          f.message,
-        ]),
+        rows: costFindings
+          .slice(0, 25)
+          .map((f) => [
+            f.kind,
+            f.severity,
+            `${f.namespace ?? '—'}/${f.workloadName ?? '—'}`,
+            money(f.monthlySavingsUsd),
+            f.message,
+          ]),
       });
       return {
         id: randomUUID(),
@@ -219,17 +247,32 @@ export function buildReportEngine(): ReportEngine {
       const tables: ReportTable[] = [];
       sections.push({
         title: 'Overview',
-        body: r ? `Risk level ${r.riskLevel}; score ${r.score}/100.` : 'No runtime security data available.',
-        bullets: r ? [
-          `${r.counts.critical} critical, ${r.counts.high} high, ${r.counts.medium} medium, ${r.counts.low} low finding(s)`,
-          `Top categories: ${Object.entries(r.categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} (${v})`).join(', ') || '—'}`,
-        ] : undefined,
+        body: r
+          ? `Risk level ${r.riskLevel}; score ${r.score}/100.`
+          : 'No runtime security data available.',
+        bullets: r
+          ? [
+              `${r.counts.critical} critical, ${r.counts.high} high, ${r.counts.medium} medium, ${r.counts.low} low finding(s)`,
+              `Top categories: ${
+                Object.entries(r.categoryCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 3)
+                  .map(([k, v]) => `${k} (${v})`)
+                  .join(', ') || '—'
+              }`,
+            ]
+          : undefined,
       });
       if (r) {
         tables.push({
           title: 'Findings',
           columns: ['Rule', 'Level', 'Subject', 'Message'],
-          rows: r.findings.map((f) => [`${f.ruleId} ${f.ruleName}`, f.level, `${f.namespace}/${f.subjectName}`, f.message]),
+          rows: r.findings.map((f) => [
+            `${f.ruleId} ${f.ruleName}`,
+            f.level,
+            `${f.namespace}/${f.subjectName}`,
+            f.message,
+          ]),
         });
         tables.push({
           title: 'Recommendations',
@@ -245,7 +288,9 @@ export function buildReportEngine(): ReportEngine {
         clusterId: r?.clusterId,
         windowStart: r?.windowStart ?? window.start,
         windowEnd: r?.windowEnd ?? window.end,
-        summary: r ? `Runtime risk level ${r.riskLevel}; ${r.counts.critical + r.counts.high + r.counts.medium + r.counts.low} finding(s) across ${Object.keys(r.categoryCounts).length} categor${Object.keys(r.categoryCounts).length === 1 ? 'y' : 'ies'}.` : 'No runtime security data available.',
+        summary: r
+          ? `Runtime risk level ${r.riskLevel}; ${r.counts.critical + r.counts.high + r.counts.medium + r.counts.low} finding(s) across ${Object.keys(r.categoryCounts).length} categor${Object.keys(r.categoryCounts).length === 1 ? 'y' : 'ies'}.`
+          : 'No runtime security data available.',
         sections,
         tables,
         generatedAt: new Date().toISOString(),
@@ -259,28 +304,50 @@ export function buildReportEngine(): ReportEngine {
       const tables: ReportTable[] = [];
       sections.push({
         title: 'Overview',
-        body: c ? `Current ${money(c.currentMonthlyUsd)}/mo; recommended ${money(c.recommendedMonthlyUsd)}/mo.` : 'No cost data available.',
-        bullets: c ? [
-          `Potential monthly savings: ${money(c.potentialMonthlySavingsUsd)}`,
-          `Annualised savings: ${money(c.potentialMonthlySavingsUsd * 12)}`,
-          `Findings: ${c.findings.length}; recommendations: ${c.recommendations.length}`,
-        ] : undefined,
+        body: c
+          ? `Current ${money(c.currentMonthlyUsd)}/mo; recommended ${money(c.recommendedMonthlyUsd)}/mo.`
+          : 'No cost data available.',
+        bullets: c
+          ? [
+              `Potential monthly savings: ${money(c.potentialMonthlySavingsUsd)}`,
+              `Annualised savings: ${money(c.potentialMonthlySavingsUsd * 12)}`,
+              `Findings: ${c.findings.length}; recommendations: ${c.recommendations.length}`,
+            ]
+          : undefined,
       });
       if (c) {
         tables.push({
           title: 'Per-workload cost',
           columns: ['Workload', 'Namespace', 'Current $/mo', 'Recommended $/mo', 'Savings $/mo'],
-          rows: c.workloads.map((w) => [w.workloadName, w.namespace, money(w.currentMonthlyUsd), money(w.recommendedMonthlyUsd), money(w.potentialMonthlySavingsUsd)]),
+          rows: c.workloads.map((w) => [
+            w.workloadName,
+            w.namespace,
+            money(w.currentMonthlyUsd),
+            money(w.recommendedMonthlyUsd),
+            money(w.potentialMonthlySavingsUsd),
+          ]),
         });
         tables.push({
           title: 'Findings',
           columns: ['Kind', 'Severity', 'Subject', 'Monthly $', 'Message'],
-          rows: c.findings.map((f) => [f.kind, f.severity, `${f.namespace ?? '—'}/${f.workloadName ?? '—'}`, money(f.monthlySavingsUsd), f.message]),
+          rows: c.findings.map((f) => [
+            f.kind,
+            f.severity,
+            `${f.namespace ?? '—'}/${f.workloadName ?? '—'}`,
+            money(f.monthlySavingsUsd),
+            f.message,
+          ]),
         });
         tables.push({
           title: 'Recommendations',
           columns: ['Priority', 'Action', 'Title', 'Monthly $', 'Annual $'],
-          rows: c.recommendations.map((r: CostRecommendation) => [r.priority.toUpperCase(), r.action, r.title, money(r.monthlySavingsUsd), money(r.annualSavingsUsd)]),
+          rows: c.recommendations.map((r: CostRecommendation) => [
+            r.priority.toUpperCase(),
+            r.action,
+            r.title,
+            money(r.monthlySavingsUsd),
+            money(r.annualSavingsUsd),
+          ]),
         });
       }
       return {
@@ -291,7 +358,9 @@ export function buildReportEngine(): ReportEngine {
         clusterId: c?.clusterId,
         windowStart: c?.windowStart ?? window.start,
         windowEnd: c?.windowEnd ?? window.end,
-        summary: c ? `Save ${money(c.potentialMonthlySavingsUsd)}/mo (${Math.round((c.potentialMonthlySavingsUsd / Math.max(1, c.currentMonthlyUsd)) * 100)}% reduction) by applying ${c.recommendations.length} recommendation(s).` : 'No cost data available.',
+        summary: c
+          ? `Save ${money(c.potentialMonthlySavingsUsd)}/mo (${Math.round((c.potentialMonthlySavingsUsd / Math.max(1, c.currentMonthlyUsd)) * 100)}% reduction) by applying ${c.recommendations.length} recommendation(s).`
+          : 'No cost data available.',
         sections,
         tables,
         generatedAt: new Date().toISOString(),
@@ -305,7 +374,9 @@ export function buildReportEngine(): ReportEngine {
       const tables: ReportTable[] = [];
       sections.push({
         title: 'Overview',
-        body: t ? `${t.nodes.length} node(s) and ${t.edges.length} edge(s) in the topology graph.` : 'No topology data available.',
+        body: t
+          ? `${t.nodes.length} node(s) and ${t.edges.length} edge(s) in the topology graph.`
+          : 'No topology data available.',
       });
       if (t) {
         const byKind = new Map<string, number>();
@@ -331,7 +402,9 @@ export function buildReportEngine(): ReportEngine {
         clusterId: t?.clusterId,
         windowStart: window.start,
         windowEnd: window.end,
-        summary: t ? `Application graph with ${t.nodes.length} nodes and ${t.edges.length} edges.` : 'No topology data available.',
+        summary: t
+          ? `Application graph with ${t.nodes.length} nodes and ${t.edges.length} edges.`
+          : 'No topology data available.',
         sections,
         tables,
         generatedAt: new Date().toISOString(),
@@ -345,14 +418,19 @@ export function buildReportEngine(): ReportEngine {
       const r = input.runtimeReport;
       const c = input.costAnalysis;
       const h = input.health.filter((x) => x.scope === 'cluster');
-      const avgHealth = h.length === 0 ? 0 : Math.round(h.reduce((a, x) => a + x.score.score, 0) / h.length);
+      const avgHealth =
+        h.length === 0 ? 0 : Math.round(h.reduce((a, x) => a + x.score.score, 0) / h.length);
       sections.push({
         title: 'Executive overview',
         body: `Tenant posture: ${input.clusters.length} cluster(s), ${input.namespaces.length} namespace(s), ${input.workloads.length} workload(s), ${input.pods.length} pod(s).`,
         bullets: [
           `Average cluster health: ${avgHealth}/100`,
-          r ? `Runtime security: ${r.riskLevel} (${r.counts.critical} critical, ${r.counts.high} high)` : 'Runtime security: no data',
-          c ? `Monthly cost: ${money(c.currentMonthlyUsd)}; potential savings ${money(c.potentialMonthlySavingsUsd)}/mo` : 'Cost: no data',
+          r
+            ? `Runtime security: ${r.riskLevel} (${r.counts.critical} critical, ${r.counts.high} high)`
+            : 'Runtime security: no data',
+          c
+            ? `Monthly cost: ${money(c.currentMonthlyUsd)}; potential savings ${money(c.potentialMonthlySavingsUsd)}/mo`
+            : 'Cost: no data',
           `Workload health: ${input.workloads.filter((w) => w.health === 'healthy').length} healthy / ${input.workloads.filter((w) => w.health !== 'healthy').length} unhealthy`,
         ],
       });
@@ -361,16 +439,37 @@ export function buildReportEngine(): ReportEngine {
         columns: ['Cluster', 'Provider', 'Nodes', 'CPU', 'Memory', 'Health'],
         rows: input.clusters.map((cl) => {
           const hs = h.find((x) => x.subject.clusterId === cl.id);
-          return [cl.name, cl.provider, `${cl.readyNodes}/${cl.nodeCount}`, `${cl.totalCpuCores} cores`, `${Math.round(cl.totalMemoryBytes / (1024 ** 3))} GiB`, hs ? `${hs.score.score} (${hs.score.band})` : '—'];
+          return [
+            cl.name,
+            cl.provider,
+            `${cl.readyNodes}/${cl.nodeCount}`,
+            `${cl.totalCpuCores} cores`,
+            `${Math.round(cl.totalMemoryBytes / 1024 ** 3)} GiB`,
+            hs ? `${hs.score.score} (${hs.score.band})` : '—',
+          ];
         }),
       });
       sections.push({
         title: 'Top risks',
         body: 'Prioritised by severity.',
         bullets: [
-          ...(r ? r.findings.filter((f) => f.level === 'critical').slice(0, 5).map((f) => `[Runtime] ${f.message}`) : []),
-          ...(c ? c.findings.filter((f) => f.severity === 'high' || f.severity === 'critical').slice(0, 5).map((f) => `[Cost] ${f.message}`) : []),
-          ...h.flatMap((x) => x.issues).filter((i) => i.severity === 'critical' || i.severity === 'high').slice(0, 5).map((i) => `[Health] ${i.message}`),
+          ...(r
+            ? r.findings
+                .filter((f) => f.level === 'critical')
+                .slice(0, 5)
+                .map((f) => `[Runtime] ${f.message}`)
+            : []),
+          ...(c
+            ? c.findings
+                .filter((f) => f.severity === 'high' || f.severity === 'critical')
+                .slice(0, 5)
+                .map((f) => `[Cost] ${f.message}`)
+            : []),
+          ...h
+            .flatMap((x) => x.issues)
+            .filter((i) => i.severity === 'critical' || i.severity === 'high')
+            .slice(0, 5)
+            .map((i) => `[Health] ${i.message}`),
         ],
       });
       return {

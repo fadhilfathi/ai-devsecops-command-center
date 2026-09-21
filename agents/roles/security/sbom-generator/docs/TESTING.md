@@ -59,15 +59,15 @@ Git repo / image
 
 ## Coverage targets
 
-| Module                      | Target |
-|-----------------------------|--------|
-| `models/sbom.py`            | 95%    |
-| `models/request.py`         | 95%    |
-| `output.py`                 | 95%    |
-| `syft.py` (pure helpers)    | 90%    |
-| `agent.py` (bus plumbing)   | 85%    |
-| `service.py`                | 85%    |
-| `telemetry.py`              | 90%    |
+| Module                    | Target |
+| ------------------------- | ------ |
+| `models/sbom.py`          | 95%    |
+| `models/request.py`       | 95%    |
+| `output.py`               | 95%    |
+| `syft.py` (pure helpers)  | 90%    |
+| `agent.py` (bus plumbing) | 85%    |
+| `service.py`              | 85%    |
+| `telemetry.py`            | 90%    |
 
 ## What's not tested
 

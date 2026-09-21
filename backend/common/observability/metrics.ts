@@ -14,12 +14,7 @@
 // See: docs/observability/metrics-spec.md §5, §5.1.1
 // =============================================================================
 
-import {
-  Counter,
-  Histogram,
-  Registry,
-  collectDefaultMetrics,
-} from 'prom-client';
+import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
 
 // ---------- Service name resolution (metrics-spec.md §5.1.1) ----------
 
@@ -179,10 +174,7 @@ export const FORBIDDEN_METRIC_LABELS: readonly string[] = [
  * Assert that a label-name list does not include any forbidden labels.
  * Throws at metric-construction time if it does, so we fail fast.
  */
-export function assertNoForbiddenLabels(
-  labelNames: readonly string[],
-  context: string,
-): void {
+export function assertNoForbiddenLabels(labelNames: readonly string[], context: string): void {
   const bad = labelNames.filter((l) => FORBIDDEN_METRIC_LABELS.includes(l));
   if (bad.length > 0) {
     throw new Error(

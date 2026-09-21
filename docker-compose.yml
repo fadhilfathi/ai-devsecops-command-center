@@ -37,11 +37,11 @@ services:
       POSTGRES_PASSWORD: aionrs
       POSTGRES_DB: command_center
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aionrs -d command_center"]
+      test: ['CMD-SHELL', 'pg_isready -U aionrs -d command_center']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,13 +51,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cc-redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,7 +74,7 @@ services:
       dockerfile: backend/services/auth/Dockerfile
     container_name: cc-auth
     ports:
-      - "3001:3001"
+      - '3001:3001'
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,7 +88,7 @@ services:
       dockerfile: backend/services/agent/Dockerfile
     container_name: cc-agent
     ports:
-      - "3002:3002"
+      - '3002:3002'
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +102,7 @@ services:
       dockerfile: backend/services/security/Dockerfile
     container_name: cc-security
     ports:
-      - "3003:3003"
+      - '3003:3003'
     depends_on:
       postgres:
         condition: service_healthy
@@ -116,7 +116,7 @@ services:
       dockerfile: backend/services/incident/Dockerfile
     container_name: cc-incident
     ports:
-      - "3004:3004"
+      - '3004:3004'
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,7 +130,7 @@ services:
       dockerfile: backend/services/compliance/Dockerfile
     container_name: cc-compliance
     ports:
-      - "3005:3005"
+      - '3005:3005'
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,7 +144,7 @@ services:
       dockerfile: backend/services/integration/Dockerfile
     container_name: cc-integration
     ports:
-      - "3006:3006"
+      - '3006:3006'
     depends_on:
       postgres:
         condition: service_healthy
@@ -160,7 +160,7 @@ services:
       dockerfile: Dockerfile
     container_name: cc-frontend
     ports:
-      - "5173:5173"
+      - '5173:5173'
     env_file:
       - .env
     depends_on:
@@ -185,12 +185,12 @@ services:
       - ./infra/observability/prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
       - promdata:/prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
     ports:
-      - "9090:9090"
+      - '9090:9090'
     networks:
       - ccnet
 
@@ -200,10 +200,10 @@ services:
     volumes:
       - ./infra/observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
-      - "--storage.path=/alertmanager"
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
     ports:
-      - "9093:9093"
+      - '9093:9093'
     networks:
       - ccnet
 
@@ -212,13 +212,13 @@ services:
     container_name: cc-grafana
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - grafanadata:/var/lib/grafana
       - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "3001:3000"
+      - '3001:3000'
     depends_on:
       - prometheus
     networks:
@@ -229,7 +229,7 @@ services:
     container_name: cc-loki
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "3100:3100"
+      - '3100:3100'
     volumes:
       - ./infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
     networks:
@@ -238,12 +238,12 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.104.0
     container_name: cc-otel
-    command: ["--config=/etc/otel/config.yaml"]
+    command: ['--config=/etc/otel/config.yaml']
     volumes:
       - ./infra/observability/otel-collector/collector-config.yaml:/etc/otel/config.yaml:ro
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
     networks:
       - ccnet
 

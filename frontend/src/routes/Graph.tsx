@@ -1,7 +1,7 @@
-import { useParams } from "react-router-dom";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { DependencyGraph } from "@/components/security/DependencyGraph";
-import { Card } from "@/components/ui/Card";
+import { useParams } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { DependencyGraph } from '@/components/security/DependencyGraph';
+import { Card } from '@/components/ui/Card';
 
 /**
  * Graph — `/graph/:sbom_id?`
@@ -16,18 +16,14 @@ import { Card } from "@/components/ui/Card";
  */
 export function Graph() {
   const { sbom_id } = useParams<{ sbom_id: string }>();
-  const sbomId = sbom_id ?? "default";
+  const sbomId = sbom_id ?? 'default';
 
   return (
     <div>
       <PageHeader
         title="Dependency Graph"
         subtitle="Interactive view of components and their dependency relations. Red borders mark vulnerable components."
-        breadcrumbs={[
-          { label: "AionUi" },
-          { label: "SBOM" },
-          { label: sbomId },
-        ]}
+        breadcrumbs={[{ label: 'AionUi' }, { label: 'SBOM' }, { label: sbomId }]}
       />
 
       <Card>

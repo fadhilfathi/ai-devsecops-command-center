@@ -7,6 +7,7 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 ## [1.0.0] — Sprint 2 / S2.1
 
 ### Added
+
 - Syft-wrapped FastAPI service on **port 4007** that produces SBOMs
   for Docker / OCI images, Git repositories, filesystems, files,
   archives, and registry catalogs.

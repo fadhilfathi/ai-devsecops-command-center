@@ -13,16 +13,26 @@ export interface ControlRepository {
   list(tenantId: UUID, opts?: { framework?: ComplianceFramework }): Promise<ComplianceControl[]>;
   findById(id: UUID, tenantId: UUID): Promise<ComplianceControl | undefined>;
   create(input: CreateControlInput): Promise<ComplianceControl>;
-  updateStatus(id: UUID, tenantId: UUID, status: ComplianceControl['status']): Promise<ComplianceControl | undefined>;
-  addEvidence(id: UUID, tenantId: UUID, evidenceRef: string): Promise<ComplianceControl | undefined>;
+  updateStatus(
+    id: UUID,
+    tenantId: UUID,
+    status: ComplianceControl['status'],
+  ): Promise<ComplianceControl | undefined>;
+  addEvidence(
+    id: UUID,
+    tenantId: UUID,
+    evidenceRef: string,
+  ): Promise<ComplianceControl | undefined>;
 }
 
 function newId(): UUID {
-  return globalThis.crypto?.randomUUID?.() ??
+  return (
+    globalThis.crypto?.randomUUID?.() ??
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    })
+  );
 }
 
 export function buildControlRepository(): ControlRepository {

@@ -1,5 +1,5 @@
-import { Inbox } from "lucide-react";
-import type { ReactNode } from "react";
+import { Inbox } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 /**
  * EmptyState — placeholder for empty lists / tables / search results.
@@ -20,9 +20,7 @@ export function EmptyState({
       </div>
       <div>
         <div className="text-sm font-medium text-aion-text">{title}</div>
-        {description && (
-          <div className="mt-0.5 text-xs text-aion-muted">{description}</div>
-        )}
+        {description && <div className="mt-0.5 text-xs text-aion-muted">{description}</div>}
       </div>
       {action}
     </div>

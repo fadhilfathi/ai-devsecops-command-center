@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileText } from "lucide-react";
+import { ClipboardCheck, FileText } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -8,28 +8,28 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { fmtRel, titleCase } from "@/lib/format";
-import type { ComplianceControl } from "@/types";
+} from 'recharts';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { fmtRel, titleCase } from '@/lib/format';
+import type { ComplianceControl } from '@/types';
 
-const statusColor: Record<ComplianceControl["status"], string> = {
-  pass: "#22c55e",
-  partial: "#f59e0b",
-  fail: "#ef4444",
-  "not-assessed": "#94a3b8",
+const statusColor: Record<ComplianceControl['status'], string> = {
+  pass: '#22c55e',
+  partial: '#f59e0b',
+  fail: '#ef4444',
+  'not-assessed': '#94a3b8',
 };
 
 const columns: Column<ComplianceControl>[] = [
   {
-    key: "control",
-    header: "Control",
+    key: 'control',
+    header: 'Control',
     cell: (c) => (
       <div>
         <div className="aion-mono text-[11px] text-aion-muted">
@@ -41,18 +41,18 @@ const columns: Column<ComplianceControl>[] = [
     ),
   },
   {
-    key: "status",
-    header: "Status",
+    key: 'status',
+    header: 'Status',
     cell: (c) => (
       <Badge
         variant={
-          c.status === "pass"
-            ? "ok"
-            : c.status === "partial"
-              ? "warn"
-              : c.status === "fail"
-                ? "danger"
-                : "neutral"
+          c.status === 'pass'
+            ? 'ok'
+            : c.status === 'partial'
+              ? 'warn'
+              : c.status === 'fail'
+                ? 'danger'
+                : 'neutral'
         }
       >
         {titleCase(c.status)}
@@ -60,19 +60,19 @@ const columns: Column<ComplianceControl>[] = [
     ),
   },
   {
-    key: "evidence",
-    header: "Evidence",
+    key: 'evidence',
+    header: 'Evidence',
     cell: (c) => <span className="aion-mono">{c.evidenceCount} items</span>,
   },
   {
-    key: "assessed",
-    header: "Last assessed",
+    key: 'assessed',
+    header: 'Last assessed',
     cell: (c) => <span className="aion-mono">{fmtRel(c.lastAssessedAt)}</span>,
   },
   {
-    key: "actions",
-    header: "",
-    className: "text-right",
+    key: 'actions',
+    header: '',
+    className: 'text-right',
     cell: () => (
       <Button size="sm" variant="ghost">
         <FileText className="h-3.5 w-3.5" /> View
@@ -86,13 +86,13 @@ export function CompliancePage() {
 
   const counts = (data ?? []).reduce<Record<string, number>>(
     (acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }),
-    {}
+    {},
   );
-  const chartData: Array<{ status: ComplianceControl["status"]; count: number }> = [
-    { status: "pass", count: counts.pass ?? 0 },
-    { status: "partial", count: counts.partial ?? 0 },
-    { status: "fail", count: counts.fail ?? 0 },
-    { status: "not-assessed", count: counts["not-assessed"] ?? 0 },
+  const chartData: Array<{ status: ComplianceControl['status']; count: number }> = [
+    { status: 'pass', count: counts.pass ?? 0 },
+    { status: 'partial', count: counts.partial ?? 0 },
+    { status: 'fail', count: counts.fail ?? 0 },
+    { status: 'not-assessed', count: counts['not-assessed'] ?? 0 },
   ];
 
   return (
@@ -100,7 +100,7 @@ export function CompliancePage() {
       <PageHeader
         title="Compliance"
         subtitle="CIS Controls v8 and NIST 800-53 posture, with automated evidence collection."
-        breadcrumbs={[{ label: "AionUi" }, { label: "Compliance" }]}
+        breadcrumbs={[{ label: 'AionUi' }, { label: 'Compliance' }]}
         actions={
           <Button size="sm" variant="primary">
             <ClipboardCheck className="h-3.5 w-3.5" /> Run assessment
@@ -123,8 +123,8 @@ export function CompliancePage() {
                   <YAxis stroke="#8a93a6" fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{
-                      background: "#11172b",
-                      border: "1px solid #1f2742",
+                      background: '#11172b',
+                      border: '1px solid #1f2742',
                       borderRadius: 6,
                       fontSize: 12,
                     }}
@@ -144,10 +144,10 @@ export function CompliancePage() {
           <Card.Header title="Frameworks" />
           <Card.Body className="space-y-2 text-sm">
             {[
-              { name: "CIS Controls v8", score: "92%", state: "ok" as const },
-              { name: "NIST 800-53 r5", score: "78%", state: "warn" as const },
-              { name: "SOC 2 Type II", score: "—", state: "info" as const },
-              { name: "ISO 27001:2022", score: "—", state: "info" as const },
+              { name: 'CIS Controls v8', score: '92%', state: 'ok' as const },
+              { name: 'NIST 800-53 r5', score: '78%', state: 'warn' as const },
+              { name: 'SOC 2 Type II', score: '—', state: 'info' as const },
+              { name: 'ISO 27001:2022', score: '—', state: 'info' as const },
             ].map((f) => (
               <div
                 key={f.name}

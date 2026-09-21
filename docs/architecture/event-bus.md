@@ -24,10 +24,10 @@ bus. This document specifies:
 
 ## Technology choice
 
-| Driver          | When to use                                                |
-| --------------- | ---------------------------------------------------------- |
-| `redis-streams` | Default. Single binary, low ops cost, consumer groups.     |
-| `nats-jetstream`| Multi-region, higher fan-out, or >100k msg/s.              |
+| Driver           | When to use                                            |
+| ---------------- | ------------------------------------------------------ |
+| `redis-streams`  | Default. Single binary, low ops cost, consumer groups. |
+| `nats-jetstream` | Multi-region, higher fan-out, or >100k msg/s.          |
 
 The runtime abstracts this with a small `EventBus` interface; switching
 drivers is a config change.
@@ -96,9 +96,9 @@ Producer code populates `data` and may add to `labels`.
 
 Pattern: `<domain>.<aggregate>.<verb>[.v<n>]`
 
-- `domain`     — `security`, `incident`, `compliance`, `integration`, `system`
-- `aggregate`  — the noun (`vulnerability`, `incident`, `sbom`)
-- `verb`       — past tense (`detected`, `resolved`, `created`)
+- `domain` — `security`, `incident`, `compliance`, `integration`, `system`
+- `aggregate` — the noun (`vulnerability`, `incident`, `sbom`)
+- `verb` — past tense (`detected`, `resolved`, `created`)
 
 Examples:
 
@@ -123,11 +123,11 @@ The Sprint 2 security stack introduces three typed event subjects,
 with their **canonical string constants** exported from
 [`@aicc/shared/security`](../../backend/packages/shared/src/security/index.ts):
 
-| Constant        | Subject                              | Producer          | Consumers                                                     |
-| --------------- | ------------------------------------ | ----------------- | ------------------------------------------------------------- |
-| `SBOM_TOPIC`    | `security.sbom.generated.v1`         | `sbom-pipeline`   | `dependency-intel`, `security-service`, `security-automation` |
-| `VULN_TOPIC`    | `security.vulnerability.detected.v1` | `vuln-intel`      | `dependency-intel`, `security-service`, `security-automation` |
-| `RISK_TOPIC`    | `security.risk.calculated.v1`        | `dependency-intel`| `security-service`, `security-automation`                     |
+| Constant     | Subject                              | Producer           | Consumers                                                     |
+| ------------ | ------------------------------------ | ------------------ | ------------------------------------------------------------- |
+| `SBOM_TOPIC` | `security.sbom.generated.v1`         | `sbom-pipeline`    | `dependency-intel`, `security-service`, `security-automation` |
+| `VULN_TOPIC` | `security.vulnerability.detected.v1` | `vuln-intel`       | `dependency-intel`, `security-service`, `security-automation` |
+| `RISK_TOPIC` | `security.risk.calculated.v1`        | `dependency-intel` | `security-service`, `security-automation`                     |
 
 > **Hard rule:** service code **must not** hardcode the string
 > `"security.sbom.generated.v1"` (or any of the others). It must
@@ -148,26 +148,26 @@ import {
   type SbomGeneratedEvent,
   type VulnerabilityDetectedEvent,
   type RiskCalculatedEvent,
-} from "@aicc/shared/security";
+} from '@aicc/shared/security';
 
 // Producer
-import { publish } from "@aicc/event-bus";
-import { SBOM_TOPIC, type SbomGeneratedEvent } from "@aicc/shared/security";
+import { publish } from '@aicc/event-bus';
+import { SBOM_TOPIC, type SbomGeneratedEvent } from '@aicc/shared/security';
 
 await publish(SBOM_TOPIC, {
-  schema:                "security.sbom.generated.v1",   // discriminator
-  sbomId:                "sbom-2026-06-12-a1b2c3d-monorepo",
-  sbomFingerprint:       "sha256:9b74c989...d7c8a",      // <alg>:<hex> — SecurityArchitect T-09 audit-log correlation key
-  sbomFingerprintAlgorithm: "sha256",                      // O-3.7: hash algorithm (sha256 | sha512 | blake3); prefix in sbomFingerprint MUST match
-  sbomFingerprintFormat:    "cyclonedx-json+canonicalized-jcs",  // O-3.7: canonicalization contract; default = JCS canonicalized CycloneDX JSON
-  sbomFormat:            "cyclonedx-json",
-  sbomPath:              "security/sboms/sbom-2026-06-12-a1b2c3d-monorepo.cyclonedx-json",
-  scope:                 "monorepo",
-  subject:               "repo:aicc/command-center",
-  subjectFingerprint:    "a1b2c3d4e5f6...",             // git SHA / image digest
-  generatedAt:           "2026-06-12T18:42:11.420Z",
-  generator:             "syft:1.18.0",
-  componentsCount:       1842,
+  schema: 'security.sbom.generated.v1', // discriminator
+  sbomId: 'sbom-2026-06-12-a1b2c3d-monorepo',
+  sbomFingerprint: 'sha256:9b74c989...d7c8a', // <alg>:<hex> — SecurityArchitect T-09 audit-log correlation key
+  sbomFingerprintAlgorithm: 'sha256', // O-3.7: hash algorithm (sha256 | sha512 | blake3); prefix in sbomFingerprint MUST match
+  sbomFingerprintFormat: 'cyclonedx-json+canonicalized-jcs', // O-3.7: canonicalization contract; default = JCS canonicalized CycloneDX JSON
+  sbomFormat: 'cyclonedx-json',
+  sbomPath: 'security/sboms/sbom-2026-06-12-a1b2c3d-monorepo.cyclonedx-json',
+  scope: 'monorepo',
+  subject: 'repo:aicc/command-center',
+  subjectFingerprint: 'a1b2c3d4e5f6...', // git SHA / image digest
+  generatedAt: '2026-06-12T18:42:11.420Z',
+  generator: 'syft:1.18.0',
+  componentsCount: 1842,
 } satisfies SbomGeneratedEvent);
 ```
 
@@ -292,12 +292,12 @@ metrics are owned by SRE and live in
 
 The platform SLI `devsecops_eventbus_lag_seconds` has these targets:
 
-| Stream | p99 SLO | Rationale |
-|---|---:|---|
-| `security.events`   | 5 s  | Critical-path security events must propagate fast (incident detection, vuln detection, agent proposals). |
-| `compliance.events`  | 30 s | Compliance evaluations are near-real-time but not user-blocking. |
-| `audit.events`      | 60 s | Audit is asynchronous; consumers tolerate higher lag (audit log has its own durability story in Postgres + S3). |
-| **Aggregate**        | 5 s  | Fleet-wide target; computed as `histogram_quantile(0.99, sum(rate(devsecops_eventbus_lag_seconds_bucket[5m])) by (le))`. |
+| Stream              | p99 SLO | Rationale                                                                                                                |
+| ------------------- | ------: | ------------------------------------------------------------------------------------------------------------------------ |
+| `security.events`   |     5 s | Critical-path security events must propagate fast (incident detection, vuln detection, agent proposals).                 |
+| `compliance.events` |    30 s | Compliance evaluations are near-real-time but not user-blocking.                                                         |
+| `audit.events`      |    60 s | Audit is asynchronous; consumers tolerate higher lag (audit log has its own durability story in Postgres + S3).          |
+| **Aggregate**       |     5 s | Fleet-wide target; computed as `histogram_quantile(0.99, sum(rate(devsecops_eventbus_lag_seconds_bucket[5m])) by (le))`. |
 
 **Why three per-stream targets and one aggregate:** the aggregate is the
 platform-level commitment; the per-stream targets acknowledge that
@@ -312,11 +312,13 @@ threshold. Always `sum by (le, …)` before `histogram_quantile()` —
 a p99 computed on a single-pod series is wrong for the fleet.
 
 **Related metrics:**
+
 - `devsecops_sbom_generation_duration_seconds` — see `metrics-spec.md` §3.1
 - `devsecops_risk_calculation_duration_seconds` — see `metrics-spec.md` §3.3
 - `devsecops_vulnerability_ingestion_lag_seconds` — see `metrics-spec.md` §3.7
 
 **Future work (Sprint 3+):**
+
 - Multi-window burn-rate alerts (Google SRE workbook style) — currently the platform uses threshold alerts. See SLO doc F1 follow-up.
 - Per-tenant SLI rollup job (without exploding cardinality) — open design question.
 

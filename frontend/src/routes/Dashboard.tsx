@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { SecurityScore } from "@/components/security/SecurityScore";
-import { RiskHeatmap } from "@/components/security/RiskHeatmap";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { KpiGrid, KpiTile } from "@/components/ui/KpiTile";
-import { Network } from "lucide-react";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
+import { useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SecurityScore } from '@/components/security/SecurityScore';
+import { RiskHeatmap } from '@/components/security/RiskHeatmap';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { KpiGrid, KpiTile } from '@/components/ui/KpiTile';
+import { Network } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
 
 /**
  * Dashboard — `/`
@@ -25,7 +25,7 @@ export function Dashboard() {
       <PageHeader
         title="Security Posture"
         subtitle="Live view across the estate. Auto-refresh every 30s."
-        breadcrumbs={[{ label: "AionUi" }, { label: "Dashboard" }]}
+        breadcrumbs={[{ label: 'AionUi' }, { label: 'Dashboard' }]}
         actions={
           <>
             <Button
@@ -34,7 +34,7 @@ export function Dashboard() {
               onClick={() => setHeatmapOpen((v) => !v)}
               aria-pressed={heatmapOpen}
             >
-              {heatmapOpen ? "Hide" : "Show"} risk heatmap
+              {heatmapOpen ? 'Hide' : 'Show'} risk heatmap
             </Button>
             <Button size="sm" variant="primary">
               Run scan
@@ -86,22 +86,10 @@ export function Dashboard() {
   );
 }
 
-function QuickLink({
-  to,
-  title,
-  hint,
-}: {
-  to: string;
-  title: string;
-  hint: string;
-}) {
+function QuickLink({ to, title, hint }: { to: string; title: string; hint: string }) {
   return (
     <Card className="aion-card-hover">
-      <a
-        href={to}
-        className="block p-4"
-        aria-label={`${title} — ${hint}`}
-      >
+      <a href={to} className="block p-4" aria-label={`${title} — ${hint}`}>
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-text">{title}</div>
           <Network className="h-4 w-4 text-muted" aria-hidden="true" />

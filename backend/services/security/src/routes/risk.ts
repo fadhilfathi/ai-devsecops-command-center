@@ -51,7 +51,8 @@ export const buildRiskCalculateRoute: FastifyPluginAsync<Deps> = async (
         response: { 200: toJSONSchema(RiskCalculateResponseSchema) },
         tags: ['security', 'risk'],
         summary: 'Compute the dependency risk graph and composite risk scores for an SBOM',
-        description: 'Proxies to dependency-intel-service (port 4009). Emits `security.risk.calculated` per risk weight.',
+        description:
+          'Proxies to dependency-intel-service (port 4009). Emits `security.risk.calculated` per risk weight.',
       },
     },
     async (req: FastifyRequest<{ Body: unknown }>, reply) => {

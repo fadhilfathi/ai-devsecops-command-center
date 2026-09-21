@@ -50,7 +50,7 @@ retired.
 - **Files:** `docs/drafts/sbom-pipeline-service-v2/sbom-pipeline-service/src/sbom_pipeline/syft_wrapper.py`
 - **Contract source:** `tests/test_syft_wrapper.py`,
   `parsers.py` (imports `from .syft_wrapper import SyftRunner,
-  SyftResult`), `cli.py` (uses `SyftRunner`).
+SyftResult`), `cli.py` (uses `SyftRunner`).
 - **Acceptance criteria:**
   1. The module exposes `SyftRunner` and `SyftResult` with the
      signatures inferred from the call sites.

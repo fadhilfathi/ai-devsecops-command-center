@@ -28,15 +28,15 @@
       "expected": "valid",
       "record": {
         "schema": "security.sbom.generated.v1",
-        "sbom_id": "sbom-2026-06-12-deadbe-container",
-        "sbom_fingerprint": "sha512:" + "f".repeat(128),
+        "sbom_id": "sbom-2026-06-12-deadbee-container",
+        "sbom_fingerprint": "sha512:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "sbom_fingerprint_algorithm": "sha512",
         "sbom_fingerprint_format": "cyclonedx-json+raw",
         "sbom_format": "cyclonedx-json",
-        "sbom_path": "security/sboms/sbom-2026-06-12-deadbe-container.cyclonedx-json",
+        "sbom_path": "security/sboms/sbom-2026-06-12-deadbee-container.cyclonedx-json",
         "scope": "container",
         "subject": "image:ghcr.io/aicc/agent:1.2.3",
-        "subject_fingerprint": "sha256:" + "a".repeat(64),
+        "subject_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "generated_at": "2026-06-12T18:42:11.420Z",
         "generator": "syft:1.18.0",
         "components_count": 87
@@ -48,7 +48,7 @@
       "record": {
         "schema": "security.sbom.generated.v1",
         "sbom_id": "sbom-2026-06-12-1234567-package",
-        "sbom_fingerprint": "blake3:" + "b".repeat(64),
+        "sbom_fingerprint": "blake3:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "sbom_fingerprint_algorithm": "blake3",
         "sbom_fingerprint_format": "spdx-json+canonicalized-jcs",
         "sbom_format": "spdx-json",

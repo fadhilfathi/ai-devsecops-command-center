@@ -15,7 +15,7 @@ groups:
           description: |
             The SBOM generator has been unreachable for more than
             2 minutes. Security scans will fail until it recovers.
-          runbook: "https://aionrs.io/runbooks/sbom-generator#down"
+          runbook: 'https://aionrs.io/runbooks/sbom-generator#down'
 
       - alert: SBOMGeneratorHighErrorRate
         expr: |

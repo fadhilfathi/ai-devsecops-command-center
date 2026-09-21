@@ -131,7 +131,9 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
       "targets": [
-        { "expr": "avg_over_time(incident_time_to_resolve_seconds_sum[90d]) / avg_over_time(incident_time_to_resolve_seconds_count[90d])" }
+        {
+          "expr": "avg_over_time(incident_time_to_resolve_seconds_sum[90d]) / avg_over_time(incident_time_to_resolve_seconds_count[90d])"
+        }
       ],
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
@@ -177,9 +179,18 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
       "targets": [
-        { "expr": "service:http_request_duration:p50{service=~\"$service\",route=~\"$route\"}", "legendFormat": "p50 — {{service}} {{route}}" },
-        { "expr": "service:http_request_duration:p95{service=~\"$service\",route=~\"$route\"}", "legendFormat": "p95 — {{service}} {{route}}" },
-        { "expr": "service:http_request_duration:p99{service=~\"$service\",route=~\"$route\"}", "legendFormat": "p99 — {{service}} {{route}}" }
+        {
+          "expr": "service:http_request_duration:p50{service=~\"$service\",route=~\"$route\"}",
+          "legendFormat": "p50 — {{service}} {{route}}"
+        },
+        {
+          "expr": "service:http_request_duration:p95{service=~\"$service\",route=~\"$route\"}",
+          "legendFormat": "p95 — {{service}} {{route}}"
+        },
+        {
+          "expr": "service:http_request_duration:p99{service=~\"$service\",route=~\"$route\"}",
+          "legendFormat": "p99 — {{service}} {{route}}"
+        }
       ],
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
@@ -197,7 +208,10 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 23 },
       "targets": [
-        { "expr": "service:cpu:utilization:ratio5m{service=~\"$service\"}", "legendFormat": "{{service}}" }
+        {
+          "expr": "service:cpu:utilization:ratio5m{service=~\"$service\"}",
+          "legendFormat": "{{service}}"
+        }
       ],
       "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } }
     },
@@ -208,7 +222,10 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 7, "w": 8, "x": 8, "y": 23 },
       "targets": [
-        { "expr": "service:memory:utilization:ratio5m{service=~\"$service\"}", "legendFormat": "{{service}}" }
+        {
+          "expr": "service:memory:utilization:ratio5m{service=~\"$service\"}",
+          "legendFormat": "{{service}}"
+        }
       ],
       "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } }
     },
@@ -219,7 +236,10 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 23 },
       "targets": [
-        { "expr": "service:nodejs:eventloop_lag:p99{service=~\"$service\"}", "legendFormat": "{{service}}" }
+        {
+          "expr": "service:nodejs:eventloop_lag:p99{service=~\"$service\"}",
+          "legendFormat": "{{service}}"
+        }
       ],
       "fieldConfig": { "defaults": { "unit": "s" } }
     },

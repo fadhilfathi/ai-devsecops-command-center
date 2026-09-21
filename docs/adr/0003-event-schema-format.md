@@ -50,6 +50,7 @@ changes require a new event-type version (`vuln.detected.v1` →
 ## Consequences
 
 ### Positive
+
 - Strong typing throughout the bus; no "stringly-typed" payloads.
 - Clear upgrade path; producers and consumers can be deployed
   independently.
@@ -57,13 +58,15 @@ changes require a new event-type version (`vuln.detected.v1` →
   TypeScript types.
 
 ### Negative
+
 - Added complexity: a schema registry to operate, schema files to
   maintain.
 - Developers must learn Avro and JSON-Schema (mitigated by codegen
   from schemas to TypeScript types).
 
 ### Risks
-- *Schema registry outage* would block event publishing. Mitigation:
+
+- _Schema registry outage_ would block event publishing. Mitigation:
   registry is a thin metadata layer; clients cache the latest
   schema locally with a TTL.
 

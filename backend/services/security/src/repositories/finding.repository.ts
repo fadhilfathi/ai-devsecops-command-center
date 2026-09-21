@@ -13,18 +13,27 @@ export interface CreateFindingInput {
 }
 
 export interface FindingRepository {
-  list(tenantId: UUID, opts?: { severity?: FindingSeverity; status?: VulnerabilityFinding['status'] }): Promise<VulnerabilityFinding[]>;
+  list(
+    tenantId: UUID,
+    opts?: { severity?: FindingSeverity; status?: VulnerabilityFinding['status'] },
+  ): Promise<VulnerabilityFinding[]>;
   findById(id: UUID, tenantId: UUID): Promise<VulnerabilityFinding | undefined>;
   create(input: CreateFindingInput): Promise<VulnerabilityFinding>;
-  updateStatus(id: UUID, tenantId: UUID, status: VulnerabilityFinding['status']): Promise<VulnerabilityFinding | undefined>;
+  updateStatus(
+    id: UUID,
+    tenantId: UUID,
+    status: VulnerabilityFinding['status'],
+  ): Promise<VulnerabilityFinding | undefined>;
 }
 
 function newId(): UUID {
-  return globalThis.crypto?.randomUUID?.() ??
+  return (
+    globalThis.crypto?.randomUUID?.() ??
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    })
+  );
 }
 
 export function buildFindingRepository(): FindingRepository {

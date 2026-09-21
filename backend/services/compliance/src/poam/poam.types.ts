@@ -20,12 +20,7 @@ import type { Framework } from '@aicc/shared/types/domain';
 export type PoamSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export type PoamStatus =
-  | 'open'
-  | 'in_progress'
-  | 'awaiting_evidence'
-  | 'closed'
-  | 'risk_accepted'
-  | 'overdue';
+  'open' | 'in_progress' | 'awaiting_evidence' | 'closed' | 'risk_accepted' | 'overdue';
 
 export type PoamSource = 'auto' | 'manual';
 

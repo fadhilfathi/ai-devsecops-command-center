@@ -27,7 +27,11 @@ import { withAudit } from '../observability/audit.js';
 /** Minimal blob store interface. The Sprint 2 impl is in-memory; Sprint 3
  *  is the cloud provider. */
 export interface BlobStore {
-  put(key: string, body: Buffer | Uint8Array | string, contentType: string): Promise<{ key: string; hash: string; size: number }>;
+  put(
+    key: string,
+    body: Buffer | Uint8Array | string,
+    contentType: string,
+  ): Promise<{ key: string; hash: string; size: number }>;
   get(key: string): Promise<Buffer | null>;
 }
 
@@ -172,7 +176,9 @@ export class EvidenceAttacher {
   // Event emission
   // -------------------------------------------------------------------------
 
-  private async emitControlViolated(data: import('../events/compliance.events.js').ComplianceControlViolatedEvent): Promise<void> {
+  private async emitControlViolated(
+    data: import('../events/compliance.events.js').ComplianceControlViolatedEvent,
+  ): Promise<void> {
     const envelope: Omit<EventEnvelope<unknown>, 'eventId' | 'occurredAt'> = {
       type: EventTypes.COMPLIANCE_CONTROL_VIOLATED,
       version: 1,
@@ -182,12 +188,25 @@ export class EvidenceAttacher {
       severity: severityFromVuln(data.highestSeverity),
     };
     await withAudit(
-      { tenantId: data.tenantId, auditKind: 'control.violated', subjectId: data.controlId, detail: { framework: data.framework, highestSeverity: data.highestSeverity, violatingVulnCount: data.violatingVulnIds.length, scanId: data.scanId } },
+      {
+        tenantId: data.tenantId,
+        auditKind: 'control.violated',
+        subjectId: data.controlId,
+        detail: {
+          framework: data.framework,
+          highestSeverity: data.highestSeverity,
+          violatingVulnCount: data.violatingVulnIds.length,
+          scanId: data.scanId,
+        },
+      },
       () => this.bus.publish(envelope),
     );
   }
 
-  private async emitEvidenceAttached(record: EvidenceRecord, input: AttachScanInput): Promise<void> {
+  private async emitEvidenceAttached(
+    record: EvidenceRecord,
+    input: AttachScanInput,
+  ): Promise<void> {
     const envelope: Omit<EventEnvelope<unknown>, 'eventId' | 'occurredAt'> = {
       type: EventTypes.COMPLIANCE_EVIDENCE_ATTACHED,
       version: 1,
@@ -209,7 +228,18 @@ export class EvidenceAttacher {
       severity: 'info',
     };
     await withAudit(
-      { tenantId: record.tenantId, auditKind: 'evidence.attached', subjectId: record.id, detail: { controlId: record.controlId, kind: record.kind, assetId: input.assetId, scanId: input.scanId, tool: input.tool } },
+      {
+        tenantId: record.tenantId,
+        auditKind: 'evidence.attached',
+        subjectId: record.id,
+        detail: {
+          controlId: record.controlId,
+          kind: record.kind,
+          assetId: input.assetId,
+          scanId: input.scanId,
+          tool: input.tool,
+        },
+      },
       () => this.bus.publish(envelope),
     );
   }
@@ -221,11 +251,16 @@ export class EvidenceAttacher {
 
 function severityFromVuln(s: string): Severity {
   switch (s) {
-    case 'critical': return 'critical';
-    case 'high': return 'high';
-    case 'medium': return 'medium';
-    case 'low': return 'low';
-    default: return 'info';
+    case 'critical':
+      return 'critical';
+    case 'high':
+      return 'high';
+    case 'medium':
+      return 'medium';
+    case 'low':
+      return 'low';
+    default:
+      return 'info';
   }
 }
 

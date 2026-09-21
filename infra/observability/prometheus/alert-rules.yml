@@ -15,11 +15,11 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: "Service {{ $labels.service }} is down (instance {{ $labels.instance }})"
+          summary: 'Service {{ $labels.service }} is down (instance {{ $labels.instance }})'
           description: |
             Prometheus has not been able to scrape {{ $labels.service }} for 2 minutes.
             Check pod status and recent deploys.
-          runbook: "{{ $labels.runbook_base_url }}/ServiceDown"
+          runbook: '{{ $labels.runbook_base_url }}/ServiceDown'
 
       - alert: ServiceHigh5xxRate
         expr: |
@@ -30,13 +30,13 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: "{{ $labels.service }} 5xx rate on {{ $labels.route }} is {{ $value | humanizePercentage }}"
+          summary: '{{ $labels.service }} 5xx rate on {{ $labels.route }} is {{ $value | humanizePercentage }}'
           description: |
             The 5xx rate on {{ $labels.service }} route {{ $labels.route }} has exceeded 5%
             for 5 minutes. Investigate recent errors in Grafana Explore filtered by
             service={{ $labels.service }} and route={{ $labels.route }}.
-          runbook: "{{ $labels.runbook_base_url }}/ServiceHigh5xxRate"
-          dashboard: "{{ $labels.dashboard_base_url }}/d/{{ $labels.service }}-overview"
+          runbook: '{{ $labels.runbook_base_url }}/ServiceHigh5xxRate'
+          dashboard: '{{ $labels.dashboard_base_url }}/d/{{ $labels.service }}-overview'
 
       - alert: ServiceHighP99Latency
         expr: |
@@ -47,9 +47,9 @@ groups:
         labels:
           severity: ticket
         annotations:
-          summary: "{{ $labels.service }} p99 latency on {{ $labels.route }} > 1s"
-          description: "p99 latency = {{ $value | humanizeDuration }}. Open the latency panel and look for slow dependencies."
-          runbook: "{{ $labels.runbook_base_url }}/ServiceHighP99Latency"
+          summary: '{{ $labels.service }} p99 latency on {{ $labels.route }} > 1s'
+          description: 'p99 latency = {{ $value | humanizeDuration }}. Open the latency panel and look for slow dependencies.'
+          runbook: '{{ $labels.runbook_base_url }}/ServiceHighP99Latency'
 
       - alert: ServiceErrorBudgetExhausted
         expr: service_error_budget_remaining_ratio < 0
@@ -57,12 +57,12 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: "{{ $labels.service }} has exhausted its error budget"
+          summary: '{{ $labels.service }} has exhausted its error budget'
           description: |
             SLO budget remaining: {{ $value | humanizePercentage }}.
             Deploys to {{ $labels.service }} are halted by the admission webhook.
             Engage SRE and the service owner; see the burn breakdown dashboard.
-          runbook: "{{ $labels.runbook_base_url }}/ServiceErrorBudgetExhausted"
+          runbook: '{{ $labels.runbook_base_url }}/ServiceErrorBudgetExhausted'
 
       - alert: ServiceDeepHealthCheckFailing
         expr: probe_success{job="readyz-probes"} == 0
@@ -70,9 +70,9 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: "{{ $labels.service }} /readyz is failing"
-          description: "The deep readiness probe is returning non-2xx. A downstream dependency is likely unhealthy."
-          runbook: "{{ $labels.runbook_base_url }}/ServiceDeepHealthCheckFailing"
+          summary: '{{ $labels.service }} /readyz is failing'
+          description: 'The deep readiness probe is returning non-2xx. A downstream dependency is likely unhealthy.'
+          runbook: '{{ $labels.runbook_base_url }}/ServiceDeepHealthCheckFailing'
 
       - alert: ServiceCardinalityExplosion
         expr: deriv(prometheus_tsdb_head_series[10m]) > 100000
@@ -80,9 +80,9 @@ groups:
         labels:
           severity: ticket
         annotations:
-          summary: "Cardinality on {{ $labels.job }} is growing > 100k series/min"
-          description: "Inspect the top 50 label combinations at /api/v1/status/tsdb and roll back the offending change."
-          runbook: "{{ $labels.runbook_base_url }}/ServiceCardinalityExplosion"
+          summary: 'Cardinality on {{ $labels.job }} is growing > 100k series/min'
+          description: 'Inspect the top 50 label combinations at /api/v1/status/tsdb and roll back the offending change.'
+          runbook: '{{ $labels.runbook_base_url }}/ServiceCardinalityExplosion'
 
       - alert: WatchdogDeadmanSwitch
         expr: vector(time() - prometheus_last_evaluation_timestamp) > 300
@@ -90,9 +90,9 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: "Prometheus is not evaluating rules"
-          description: "Prometheus last evaluation was more than 5 minutes ago. The monitoring stack itself is unhealthy."
-          runbook: "{{ $labels.runbook_base_url }}/WatchdogDeadmanSwitch"
+          summary: 'Prometheus is not evaluating rules'
+          description: 'Prometheus last evaluation was more than 5 minutes ago. The monitoring stack itself is unhealthy.'
+          runbook: '{{ $labels.runbook_base_url }}/WatchdogDeadmanSwitch'
 
   # ---------------------------------------------------------------------------
   # SLO burn-rate alerts — example for Auth availability
@@ -124,8 +124,8 @@ groups:
           description: |
             Burn rate: 14.4x. Budget would exhaust in ~2 days.
             Budget remaining: {{ with query "service_error_budget_remaining_ratio{service='auth',slo='availability'}" }}{{ . | first | value | humanizePercentage }}{{ end }}.
-          runbook: "{{ $labels.runbook_base_url }}/SLOBurnIncident"
-          dashboard: "{{ $labels.dashboard_base_url }}/d/auth-slo"
+          runbook: '{{ $labels.runbook_base_url }}/SLOBurnIncident'
+          dashboard: '{{ $labels.dashboard_base_url }}/d/auth-slo'
 
       # Slow burn: budget would exhaust in ~30 days
       - alert: SLO_Auth_Availability_SlowBurn
@@ -141,8 +141,8 @@ groups:
           slo: auth/availability
         annotations:
           summary: "Auth SLO 'availability' is slow-burning"
-          description: "Burn rate: 1x. Investigate root cause within 1 business day."
-          runbook: "{{ $labels.runbook_base_url }}/SLOSlowBurn"
+          description: 'Burn rate: 1x. Investigate root cause within 1 business day.'
+          runbook: '{{ $labels.runbook_base_url }}/SLOSlowBurn'
 
   # ---------------------------------------------------------------------------
   # Agent alerts
@@ -160,8 +160,8 @@ groups:
           severity: ticket
         annotations:
           summary: "Agent {{ $labels.agent }} task '{{ $labels.task_type }}' failing > 10%"
-          description: "Failure rate: {{ $value | humanizePercentage }}. Check LLM provider status and tool call errors."
-          runbook: "{{ $labels.runbook_base_url }}/AgentTaskFailureRate"
+          description: 'Failure rate: {{ $value | humanizePercentage }}. Check LLM provider status and tool call errors.'
+          runbook: '{{ $labels.runbook_base_url }}/AgentTaskFailureRate'
 
       - alert: AgentTaskDurationP99High
         expr: |
@@ -172,9 +172,9 @@ groups:
         labels:
           severity: ticket
         annotations:
-          summary: "Agent {{ $labels.agent }} task p99 > 5m"
-          description: "Sustained for 15m. May indicate provider degradation or runaway loops."
-          runbook: "{{ $labels.runbook_base_url }}/AgentTaskDurationP99High"
+          summary: 'Agent {{ $labels.agent }} task p99 > 5m'
+          description: 'Sustained for 15m. May indicate provider degradation or runaway loops.'
+          runbook: '{{ $labels.runbook_base_url }}/AgentTaskDurationP99High'
 
       - alert: AgentLLMTokenSpendAnomaly
         expr: |
@@ -186,9 +186,9 @@ groups:
         labels:
           severity: ticket
         annotations:
-          summary: "Agent {{ $labels.agent }} LLM spend 3x baseline on {{ $labels.model }}"
-          description: "Suspect runaway loops or abuse. Lower max_tokens via dynamic config."
-          runbook: "{{ $labels.runbook_base_url }}/AgentLLMTokenSpendAnomaly"
+          summary: 'Agent {{ $labels.agent }} LLM spend 3x baseline on {{ $labels.model }}'
+          description: 'Suspect runaway loops or abuse. Lower max_tokens via dynamic config.'
+          runbook: '{{ $labels.runbook_base_url }}/AgentLLMTokenSpendAnomaly'
 
       - alert: AgentDecisionOverride
         expr: |
@@ -199,9 +199,9 @@ groups:
         labels:
           severity: ticket
         annotations:
-          summary: "Agent {{ $labels.agent }} decision override rate > 20%"
+          summary: 'Agent {{ $labels.agent }} decision override rate > 20%'
           description: "Likely model drift. Engage AI team; consider downgrading to 'suggest' mode."
-          runbook: "{{ $labels.runbook_base_url }}/AgentDecisionOverride"
+          runbook: '{{ $labels.runbook_base_url }}/AgentDecisionOverride'
 
   # ---------------------------------------------------------------------------
   # Sprint 2 — Security stack alerts
@@ -229,9 +229,9 @@ groups:
           severity: page
           service: sbom-pipeline
         annotations:
-          summary: "sbom-pipeline is down for 5m"
-          description: "Prometheus has not been able to scrape sbom-pipeline for 5 minutes. SBOM generation is stalled."
-          runbook: "{{ $labels.runbook_base_url }}/SbvomPipelineDown"
+          summary: 'sbom-pipeline is down for 5m'
+          description: 'Prometheus has not been able to scrape sbom-pipeline for 5 minutes. SBOM generation is stalled.'
+          runbook: '{{ $labels.runbook_base_url }}/SbvomPipelineDown'
 
       - alert: VulnIngestionLag
         expr: (time() - max by (source) (vuln_feed_last_refresh_timestamp_seconds{source=~"nvd|ghsa|osv"})) > 86400
@@ -240,9 +240,9 @@ groups:
           severity: page
           service: vuln-intel
         annotations:
-          summary: "{{ $labels.source }} feed not refreshed in 24h"
-          description: "Vulnerability feed {{ $labels.source }} is stale. Check the feed poller and rate limits."
-          runbook: "{{ $labels.runbook_base_url }}/VulnIngestionLag"
+          summary: '{{ $labels.source }} feed not refreshed in 24h'
+          description: 'Vulnerability feed {{ $labels.source }} is stale. Check the feed poller and rate limits.'
+          runbook: '{{ $labels.runbook_base_url }}/VulnIngestionLag'
 
       - alert: ScanQueueBacklog
         expr: devsecops_queue_depth{service=~"sbom-pipeline|dependency-intel",queue_name=~"sbom_jobs|risk_calc_jobs"} > 100
@@ -250,9 +250,9 @@ groups:
         labels:
           severity: ticket
         annotations:
-          summary: "Scan queue backlog > 100 for 15m on {{ $labels.service }}/{{ $labels.queue_name }}"
-          description: "Pending items: {{ $value }}. Consider scaling the worker pool or check for stuck jobs."
-          runbook: "{{ $labels.runbook_base_url }}/ScanQueueBacklog"
+          summary: 'Scan queue backlog > 100 for 15m on {{ $labels.service }}/{{ $labels.queue_name }}'
+          description: 'Pending items: {{ $value }}. Consider scaling the worker pool or check for stuck jobs.'
+          runbook: '{{ $labels.runbook_base_url }}/ScanQueueBacklog'
 
       - alert: RiskCalcHighLatency
         expr: |
@@ -264,9 +264,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "dependency-intel p95 risk calc > 10s for 5m"
-          description: "p95 risk calc duration is {{ $value | humanizeDuration }}. Could be large SBOMs, slow graph traversal, or upstream lag. See the per-bucket alerts for actionable detail."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatency"
+          summary: 'dependency-intel p95 risk calc > 10s for 5m'
+          description: 'p95 risk calc duration is {{ $value | humanizeDuration }}. Could be large SBOMs, slow graph traversal, or upstream lag. See the per-bucket alerts for actionable detail.'
+          runbook: '{{ $labels.runbook_base_url }}/RiskCalcHighLatency'
 
       # Per-bucket risk-calc alerts (locked by SLO targets in
       # docs/observability/slos-security-stack.md §3).
@@ -284,9 +284,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 0.5s for xs SBOMs (<10 components)"
-          description: "p95 = {{ $value | humanizeDuration }}. Trivially small SBOMs should be sub-100ms. Likely graph-DB warm-up or service cold start."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXs"
+          summary: 'risk calc p95 > 0.5s for xs SBOMs (<10 components)'
+          description: 'p95 = {{ $value | humanizeDuration }}. Trivially small SBOMs should be sub-100ms. Likely graph-DB warm-up or service cold start.'
+          runbook: '{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXs'
 
       - alert: RiskCalcHighLatencySmall
         expr: |
@@ -298,9 +298,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 1s for small SBOMs (10–99 components)"
-          description: "p95 = {{ $value | humanizeDuration }}. Small SBOMs should be sub-second. Likely graph-DB issue or memory pressure."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencySmall"
+          summary: 'risk calc p95 > 1s for small SBOMs (10–99 components)'
+          description: 'p95 = {{ $value | humanizeDuration }}. Small SBOMs should be sub-second. Likely graph-DB issue or memory pressure.'
+          runbook: '{{ $labels.runbook_base_url }}/RiskCalcHighLatencySmall'
 
       - alert: RiskCalcHighLatencyMedium
         expr: |
@@ -312,9 +312,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 5s for medium SBOMs (100–999 components)"
-          description: "p95 = {{ $value | humanizeDuration }}. Cold cache or GC?"
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyMedium"
+          summary: 'risk calc p95 > 5s for medium SBOMs (100–999 components)'
+          description: 'p95 = {{ $value | humanizeDuration }}. Cold cache or GC?'
+          runbook: '{{ $labels.runbook_base_url }}/RiskCalcHighLatencyMedium'
 
       - alert: RiskCalcHighLatencyLarge
         expr: |
@@ -326,9 +326,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 15s for large SBOMs (1k–4,999 components)"
-          description: "p95 = {{ $value | humanizeDuration }}. Check graph DB indices."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyLarge"
+          summary: 'risk calc p95 > 15s for large SBOMs (1k–4,999 components)'
+          description: 'p95 = {{ $value | humanizeDuration }}. Check graph DB indices.'
+          runbook: '{{ $labels.runbook_base_url }}/RiskCalcHighLatencyLarge'
 
       - alert: RiskCalcHighLatencyXlarge
         expr: |
@@ -340,9 +340,9 @@ groups:
           severity: ticket
           service: dependency-intel
         annotations:
-          summary: "risk calc p95 > 60s for xlarge SBOMs (≥5k components)"
-          description: "p95 = {{ $value | humanizeDuration }}. Likely deep transitive chains, N+1 graph queries, or runaway SBOMs (former xxlarge bucket). May be acceptable overshoot — see SLO doc §3."
-          runbook: "{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXlarge"
+          summary: 'risk calc p95 > 60s for xlarge SBOMs (≥5k components)'
+          description: 'p95 = {{ $value | humanizeDuration }}. Likely deep transitive chains, N+1 graph queries, or runaway SBOMs (former xxlarge bucket). May be acceptable overshoot — see SLO doc §3.'
+          runbook: '{{ $labels.runbook_base_url }}/RiskCalcHighLatencyXlarge'
 
   # ---------------------------------------------------------------------------
   # Sprint 2.8 — Security control integrity alerts
@@ -354,7 +354,6 @@ groups:
   # ---------------------------------------------------------------------------
   - name: security_stack.s2_8_controls
     rules:
-
       - alert: RiskScoreAuditChainBroken
         expr: sum by (service) (devsecops_risk_score_audit_chain_verified{ok="0"}) > 0
         for: 1m
@@ -362,9 +361,9 @@ groups:
           severity: page
           s2_8_control: T-05
         annotations:
-          summary: "risk-score audit chain verification FAILED on {{ $labels.service }}"
-          description: "T-05 tamper detection: at least one service has ok=0 for risk-score audit chain. Possible tamper event. Page on-call immediately."
-          runbook: "{{ $labels.runbook_base_url }}/RiskScoreAuditChainBroken"
+          summary: 'risk-score audit chain verification FAILED on {{ $labels.service }}'
+          description: 'T-05 tamper detection: at least one service has ok=0 for risk-score audit chain. Possible tamper event. Page on-call immediately.'
+          runbook: '{{ $labels.runbook_base_url }}/RiskScoreAuditChainBroken'
 
       - alert: CanaryTestFailure
         expr: increase(devsecops_canary_test_failures_total[1m]) > 0
@@ -373,9 +372,9 @@ groups:
           severity: page
           s2_8_control: T-09
         annotations:
-          summary: "data-exfil canary test failed ({{ $labels.endpoint }})"
-          description: "T-09 canary detected possible data exfiltration on endpoint {{ $labels.endpoint }}. Page on-call immediately and initiate incident response."
-          runbook: "{{ $labels.runbook_base_url }}/CanaryTestFailure"
+          summary: 'data-exfil canary test failed ({{ $labels.endpoint }})'
+          description: 'T-09 canary detected possible data exfiltration on endpoint {{ $labels.endpoint }}. Page on-call immediately and initiate incident response.'
+          runbook: '{{ $labels.runbook_base_url }}/CanaryTestFailure'
 
       - alert: CveFeedIntegrityRejected
         expr: sum by (feed) (rate(devsecops_cve_feed_records_rejected_total{reason="integrity"}[5m])) > 0.1
@@ -384,9 +383,9 @@ groups:
           severity: ticket
           s2_8_control: T-02
         annotations:
-          summary: "CVE feed integrity rejections > 0.1/s for {{ $labels.feed }}"
-          description: "T-02 feed integrity gate is rejecting records from {{ $labels.feed }} at > 0.1/s for 5m. Possible feed compromise or upstream schema change. Investigate before next ingestion cycle."
-          runbook: "{{ $labels.runbook_base_url }}/CveFeedIntegrityRejected"
+          summary: 'CVE feed integrity rejections > 0.1/s for {{ $labels.feed }}'
+          description: 'T-02 feed integrity gate is rejecting records from {{ $labels.feed }} at > 0.1/s for 5m. Possible feed compromise or upstream schema change. Investigate before next ingestion cycle.'
+          runbook: '{{ $labels.runbook_base_url }}/CveFeedIntegrityRejected'
 
       - alert: CosignVerifySlow
         expr: |
@@ -398,9 +397,9 @@ groups:
           severity: ticket
           s2_8_control: T-04
         annotations:
-          summary: "cosign verify p95 > 30s on sbom-pipeline"
-          description: "T-04 supply-chain verification is slow. p95 = {{ $value | humanizeDuration }}. Rekor or Cosign service degradation. Check upstream service health."
-          runbook: "{{ $labels.runbook_base_url }}/CosignVerifySlow"
+          summary: 'cosign verify p95 > 30s on sbom-pipeline'
+          description: 'T-04 supply-chain verification is slow. p95 = {{ $value | humanizeDuration }}. Rekor or Cosign service degradation. Check upstream service health.'
+          runbook: '{{ $labels.runbook_base_url }}/CosignVerifySlow'
 
       - alert: SbomValidationErrorRate
         expr: |
@@ -414,9 +413,9 @@ groups:
           severity: ticket
           s2_8_control: T-08
         annotations:
-          summary: "SBOM validation error rate > 1%"
-          description: "T-08 input validation: more than 1% of proxy requests are being rejected for SBOM validation. Investigate possible client regression or active attack pattern."
-          runbook: "{{ $labels.runbook_base_url }}/SbomValidationErrorRate"
+          summary: 'SBOM validation error rate > 1%'
+          description: 'T-08 input validation: more than 1% of proxy requests are being rejected for SBOM validation. Investigate possible client regression or active attack pattern.'
+          runbook: '{{ $labels.runbook_base_url }}/SbomValidationErrorRate'
 
       - alert: LlmTokenBudgetLow
         expr: devsecops_llm_token_budget_remaining < 0.20
@@ -425,9 +424,9 @@ groups:
           severity: ticket
           s2_8_control: T-03
         annotations:
-          summary: "LLM token budget < 20% remaining"
-          description: "T-03 cost guardrail: vuln-intel LLM summarization budget is below 20%. Throttle non-essential LLM calls or expand budget before next cycle."
-          runbook: "{{ $labels.runbook_base_url }}/LlmTokenBudgetLow"
+          summary: 'LLM token budget < 20% remaining'
+          description: 'T-03 cost guardrail: vuln-intel LLM summarization budget is below 20%. Throttle non-essential LLM calls or expand budget before next cycle.'
+          runbook: '{{ $labels.runbook_base_url }}/LlmTokenBudgetLow'
 
   # ---------------------------------------------------------------------------
   # Sprint 2.9 — Compliance audit log emission integrity alerts
@@ -439,7 +438,6 @@ groups:
   # ---------------------------------------------------------------------------
   - name: security_stack.audit_emission
     rules:
-
       - alert: AuditLogEmissionErrorRate
         # Two-tier alerting: ticket on >0.1/s for 5m (steady-state handle),
         # page on >1/s for 5m (acute regression). The page threshold aligns
@@ -455,9 +453,9 @@ groups:
           severity: ticket
           s2_9_control: audit_log_emission
         annotations:
-          summary: "audit log emission error rate > 1%"
-          description: "More than 1% of audit log emissions are failing. This is a compliance regression (CIS 8.11, NIST AU-2/AU-3). Investigate bus connection, schema validation, or write contention."
-          runbook: "{{ $labels.runbook_base_url }}/compliance-audit-log"
+          summary: 'audit log emission error rate > 1%'
+          description: 'More than 1% of audit log emissions are failing. This is a compliance regression (CIS 8.11, NIST AU-2/AU-3). Investigate bus connection, schema validation, or write contention.'
+          runbook: '{{ $labels.runbook_base_url }}/compliance-audit-log'
 
       # Page-only alert: 10x the steady-state error rate. Fires when the
       # SLO is in acute violation (>=10% of audit records being lost).
@@ -469,6 +467,6 @@ groups:
           severity: page
           s2_9_control: audit_log_emission
         annotations:
-          summary: "audit log emission error rate > 1/s (acute)"
-          description: "Audit log emission is failing at a rate of >1 per second for 5+ minutes. This is a critical compliance regression — security-relevant events are being silently lost. Page on-call immediately."
-          runbook: "{{ $labels.runbook_base_url }}/compliance-audit-log"
+          summary: 'audit log emission error rate > 1/s (acute)'
+          description: 'Audit log emission is failing at a rate of >1 per second for 5+ minutes. This is a critical compliance regression — security-relevant events are being silently lost. Page on-call immediately.'
+          runbook: '{{ $labels.runbook_base_url }}/compliance-audit-log'

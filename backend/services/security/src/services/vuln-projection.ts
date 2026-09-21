@@ -65,14 +65,22 @@ export function toGitOpsRecord(
   const autoActionable = hasKev && hasFix && isInGraph;
   if (opts.logger && autoActionable) {
     opts.logger.info(
-      { vulnId: vuln.id, package: affected.package.name, kev: hasKev, fix: hasFix, inGraph: isInGraph },
+      {
+        vulnId: vuln.id,
+        package: affected.package.name,
+        kev: hasKev,
+        fix: hasFix,
+        inGraph: isInGraph,
+      },
       'auto_actionable=true (KEV + fix-available + in-graph)',
     );
   }
 
   // `ghsa` (internal) → `github-advisory` (wire). All other source values pass through.
   const wireSource: VulnerabilityGitOpsRecord['source'] =
-    vuln.source === 'ghsa' ? 'github-advisory' : (vuln.source as VulnerabilityGitOpsRecord['source']);
+    vuln.source === 'ghsa'
+      ? 'github-advisory'
+      : (vuln.source as VulnerabilityGitOpsRecord['source']);
 
   // CVSS v3: project the object to a flat number.
   const cvssV3 = vuln.cvssV3?.baseScore ?? null;
@@ -122,7 +130,9 @@ export function toGitOpsRecords(
   return vulns.map((v) => {
     const affected = v.affected[0];
     return toGitOpsRecord(v, {
-      inGraph: affected ? opts.inGraphLookup(affected.package.name, affected.package.ecosystem) : false,
+      inGraph: affected
+        ? opts.inGraphLookup(affected.package.name, affected.package.ecosystem)
+        : false,
       tenantId: opts.tenantId,
       now: opts.now,
       logger: opts.logger,

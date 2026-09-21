@@ -10,15 +10,15 @@ viewer.
 
 ## Endpoints
 
-| Method | Path                                            | Description                          |
-| ------ | ----------------------------------------------- | ------------------------------------ |
-| GET    | `/v1/inventory/assets`                          | Unified asset catalog                |
-| GET    | `/v1/inventory/assets/:id`                      | Single asset detail                  |
-| GET    | `/v1/inventory/clusters`                        | Cluster inventory (cached)           |
-| GET    | `/v1/inventory/namespaces`                      | Namespace inventory (cached)         |
-| GET    | `/v1/inventory/services`                        | Service inventory                    |
-| GET    | `/v1/inventory/deployments`                     | Deployment inventory                 |
-| GET    | `/v1/inventory/graph/asset`                     | Unified Asset Graph                  |
-| GET    | `/v1/inventory/graph/relationships`             | Relationship Graph                   |
-| GET    | `/v1/inventory/graph/dependencies`              | Dependency Graph                     |
-| GET    | `/v1/inventory/graph/dependencies/:assetId`     | Dependencies of a single asset       |
+| Method | Path                                        | Description                    |
+| ------ | ------------------------------------------- | ------------------------------ |
+| GET    | `/v1/inventory/assets`                      | Unified asset catalog          |
+| GET    | `/v1/inventory/assets/:id`                  | Single asset detail            |
+| GET    | `/v1/inventory/clusters`                    | Cluster inventory (cached)     |
+| GET    | `/v1/inventory/namespaces`                  | Namespace inventory (cached)   |
+| GET    | `/v1/inventory/services`                    | Service inventory              |
+| GET    | `/v1/inventory/deployments`                 | Deployment inventory           |
+| GET    | `/v1/inventory/graph/asset`                 | Unified Asset Graph            |
+| GET    | `/v1/inventory/graph/relationships`         | Relationship Graph             |
+| GET    | `/v1/inventory/graph/dependencies`          | Dependency Graph               |
+| GET    | `/v1/inventory/graph/dependencies/:assetId` | Dependencies of a single asset |

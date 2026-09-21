@@ -1,18 +1,18 @@
-import { Server, Filter } from "lucide-react";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { fmtRel, titleCase } from "@/lib/format";
-import type { Asset } from "@/types";
+import { Server, Filter } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { fmtRel, titleCase } from '@/lib/format';
+import type { Asset } from '@/types';
 
 const columns: Column<Asset>[] = [
   {
-    key: "name",
-    header: "Asset",
+    key: 'name',
+    header: 'Asset',
     cell: (a) => (
       <div className="flex items-center gap-2">
         <Server className="h-4 w-4 text-aion-muted" />
@@ -24,26 +24,22 @@ const columns: Column<Asset>[] = [
     ),
   },
   {
-    key: "kind",
-    header: "Kind",
+    key: 'kind',
+    header: 'Kind',
     cell: (a) => <Badge variant="neutral">{titleCase(a.kind)}</Badge>,
   },
   {
-    key: "owner",
-    header: "Owner",
+    key: 'owner',
+    header: 'Owner',
     cell: (a) => <span className="aion-mono">{a.owner}</span>,
   },
   {
-    key: "env",
-    header: "Env",
+    key: 'env',
+    header: 'Env',
     cell: (a) => (
       <Badge
         variant={
-          a.environment === "prod"
-            ? "danger"
-            : a.environment === "staging"
-              ? "warn"
-              : "info"
+          a.environment === 'prod' ? 'danger' : a.environment === 'staging' ? 'warn' : 'info'
         }
       >
         {titleCase(a.environment)}
@@ -51,13 +47,13 @@ const columns: Column<Asset>[] = [
     ),
   },
   {
-    key: "crit",
-    header: "Criticality",
+    key: 'crit',
+    header: 'Criticality',
     cell: (a) => <Badge severity={a.criticality}>{titleCase(a.criticality)}</Badge>,
   },
   {
-    key: "tags",
-    header: "Tags",
+    key: 'tags',
+    header: 'Tags',
     cell: (a) => (
       <div className="flex flex-wrap gap-1">
         {a.tags.map((t) => (
@@ -72,8 +68,8 @@ const columns: Column<Asset>[] = [
     ),
   },
   {
-    key: "seen",
-    header: "Last seen",
+    key: 'seen',
+    header: 'Last seen',
     cell: (a) => <span className="aion-mono">{fmtRel(a.lastSeen)}</span>,
   },
 ];
@@ -86,7 +82,7 @@ export function AssetsPage() {
       <PageHeader
         title="Assets"
         subtitle="Unified inventory across repositories, services, identities, and data stores."
-        breadcrumbs={[{ label: "AionUi" }, { label: "Assets" }]}
+        breadcrumbs={[{ label: 'AionUi' }, { label: 'Assets' }]}
         actions={
           <>
             <Button size="sm" variant="secondary">
@@ -102,20 +98,18 @@ export function AssetsPage() {
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card className="p-4">
           <div className="text-[11px] uppercase tracking-wider text-aion-muted">Total</div>
-          <div className="mt-1 text-2xl font-semibold text-aion-text">
-            {(data ?? []).length}
-          </div>
+          <div className="mt-1 text-2xl font-semibold text-aion-text">{(data ?? []).length}</div>
         </Card>
         <Card className="p-4">
           <div className="text-[11px] uppercase tracking-wider text-aion-muted">Production</div>
           <div className="mt-1 text-2xl font-semibold text-aion-text">
-            {(data ?? []).filter((a) => a.environment === "prod").length}
+            {(data ?? []).filter((a) => a.environment === 'prod').length}
           </div>
         </Card>
         <Card className="p-4">
           <div className="text-[11px] uppercase tracking-wider text-aion-muted">Critical</div>
           <div className="mt-1 text-2xl font-semibold text-aion-text">
-            {(data ?? []).filter((a) => a.criticality === "critical").length}
+            {(data ?? []).filter((a) => a.criticality === 'critical').length}
           </div>
         </Card>
         <Card className="p-4">

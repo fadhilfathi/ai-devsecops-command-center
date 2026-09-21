@@ -69,16 +69,24 @@ export interface InventoryEngine {
   catalog(input: InventoryEngineInput): Asset[];
   relationshipGraph(input: InventoryEngineInput): { nodes: TopologyNode[]; edges: TopologyEdge[] };
   dependencyGraph(input: InventoryEngineInput): { nodes: TopologyNode[]; edges: TopologyEdge[] };
-  dependenciesFor(input: InventoryEngineInput, assetId: string): { nodes: TopologyNode[]; edges: TopologyEdge[] };
+  dependenciesFor(
+    input: InventoryEngineInput,
+    assetId: string,
+  ): { nodes: TopologyNode[]; edges: TopologyEdge[] };
 }
 
 function toNodeKind(kind: AssetKind): TopologyNodeKind {
   switch (kind) {
-    case 'cluster': return 'cluster';
-    case 'namespace': return 'namespace';
-    case 'service': return 'service';
-    case 'ingress': return 'ingress';
-    case 'pod': return 'pod';
+    case 'cluster':
+      return 'cluster';
+    case 'namespace':
+      return 'namespace';
+    case 'service':
+      return 'service';
+    case 'ingress':
+      return 'ingress';
+    case 'pod':
+      return 'pod';
     case 'deployment':
     case 'statefulset':
     case 'daemonset':
@@ -120,51 +128,97 @@ export function buildInventoryEngine(): InventoryEngine {
       const out: Asset[] = [];
       for (const c of input.clusters) {
         out.push({
-          id: c.id, tenantId: c.tenantId, kind: 'cluster',
-          name: c.name, clusterId: c.id, clusterName: c.name,
-          labels: c.labels, metadata: { provider: c.provider, k8sVersion: c.k8sVersion, region: c.region, environment: c.environment },
+          id: c.id,
+          tenantId: c.tenantId,
+          kind: 'cluster',
+          name: c.name,
+          clusterId: c.id,
+          clusterName: c.name,
+          labels: c.labels,
+          metadata: {
+            provider: c.provider,
+            k8sVersion: c.k8sVersion,
+            region: c.region,
+            environment: c.environment,
+          },
         });
       }
       for (const n of input.namespaces) {
         out.push({
-          id: n.id, tenantId: n.tenantId, kind: 'namespace',
-          name: n.name, namespace: n.name, clusterId: n.clusterId, clusterName: n.clusterName,
-          labels: n.labels, metadata: { phase: n.phase },
+          id: n.id,
+          tenantId: n.tenantId,
+          kind: 'namespace',
+          name: n.name,
+          namespace: n.name,
+          clusterId: n.clusterId,
+          clusterName: n.clusterName,
+          labels: n.labels,
+          metadata: { phase: n.phase },
         });
       }
       for (const s of input.services) {
         out.push({
-          id: s.id, tenantId: s.tenantId, kind: 'service',
-          name: s.name, namespace: s.namespace, clusterId: s.clusterId, clusterName: s.clusterName,
-          labels: s.labels, metadata: { type: s.type, clusterIp: s.clusterIp, ports: s.ports, fqdn: s.fqdn },
+          id: s.id,
+          tenantId: s.tenantId,
+          kind: 'service',
+          name: s.name,
+          namespace: s.namespace,
+          clusterId: s.clusterId,
+          clusterName: s.clusterName,
+          labels: s.labels,
+          metadata: { type: s.type, clusterIp: s.clusterIp, ports: s.ports, fqdn: s.fqdn },
         });
       }
       for (const d of input.deployments) {
         out.push({
-          id: d.id, tenantId: d.tenantId, kind: 'deployment',
-          name: d.name, namespace: d.namespace, clusterId: d.clusterId, clusterName: d.clusterName,
-          labels: d.labels, metadata: { image: d.image, replicas: d.replicas, rollout: d.rollout },
+          id: d.id,
+          tenantId: d.tenantId,
+          kind: 'deployment',
+          name: d.name,
+          namespace: d.namespace,
+          clusterId: d.clusterId,
+          clusterName: d.clusterName,
+          labels: d.labels,
+          metadata: { image: d.image, replicas: d.replicas, rollout: d.rollout },
         });
       }
       for (const s of input.statefulsets) {
         out.push({
-          id: s.id, tenantId: s.tenantId, kind: 'statefulset',
-          name: s.name, namespace: s.namespace, clusterId: s.clusterId, clusterName: s.clusterName,
-          labels: s.labels, metadata: { image: s.image, replicas: s.replicas },
+          id: s.id,
+          tenantId: s.tenantId,
+          kind: 'statefulset',
+          name: s.name,
+          namespace: s.namespace,
+          clusterId: s.clusterId,
+          clusterName: s.clusterName,
+          labels: s.labels,
+          metadata: { image: s.image, replicas: s.replicas },
         });
       }
       for (const d of input.daemonsets) {
         out.push({
-          id: d.id, tenantId: d.tenantId, kind: 'daemonset',
-          name: d.name, namespace: d.namespace, clusterId: d.clusterId, clusterName: d.clusterName,
-          labels: d.labels, metadata: { image: d.image, replicas: d.replicas },
+          id: d.id,
+          tenantId: d.tenantId,
+          kind: 'daemonset',
+          name: d.name,
+          namespace: d.namespace,
+          clusterId: d.clusterId,
+          clusterName: d.clusterName,
+          labels: d.labels,
+          metadata: { image: d.image, replicas: d.replicas },
         });
       }
       for (const i of input.ingresses) {
         out.push({
-          id: i.id, tenantId: i.tenantId, kind: 'ingress',
-          name: i.name, namespace: i.namespace, clusterId: i.clusterId, clusterName: i.clusterName,
-          labels: i.labels, metadata: { className: i.className, rules: i.rules, tls: i.tls },
+          id: i.id,
+          tenantId: i.tenantId,
+          kind: 'ingress',
+          name: i.name,
+          namespace: i.namespace,
+          clusterId: i.clusterId,
+          clusterName: i.clusterName,
+          labels: i.labels,
+          metadata: { className: i.className, rules: i.rules, tls: i.tls },
         });
       }
       return out;
@@ -173,7 +227,8 @@ export function buildInventoryEngine(): InventoryEngine {
     relationshipGraph(input) {
       const assets = this.catalog(input);
       const assetByKey = new Map<string, Asset>();
-      for (const a of assets) assetByKey.set(`${a.kind}:${a.clusterId}:${a.namespace ?? ''}:${a.name}`, a);
+      for (const a of assets)
+        assetByKey.set(`${a.kind}:${a.clusterId}:${a.namespace ?? ''}:${a.name}`, a);
 
       const nodes = assets.map((a) => makeNode(a));
       const edges: TopologyEdge[] = [];
@@ -214,10 +269,14 @@ export function buildInventoryEngine(): InventoryEngine {
       // Ingress ROUTES_TO Service.
       for (const ing of input.ingresses) {
         for (const rule of ing.rules) {
-          const target = assetByKey.get(`service:${ing.clusterId}:${ing.namespace}:${rule.serviceName}`);
+          const target = assetByKey.get(
+            `service:${ing.clusterId}:${ing.namespace}:${rule.serviceName}`,
+          );
           if (target) {
             const port = typeof rule.servicePort === 'number' ? rule.servicePort : rule.servicePort;
-            edges.push(makeEdge(ing.id, target.id, 'routes_to', `${rule.host ?? '*'}${rule.path}→:${port}`));
+            edges.push(
+              makeEdge(ing.id, target.id, 'routes_to', `${rule.host ?? '*'}${rule.path}→:${port}`),
+            );
           }
         }
       }

@@ -24,13 +24,7 @@ export type UUID = string;
 /** ISO-8601 timestamp string with timezone offset (e.g. `2026-06-12T10:30:00Z`). */
 export type ISOTimestamp = string;
 
-export type Severity =
-  | 'critical'
-  | 'high'
-  | 'medium'
-  | 'low'
-  | 'info'
-  | 'unknown';
+export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unknown';
 
 export interface BaseEntity {
   id: UUID;

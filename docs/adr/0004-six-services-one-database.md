@@ -27,12 +27,14 @@ Adopt **Option 2: a single Postgres cluster with one schema per
 service**, with **no cross-schema foreign keys**.
 
 Each service:
+
 - Owns its schema and the tables in it.
 - Exposes data to other services only through its API.
 - Uses Row-Level Security for multi-tenant isolation within its
   schema.
 
-Migrate to **Option 1** (database-per-service) when *any* of:
+Migrate to **Option 1** (database-per-service) when _any_ of:
+
 - A service's contention affects another.
 - Compliance requires it (e.g. a tenant wants their data in a
   specific region).
@@ -57,20 +59,23 @@ Migrate to **Option 1** (database-per-service) when *any* of:
 ## Consequences
 
 ### Positive
+
 - Faster Sprint 1 velocity.
 - Clear migration path to true database-per-service.
 - Cross-team interference still prevented by API contracts and
   schema boundaries.
 
 ### Negative
-- *Logical* isolation is weaker than *physical* isolation. A
+
+- _Logical_ isolation is weaker than _physical_ isolation. A
   compromised DBA could in principle read across schemas (we
   mitigate with RLS, separate roles per service, and audit).
 - A noisy neighbour in one schema can affect another's connection
   pool (we mitigate with PgBouncer + per-service pool sizes).
 
 ### Risks
-- *Inertia*: we may defer the per-service migration indefinitely.
+
+- _Inertia_: we may defer the per-service migration indefinitely.
   Mitigation: review the trigger conditions quarterly.
 
 ## References

@@ -2,8 +2,8 @@
 
 > **Note:** This file is the **architecture and component complement**
 > to the top-level `frontend/README.md` (owned by GitOpsManager).
-> That file is the *how to run this thing*; this file is the
-> *how this thing is built*.
+> That file is the _how to run this thing_; this file is the
+> _how this thing is built_.
 
 **Owner:** UI/UX Engineer
 **Related docs:**
@@ -96,13 +96,13 @@ for the canonical palette and contrast guarantees.
 All five live in `src/components/security/` and are wired into
 existing routes plus one new route.
 
-| # | Component | Route | Source endpoint | Notes |
-|---|-----------|-------|------------------|-------|
-| 1 | `SbomViewer`       | `/sbom`, `/sbom/:sbom_id`         | `GET /api/sbom/:id`               | Virtualized with `react-window`. Filters: ecosystem, license, depth. Search by name. CycloneDX export. |
-| 2 | `VulnTimeline`     | `/vulnerabilities?view=timeline` | `GET /api/security/vuln-timeline?range=…` | Stacked area, 7d/30d/90d/1y selector. Accessible data-table fallback. |
-| 3 | `RiskHeatmap`      | `/dashboard` (collapsible)        | `GET /api/security/risk-heatmap` | Custom SVG grid. ARIA grid pattern. Arrow-key nav. Click → filter `/vulnerabilities`. |
-| 4 | `DependencyGraph`  | `/graph/:sbom_id?` (lazy-loaded)  | `GET /api/security/graph/:sbomId` | `reactflow`. Custom node type. Pan/zoom. Side panel. Esc closes. |
-| 5 | `SecurityScore`    | `/dashboard` (top)                | `GET /api/security/score`         | Composite (0-100) + 5 sub-metric tiles with sparklines. Band A-F. |
+| #   | Component         | Route                            | Source endpoint                           | Notes                                                                                                  |
+| --- | ----------------- | -------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1   | `SbomViewer`      | `/sbom`, `/sbom/:sbom_id`        | `GET /api/sbom/:id`                       | Virtualized with `react-window`. Filters: ecosystem, license, depth. Search by name. CycloneDX export. |
+| 2   | `VulnTimeline`    | `/vulnerabilities?view=timeline` | `GET /api/security/vuln-timeline?range=…` | Stacked area, 7d/30d/90d/1y selector. Accessible data-table fallback.                                  |
+| 3   | `RiskHeatmap`     | `/dashboard` (collapsible)       | `GET /api/security/risk-heatmap`          | Custom SVG grid. ARIA grid pattern. Arrow-key nav. Click → filter `/vulnerabilities`.                  |
+| 4   | `DependencyGraph` | `/graph/:sbom_id?` (lazy-loaded) | `GET /api/security/graph/:sbomId`         | `reactflow`. Custom node type. Pan/zoom. Side panel. Esc closes.                                       |
+| 5   | `SecurityScore`   | `/dashboard` (top)               | `GET /api/security/score`                 | Composite (0-100) + 5 sub-metric tiles with sparklines. Band A-F.                                      |
 
 ### Performance
 

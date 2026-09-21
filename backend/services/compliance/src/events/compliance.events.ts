@@ -72,7 +72,7 @@ export interface ComplianceEvidenceAttachedEvent {
   evidenceId: string;
   kind: 'screenshot' | 'log' | 'config' | 'attestation' | 'other';
   source: string; // 'sbom' | 'scan_report' | 'manual' | ...
-  ref: string;    // object store path
+  ref: string; // object store path
   contentHash: string;
   size: number;
 }

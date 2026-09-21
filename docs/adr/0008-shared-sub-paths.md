@@ -97,18 +97,18 @@ The `@aicc/shared` package exposes its public surface through
 {
   "name": "@aicc/shared",
   "exports": {
-    ".":             "./src/index.ts",                 // barrel — security + common + events
-    "./security":    "./src/security/index.ts",        // models + topics
-    "./security/models": "./src/security/models.ts",   // Zod schemas + types only
-    "./security/topics": "./src/security/topics.ts",   // topic constants + event interfaces
-    "./events":      "./src/events/index.ts",          // envelope + helper types
-    "./rbac":        "./src/rbac/index.ts",            // role constants + check helpers
-    "./errors":      "./src/errors/index.ts",          // AppError + RFC 7807 mapper
-    "./logger":      "./src/logger/index.ts",          // pino-based structured logger
-    "./metrics":     "./src/metrics/index.ts",         // prom-client wrapper + SLO helpers
-    "./auth":        "./src/auth/index.ts",            // JWT helpers (HS256 + RS256)
-    "./db":          "./src/db/index.ts"               // postgres pool + DAL helpers
-  }
+    ".": "./src/index.ts", // barrel — security + common + events
+    "./security": "./src/security/index.ts", // models + topics
+    "./security/models": "./src/security/models.ts", // Zod schemas + types only
+    "./security/topics": "./src/security/topics.ts", // topic constants + event interfaces
+    "./events": "./src/events/index.ts", // envelope + helper types
+    "./rbac": "./src/rbac/index.ts", // role constants + check helpers
+    "./errors": "./src/errors/index.ts", // AppError + RFC 7807 mapper
+    "./logger": "./src/logger/index.ts", // pino-based structured logger
+    "./metrics": "./src/metrics/index.ts", // prom-client wrapper + SLO helpers
+    "./auth": "./src/auth/index.ts", // JWT helpers (HS256 + RS256)
+    "./db": "./src/db/index.ts", // postgres pool + DAL helpers
+  },
 }
 ```
 
@@ -129,17 +129,17 @@ The `@aicc/shared` package exposes its public surface through
 
 ### Service-to-sub-path map (Sprint 2 snapshot)
 
-| Service                | Imports from `@aicc/shared`                                       |
-| ---------------------- | ----------------------------------------------------------------- |
-| `auth-service`         | `./auth`, `./events`, `./logger`, `./errors`                      |
-| `agent-service`        | `./auth`, `./events`, `./logger`, `./errors`, `./metrics`         |
-| `security-service`     | `./auth`, `./security`, `./security/topics`, `./events`, `./errors`, `./logger`, `./metrics`, `./rbac` |
-| `incident-service`     | `./auth`, `./events`, `./errors`, `./logger`                      |
-| `compliance-service`   | `./auth`, `./events`, `./errors`, `./logger`, `./rbac`             |
-| `integration-service`  | `./auth`, `./events`, `./errors`, `./logger`                      |
-| `sbom-pipeline` (4007) | `./security`, `./security/topics`, `./events`, `./logger`         |
-| `vuln-intel` (4008)    | `./security`, `./security/topics`, `./events`, `./logger`         |
-| `dependency-intel` (4009) | `./security`, `./security/topics`, `./events`, `./logger`      |
+| Service                   | Imports from `@aicc/shared`                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `auth-service`            | `./auth`, `./events`, `./logger`, `./errors`                                                           |
+| `agent-service`           | `./auth`, `./events`, `./logger`, `./errors`, `./metrics`                                              |
+| `security-service`        | `./auth`, `./security`, `./security/topics`, `./events`, `./errors`, `./logger`, `./metrics`, `./rbac` |
+| `incident-service`        | `./auth`, `./events`, `./errors`, `./logger`                                                           |
+| `compliance-service`      | `./auth`, `./events`, `./errors`, `./logger`, `./rbac`                                                 |
+| `integration-service`     | `./auth`, `./events`, `./errors`, `./logger`                                                           |
+| `sbom-pipeline` (4007)    | `./security`, `./security/topics`, `./events`, `./logger`                                              |
+| `vuln-intel` (4008)       | `./security`, `./security/topics`, `./events`, `./logger`                                              |
+| `dependency-intel` (4009) | `./security`, `./security/topics`, `./events`, `./logger`                                              |
 
 ### `turbo.json` (top of repo)
 
@@ -148,12 +148,12 @@ The `@aicc/shared` package exposes its public surface through
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["tsconfig.base.json", ".env"],
   "tasks": {
-    "build":  { "outputs": ["dist/**"],          "dependsOn": ["^build"] },
-    "lint":   { "outputs": [],                    "dependsOn": ["^build"] },
-    "test":   { "outputs": ["coverage/**"],       "dependsOn": ["^build"] },
-    "typecheck": { "outputs": [],                "dependsOn": ["^build"] },
-    "dev":    { "cache": false,                   "persistent": true }
-  }
+    "build": { "outputs": ["dist/**"], "dependsOn": ["^build"] },
+    "lint": { "outputs": [], "dependsOn": ["^build"] },
+    "test": { "outputs": ["coverage/**"], "dependsOn": ["^build"] },
+    "typecheck": { "outputs": [], "dependsOn": ["^build"] },
+    "dev": { "cache": false, "persistent": true },
+  },
 }
 ```
 
@@ -203,8 +203,8 @@ service needs to be developed in isolation.
 ## Rollout
 
 1. **Day 1 (this ADR lands):** `turbo.json` + `pnpm-workspace.yaml`
-   + `@aicc/shared#exports` map committed; `make build` etc.
-   switched to `turbo run`. Per-service `make dev-*` still works.
+   - `@aicc/shared#exports` map committed; `make build` etc.
+     switched to `turbo run`. Per-service `make dev-*` still works.
 2. **Day 2:** ESLint `no-restricted-imports` rule added to
    block deep imports.
 3. **Day 3+:** Vercel Remote Cache enabled in CI; SLO on PR

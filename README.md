@@ -66,7 +66,7 @@ contract.
 ## Why does it exist?
 
 Most security tools are a **list of findings**. The work of a security
-team is the *workflow* around the list: triage, correlation, remediation
+team is the _workflow_ around the list: triage, correlation, remediation
 tracking, evidence collection, audit answers. We build a system that
 **does the workflow**, not a fancier list.
 
@@ -75,30 +75,30 @@ tracking, evidence collection, audit answers. We build a system that
 
 ## Screens
 
-| Screen             | Path               | One-liner                                              |
-| ------------------ | ------------------ | ------------------------------------------------------ |
-| **Dashboard**      | `/`                | Live posture, open incidents, top risks, recent activity |
-| **Assets**         | `/assets`          | Inventory of code, images, services, IaC               |
-| **Incidents**      | `/incidents`       | Active and historical incidents, with playbooks        |
-| **Vulnerabilities**| `/vulnerabilities` | Findings, dedup, remediation tracking                  |
-| **SBOM**           | `/sbom`            | CycloneDX browser, diff, license and provenance        |
-| **Compliance**     | `/compliance`      | Posture per framework, evidence, attestations          |
-| **Integrations**   | `/integrations`    | GitHub, GitLab, scanners, etc.                         |
-| **Settings**       | `/settings`        | Users, roles, tenants, API tokens, audit access        |
+| Screen              | Path               | One-liner                                                |
+| ------------------- | ------------------ | -------------------------------------------------------- |
+| **Dashboard**       | `/`                | Live posture, open incidents, top risks, recent activity |
+| **Assets**          | `/assets`          | Inventory of code, images, services, IaC                 |
+| **Incidents**       | `/incidents`       | Active and historical incidents, with playbooks          |
+| **Vulnerabilities** | `/vulnerabilities` | Findings, dedup, remediation tracking                    |
+| **SBOM**            | `/sbom`            | CycloneDX browser, diff, license and provenance          |
+| **Compliance**      | `/compliance`      | Posture per framework, evidence, attestations            |
+| **Integrations**    | `/integrations`    | GitHub, GitLab, scanners, etc.                           |
+| **Settings**        | `/settings`        | Users, roles, tenants, API tokens, audit access          |
 
 ### Infrastructure Intelligence (Sprint 4)
 
-| Screen                       | Path                                | One-liner                                      |
-| ---------------------------- | ----------------------------------- | ---------------------------------------------- |
-| **Infrastructure Overview**  | `/infrastructure`                   | Fleet-wide rollup of clusters, workloads, runtime risk, cost |
-| **Cluster Explorer**         | `/infrastructure/clusters`          | Per-cluster nodes + namespaces + health        |
-| **Namespace Explorer**       | `/infrastructure/namespaces`        | Cross-cluster namespace rollup                 |
-| **Workload Explorer**        | `/infrastructure/workloads`         | Deployment / StatefulSet / DaemonSet list      |
-| **Runtime Security**         | `/infrastructure/runtime-security`  | Privileged, hostPath, root, capabilities, ...  |
-| **Topology Viewer**          | `/infrastructure/topology`          | Application / Service Map / Topology Graph     |
-| **Cost Intelligence**        | `/infrastructure/cost`              | Resource waste, over-provisioning, savings     |
-| **Infrastructure Health**    | `/infrastructure/health`            | Health rollup + issues + recommendations       |
-| **Infrastructure Incidents** | `/infrastructure/incidents`         | Incidents correlated to K8s / runtime / cost   |
+| Screen                       | Path                               | One-liner                                                    |
+| ---------------------------- | ---------------------------------- | ------------------------------------------------------------ |
+| **Infrastructure Overview**  | `/infrastructure`                  | Fleet-wide rollup of clusters, workloads, runtime risk, cost |
+| **Cluster Explorer**         | `/infrastructure/clusters`         | Per-cluster nodes + namespaces + health                      |
+| **Namespace Explorer**       | `/infrastructure/namespaces`       | Cross-cluster namespace rollup                               |
+| **Workload Explorer**        | `/infrastructure/workloads`        | Deployment / StatefulSet / DaemonSet list                    |
+| **Runtime Security**         | `/infrastructure/runtime-security` | Privileged, hostPath, root, capabilities, ...                |
+| **Topology Viewer**          | `/infrastructure/topology`         | Application / Service Map / Topology Graph                   |
+| **Cost Intelligence**        | `/infrastructure/cost`             | Resource waste, over-provisioning, savings                   |
+| **Infrastructure Health**    | `/infrastructure/health`           | Health rollup + issues + recommendations                     |
+| **Infrastructure Incidents** | `/infrastructure/incidents`        | Incidents correlated to K8s / runtime / cost                 |
 
 ## Architecture at a glance
 
@@ -209,19 +209,19 @@ make up
 
 ### Common commands
 
-| Command              | What it does                                |
-| -------------------- | ------------------------------------------- |
-| `make up`            | Bring the local stack up                    |
-| `make down`          | Tear the local stack down                   |
-| `make logs`          | Tail logs                                  |
-| `make lint`          | Lint everything                             |
-| `make typecheck`     | Type-check everything                       |
-| `make test`          | Run unit tests                              |
-| `make test-e2e`      | Run e2e tests                               |
-| `make db-migrate`    | Run database migrations                     |
-| `make db-shell`      | Open a psql shell                           |
-| `make release-dry`   | Dry-run a release                           |
-| `make help`          | List all targets                            |
+| Command            | What it does              |
+| ------------------ | ------------------------- |
+| `make up`          | Bring the local stack up  |
+| `make down`        | Tear the local stack down |
+| `make logs`        | Tail logs                 |
+| `make lint`        | Lint everything           |
+| `make typecheck`   | Type-check everything     |
+| `make test`        | Run unit tests            |
+| `make test-e2e`    | Run e2e tests             |
+| `make db-migrate`  | Run database migrations   |
+| `make db-shell`    | Open a psql shell         |
+| `make release-dry` | Dry-run a release         |
+| `make help`        | List all targets          |
 
 ## Documentation
 

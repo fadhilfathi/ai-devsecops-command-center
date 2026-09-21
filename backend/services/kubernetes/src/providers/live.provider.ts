@@ -7,8 +7,24 @@
  * the service (ponytail: plain `Map`, no TTL/eviction — add one if
  * clusters get added/removed frequently at runtime).
  */
-import { KubeConfig, CoreV1Api, AppsV1Api, NetworkingV1Api, VersionApi } from '@kubernetes/client-node';
-import type { Cluster, Namespace, Workload, Pod, Service, Ingress, Deployment, StatefulSet, DaemonSet } from '@aicc/models';
+import {
+  KubeConfig,
+  CoreV1Api,
+  AppsV1Api,
+  NetworkingV1Api,
+  VersionApi,
+} from '@kubernetes/client-node';
+import type {
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Ingress,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
+} from '@aicc/models';
 import type { Logger } from '@aicc/shared';
 import {
   UnsupportedError,
@@ -18,7 +34,15 @@ import {
   type TestConnectionResult,
 } from './registry.js';
 import type { ClusterConnection, ClusterRepository } from '../repositories/cluster.repository.js';
-import { mapNamespace, mapPod, mapService, mapIngress, mapDeployment, mapStatefulSet, mapDaemonSet } from './k8s-mappers.js';
+import {
+  mapNamespace,
+  mapPod,
+  mapService,
+  mapIngress,
+  mapDeployment,
+  mapStatefulSet,
+  mapDaemonSet,
+} from './k8s-mappers.js';
 
 export interface K8sClients {
   core: CoreV1Api;
@@ -137,7 +161,10 @@ export class LiveProvider implements KubernetesProvider {
       this.clusterNameFor(opts.clusterId, tenantId),
     ]);
     const res = opts.namespace
-      ? await core.listNamespacedPod({ namespace: opts.namespace, labelSelector: opts.labelSelector })
+      ? await core.listNamespacedPod({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
       : await core.listPodForAllNamespaces({ labelSelector: opts.labelSelector });
     return res.items.map((pod) => mapPod(tenantId, opts.clusterId, clusterName, pod));
   }
@@ -148,7 +175,10 @@ export class LiveProvider implements KubernetesProvider {
       this.clusterNameFor(opts.clusterId, tenantId),
     ]);
     const res = opts.namespace
-      ? await core.listNamespacedService({ namespace: opts.namespace, labelSelector: opts.labelSelector })
+      ? await core.listNamespacedService({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
       : await core.listServiceForAllNamespaces({ labelSelector: opts.labelSelector });
     return res.items.map((svc) => mapService(tenantId, opts.clusterId, clusterName, svc));
   }
@@ -159,7 +189,10 @@ export class LiveProvider implements KubernetesProvider {
       this.clusterNameFor(opts.clusterId, tenantId),
     ]);
     const res = opts.namespace
-      ? await networking.listNamespacedIngress({ namespace: opts.namespace, labelSelector: opts.labelSelector })
+      ? await networking.listNamespacedIngress({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
       : await networking.listIngressForAllNamespaces({ labelSelector: opts.labelSelector });
     return res.items.map((ing) => mapIngress(tenantId, opts.clusterId, clusterName, ing));
   }
@@ -170,7 +203,10 @@ export class LiveProvider implements KubernetesProvider {
       this.clusterNameFor(opts.clusterId, tenantId),
     ]);
     const res = opts.namespace
-      ? await apps.listNamespacedDeployment({ namespace: opts.namespace, labelSelector: opts.labelSelector })
+      ? await apps.listNamespacedDeployment({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
       : await apps.listDeploymentForAllNamespaces({ labelSelector: opts.labelSelector });
     return res.items.map((dep) => mapDeployment(tenantId, opts.clusterId, clusterName, dep));
   }
@@ -181,7 +217,10 @@ export class LiveProvider implements KubernetesProvider {
       this.clusterNameFor(opts.clusterId, tenantId),
     ]);
     const res = opts.namespace
-      ? await apps.listNamespacedStatefulSet({ namespace: opts.namespace, labelSelector: opts.labelSelector })
+      ? await apps.listNamespacedStatefulSet({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
       : await apps.listStatefulSetForAllNamespaces({ labelSelector: opts.labelSelector });
     return res.items.map((sts) => mapStatefulSet(tenantId, opts.clusterId, clusterName, sts));
   }
@@ -192,7 +231,10 @@ export class LiveProvider implements KubernetesProvider {
       this.clusterNameFor(opts.clusterId, tenantId),
     ]);
     const res = opts.namespace
-      ? await apps.listNamespacedDaemonSet({ namespace: opts.namespace, labelSelector: opts.labelSelector })
+      ? await apps.listNamespacedDaemonSet({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
       : await apps.listDaemonSetForAllNamespaces({ labelSelector: opts.labelSelector });
     return res.items.map((ds) => mapDaemonSet(tenantId, opts.clusterId, clusterName, ds));
   }

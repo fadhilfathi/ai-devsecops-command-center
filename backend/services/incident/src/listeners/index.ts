@@ -34,7 +34,10 @@ export async function buildEventListeners(deps: Deps): Promise<void> {
         severity: 'critical',
         relatedFindingIds: [event.data.findingId],
       });
-      deps.logger.warn({ incidentId: incident.id, findingId: event.data.findingId }, 'auto-opened incident');
+      deps.logger.warn(
+        { incidentId: incident.id, findingId: event.data.findingId },
+        'auto-opened incident',
+      );
     },
   );
 

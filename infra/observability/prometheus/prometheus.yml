@@ -31,7 +31,7 @@ rule_files:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ["alertmanager:9093"]
+        - targets: ['alertmanager:9093']
 
 # -----------------------------------------------------------------------------
 # Scrape configs
@@ -40,14 +40,14 @@ scrape_configs:
   # ---- Prometheus self-monitoring ----
   - job_name: prometheus
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ['localhost:9090']
         labels:
           service: prometheus
 
   # ---- OpenTelemetry Collector (metrics pipeline) ----
   - job_name: otel-collector
     static_configs:
-      - targets: ["otel-collector:8888"]
+      - targets: ['otel-collector:8888']
         labels:
           service: otel-collector
 
@@ -71,11 +71,11 @@ scrape_configs:
     metric_relabel_configs:
       # Drop high-cardinality exemplar-only noise
       - source_labels: [__name__]
-        regex: "go_gc_.*_seconds(_count)?"
+        regex: 'go_gc_.*_seconds(_count)?'
         action: drop
       # Drop histograms' _created series to keep cardinality bounded
       - source_labels: [__name__]
-        regex: ".+_created"
+        regex: '.+_created'
         action: drop
 
   # ---- Probes (health checks) ----
@@ -114,9 +114,9 @@ scrape_configs:
     metrics_path: /federate
     params:
       match[]:
-        - '{__name__=~"job:.+"}'                 # up{} per scrape job
-        - '{__name__=~"service:.+"}'             # aggregated service SLIs
-        - '{__name__=~"agent:.+"}'               # agent metrics
+        - '{__name__=~"job:.+"}' # up{} per scrape job
+        - '{__name__=~"service:.+"}' # aggregated service SLIs
+        - '{__name__=~"agent:.+"}' # agent metrics
         - '{__name__="service_error_budget_remaining_ratio"}'
     static_configs:
       - targets:
@@ -131,7 +131,7 @@ remote_write:
     write_relabel_configs:
       # Drop noisy low-value metrics from remote storage
       - source_labels: [__name__]
-        regex: "go_.*|process_.*|promhttp_.*"
+        regex: 'go_.*|process_.*|promhttp_.*'
         action: drop
     queue_config:
       capacity: 10000

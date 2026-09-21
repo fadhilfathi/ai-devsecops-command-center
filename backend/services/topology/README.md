@@ -19,11 +19,11 @@ can render any of them without re-wiring.
 
 ## Endpoints
 
-| Method | Path                                            | Description                          |
-| ------ | ----------------------------------------------- | ------------------------------------ |
-| GET    | `/v1/topology/graphs`                           | List saved topology graphs           |
-| GET    | `/v1/topology/service-map`                      | Service Map view                     |
-| GET    | `/v1/topology/application-graph`                | Application Graph view               |
-| GET    | `/v1/topology/graph`                            | Full Topology Graph view             |
-| GET    | `/v1/topology/namespace/:name`                  | Per-namespace view                   |
-| GET    | `/v1/topology/namespace-relationships`          | Cross-namespace edge list            |
+| Method | Path                                   | Description                |
+| ------ | -------------------------------------- | -------------------------- |
+| GET    | `/v1/topology/graphs`                  | List saved topology graphs |
+| GET    | `/v1/topology/service-map`             | Service Map view           |
+| GET    | `/v1/topology/application-graph`       | Application Graph view     |
+| GET    | `/v1/topology/graph`                   | Full Topology Graph view   |
+| GET    | `/v1/topology/namespace/:name`         | Per-namespace view         |
+| GET    | `/v1/topology/namespace-relationships` | Cross-namespace edge list  |

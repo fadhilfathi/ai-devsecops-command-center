@@ -155,19 +155,31 @@ function buildCorrelationKey(data: Record<string, unknown>): { key: string; subj
     return { key: `cve:${data.cveId}`, subject: `CVE ${data.cveId}` };
   }
   if (typeof data.imageDigest === 'string') {
-    return { key: `image:${data.imageDigest}`, subject: `image ${String(data.imageDigest).slice(0, 19)}…` };
+    return {
+      key: `image:${data.imageDigest}`,
+      subject: `image ${String(data.imageDigest).slice(0, 19)}…`,
+    };
   }
   if (typeof data.image === 'string') {
     return { key: `image:${data.image}`, subject: `image ${data.image}` };
   }
   if (typeof data.workload === 'string' && typeof data.namespace === 'string') {
-    return { key: `workload:${data.namespace}/${data.workload}`, subject: `${data.namespace}/${data.workload}` };
+    return {
+      key: `workload:${data.namespace}/${data.workload}`,
+      subject: `${data.namespace}/${data.workload}`,
+    };
   }
   if (typeof data.deployment === 'string' && typeof data.namespace === 'string') {
-    return { key: `workload:${data.namespace}/${data.deployment}`, subject: `${data.namespace}/${data.deployment}` };
+    return {
+      key: `workload:${data.namespace}/${data.deployment}`,
+      subject: `${data.namespace}/${data.deployment}`,
+    };
   }
   if (typeof data.pod === 'string' && typeof data.namespace === 'string') {
-    return { key: `pod:${data.namespace}/${data.pod}`, subject: `pod ${data.namespace}/${data.pod}` };
+    return {
+      key: `pod:${data.namespace}/${data.pod}`,
+      subject: `pod ${data.namespace}/${data.pod}`,
+    };
   }
   if (typeof data.namespace === 'string') {
     return { key: `ns:${data.namespace}`, subject: `namespace ${data.namespace}` };
@@ -194,11 +206,16 @@ const CAUSAL_ORDER: Record<CorrelationEventType, number> = {
   'health.recommendation': 5,
   'deployment.event': 4,
   'incident.report': 6,
-  'unknown': 99,
+  unknown: 99,
 };
 
 const SEVERITY_RANK: Record<Severity, number> = {
-  critical: 5, high: 4, medium: 3, low: 2, info: 1, unknown: 0,
+  critical: 5,
+  high: 4,
+  medium: 3,
+  low: 2,
+  info: 1,
+  unknown: 0,
 };
 
 function highestSeverity(events: CorrelationEvent[]): Severity {
@@ -211,15 +228,22 @@ function highestSeverity(events: CorrelationEvent[]): Severity {
 
 function chainTitle(events: CorrelationEvent[]): string {
   const types = Array.from(new Set(events.map((e) => e.type)));
-  const root = events.find((e) => e.type === 'security.finding' || e.type === 'sbom.finding') ?? events[0];
+  const root =
+    events.find((e) => e.type === 'security.finding' || e.type === 'sbom.finding') ?? events[0];
   if (!root) return 'Incident chain';
   return `Incident: ${root.subject} (${types.join(' → ')})`;
 }
 
 function chainSummary(events: CorrelationEvent[], edges: CorrelationEdge[]): string {
-  const order = [...events].sort((a, b) => CAUSAL_ORDER[a.type] - CAUSAL_ORDER[b.type] || a.occurredAt.localeCompare(b.occurredAt));
-  return order.map((e) => `• ${new Date(e.occurredAt).toISOString()}  ${e.type} — ${e.message}`).join('\n')
-    + (edges.length ? `\n${edges.length} causal edge(s) identified.` : '');
+  const order = [...events].sort(
+    (a, b) =>
+      CAUSAL_ORDER[a.type] - CAUSAL_ORDER[b.type] || a.occurredAt.localeCompare(b.occurredAt),
+  );
+  return (
+    order
+      .map((e) => `• ${new Date(e.occurredAt).toISOString()}  ${e.type} — ${e.message}`)
+      .join('\n') + (edges.length ? `\n${edges.length} causal edge(s) identified.` : '')
+  );
 }
 
 export function buildCorrelationEngine(): CorrelationEngine {
@@ -254,12 +278,16 @@ export function buildCorrelationEngine(): CorrelationEngine {
       for (const [key, group] of buckets.entries()) {
         if (group.length < 2) continue;
         // Sort by causal order, then by occurredAt.
-        const ordered = [...group].sort((a, b) => CAUSAL_ORDER[a.type] - CAUSAL_ORDER[b.type] || a.occurredAt.localeCompare(b.occurredAt));
+        const ordered = [...group].sort(
+          (a, b) =>
+            CAUSAL_ORDER[a.type] - CAUSAL_ORDER[b.type] || a.occurredAt.localeCompare(b.occurredAt),
+        );
         const chainEdges: CorrelationEdge[] = [];
         for (let i = 1; i < ordered.length; i++) {
           const src = ordered[i - 1]!;
           const tgt = ordered[i]!;
-          const kind: CorrelationEdge['kind'] = CAUSAL_ORDER[src.type] < CAUSAL_ORDER[tgt.type] ? 'caused_by' : 'preceded_by';
+          const kind: CorrelationEdge['kind'] =
+            CAUSAL_ORDER[src.type] < CAUSAL_ORDER[tgt.type] ? 'caused_by' : 'preceded_by';
           const weight = Math.abs(CAUSAL_ORDER[tgt.type] - CAUSAL_ORDER[src.type]);
           const edge: CorrelationEdge = {
             id: randomUUID(),

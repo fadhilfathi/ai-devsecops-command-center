@@ -1,5 +1,5 @@
-import clsx from "clsx";
-import type { ReactNode } from "react";
+import clsx from 'clsx';
+import type { ReactNode } from 'react';
 
 export type Column<T> = {
   key: string;
@@ -34,7 +34,7 @@ export function DataTable<T>({
   if (rows.length === 0) {
     return (
       <div className="aion-card grid place-items-center p-10 text-sm text-aion-muted">
-        {empty ?? "No results."}
+        {empty ?? 'No results.'}
       </div>
     );
   }
@@ -48,10 +48,7 @@ export function DataTable<T>({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={clsx(
-                    "whitespace-nowrap px-4 py-2 font-medium",
-                    c.headerClassName
-                  )}
+                  className={clsx('whitespace-nowrap px-4 py-2 font-medium', c.headerClassName)}
                 >
                   {c.header}
                 </th>
@@ -64,12 +61,12 @@ export function DataTable<T>({
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={clsx(
-                  "border-b border-aion-border/60 last:border-0",
-                  onRowClick && "cursor-pointer hover:bg-aion-surface2"
+                  'border-b border-aion-border/60 last:border-0',
+                  onRowClick && 'cursor-pointer hover:bg-aion-surface2',
                 )}
               >
                 {columns.map((c) => (
-                  <td key={c.key} className={clsx("px-4 py-2 align-middle", c.className)}>
+                  <td key={c.key} className={clsx('px-4 py-2 align-middle', c.className)}>
                     {c.cell(row)}
                   </td>
                 ))}

@@ -11,7 +11,7 @@ deciders: GitOpsManager
 We are starting a new system. We will face many decisions that have lasting
 impact on how the system is shaped. Without a record, we will re-litigate
 the same questions every time someone new joins, and we will lose the
-*why* of past choices.
+_why_ of past choices.
 
 ## Decision
 
@@ -35,15 +35,19 @@ supersedes: <optional ADR number>
 # <number> — <title>
 
 ## Context
+
 What is the issue? What forces are at play?
 
 ## Decision
+
 What did we choose?
 
 ## Consequences
+
 What becomes easier? What becomes harder?
 
 ## Alternatives considered
+
 What else did we look at, and why didn't we pick it?
 ```
 

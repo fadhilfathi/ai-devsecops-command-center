@@ -22,12 +22,8 @@
       "version": "4.17.21",
       "purl": "pkg:npm/lodash@4.17.21",
       "cpe": "cpe:2.3:a:lodash:lodash:4.17.21:*:*:*:*:*:*:*",
-      "licenses": [
-        { "license": { "id": "MIT" } }
-      ],
-      "hashes": [
-        { "alg": "SHA-1", "content": "679591c564c3bffaae8454cf0b3df370c3d6911c" }
-      ]
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "hashes": [{ "alg": "SHA-1", "content": "679591c564c3bffaae8454cf0b3df370c3d6911c" }]
     }
   ],
   "dependencies": [

@@ -108,7 +108,10 @@ export function recordAudit(record: AuditRecord): void {
   try {
     auditLogEmission.inc({ service: 'compliance-service', result: record.result });
   } catch (err) {
-    log.error({ err, auditKind: record.auditKind, subjectId: record.subjectId }, 'audit counter inc failed');
+    log.error(
+      { err, auditKind: record.auditKind, subjectId: record.subjectId },
+      'audit counter inc failed',
+    );
   }
 
   // 2. Structured log line (the audit trail). Shape is locked with SRE per
@@ -146,7 +149,10 @@ export function recordAudit(record: AuditRecord): void {
  *     throw err;
  *   }
  */
-export async function withAudit<T>(record: Omit<AuditRecord, 'result'>, fn: () => Promise<T>): Promise<T> {
+export async function withAudit<T>(
+  record: Omit<AuditRecord, 'result'>,
+  fn: () => Promise<T>,
+): Promise<T> {
   try {
     const out = await fn();
     recordAudit({ ...record, result: 'success' });

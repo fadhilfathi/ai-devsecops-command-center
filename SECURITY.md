@@ -15,8 +15,8 @@ for maintainers contributing to the codebase.
 1. [Supported versions](#supported-versions)
 2. [Vulnerability disclosure](#vulnerability-disclosure)
 3. [Reporting process](#reporting-process)
-4. [Response targets (SLA)](#response-targets-sla) — *auto-managed*
-5. [Automation contract](#automation-contract) — *auto-managed*
+4. [Response targets (SLA)](#response-targets-sla) — _auto-managed_
+5. [Automation contract](#automation-contract) — _auto-managed_
 6. [Hardening baseline](#hardening-baseline)
 7. [Acknowledgements](#acknowledgements)
 
@@ -29,15 +29,17 @@ on `main` plus the two prior minor releases receive security
 backports. Anything older is end-of-life (EOL) and will not receive
 patches.
 
-| Release line | Status            | Security updates |
-| ------------ | ----------------- | ---------------- |
-| `main`       | Active development| Yes              |
-| `0.1.x`      | Supported         | Yes              |
-| `0.0.x`      | EOL (pre-alpha)   | No               |
+| Release line | Status             | Security updates |
+| ------------ | ------------------ | ---------------- |
+| `main`       | Active development | Yes              |
+| `0.1.x`      | Supported          | Yes              |
+| `0.0.x`      | EOL (pre-alpha)    | No               |
 
 <!-- BEGIN:auto:supported-versions -->
-> *This row is auto-generated from the latest GitHub release tags.
-> Source: `.github/workflows/security.yml` job `sync-supported-versions`.*
+
+> _This row is auto-generated from the latest GitHub release tags.
+> Source: `.github/workflows/security.yml` job `sync-supported-versions`._
+
 <!-- END:auto:supported-versions -->
 
 When we cut `0.2.0`, `0.0.x` will move to EOL and a new row will
@@ -78,8 +80,8 @@ pre-announce a fix date to downstream consumers.
 
 **Fallback:** Email `security@ai-devsecops-command-center.example`
 (GPG key: see [`docs/security/pgp-key.asc`](docs/security/pgp-key.asc)
-when published). *Replace `example` with the real domain once DNS
-is live.*
+when published). _Replace `example` with the real domain once DNS
+is live._
 
 **Do NOT:**
 
@@ -119,16 +121,17 @@ Please include as much of the following as you can:
 ## Response targets (SLA)
 
 <!-- BEGIN:auto:sla -->
-> *This SLA table is auto-generated from `.github/workflows/security.yml`
+
+> _This SLA table is auto-generated from `.github/workflows/security.yml`
 > job `sync-sla`. To change a target, update the workflow constants
-> and the bot will re-render this block. Last sync: 2026-06-12.*
+> and the bot will re-render this block. Last sync: 2026-06-12._
 
 | Severity | Acknowledge | Triage complete | Patch released | Public disclosure |
 | -------- | ----------- | --------------- | -------------- | ----------------- |
-| Critical | ≤ 24 h      | ≤ 48 h          | ≤ 7 d          | ≤ 90 d from ack  |
-| High     | ≤ 48 h      | ≤ 5 d           | ≤ 30 d         | ≤ 90 d from ack  |
-| Medium   | ≤ 5 d       | ≤ 15 d          | ≤ 60 d         | ≤ 90 d from ack  |
-| Low      | ≤ 10 d      | ≤ 30 d          | Next minor     | ≤ 90 d from ack  |
+| Critical | ≤ 24 h      | ≤ 48 h          | ≤ 7 d          | ≤ 90 d from ack   |
+| High     | ≤ 48 h      | ≤ 5 d           | ≤ 30 d         | ≤ 90 d from ack   |
+| Medium   | ≤ 5 d       | ≤ 15 d          | ≤ 60 d         | ≤ 90 d from ack   |
+| Low      | ≤ 10 d      | ≤ 30 d          | Next minor     | ≤ 90 d from ack   |
 
 Severity bands are mapped from CVSS v3.1 base scores:
 
@@ -136,6 +139,7 @@ Severity bands are mapped from CVSS v3.1 base scores:
 - **High:** 7.0 – 8.9
 - **Medium:** 4.0 – 6.9
 - **Low:** 0.1 – 3.9
+
 <!-- END:auto:sla -->
 
 These are **target** windows, not hard guarantees. We will report
@@ -146,19 +150,20 @@ on missed SLAs in our quarterly transparency report.
 ## Automation contract
 
 <!-- BEGIN:auto:automation -->
-> *This section is auto-generated from `.github/workflows/security.yml`
-> and the runbook at [`docs/runbooks/security-automation.md`](docs/runbooks/security-automation.md).*
+
+> _This section is auto-generated from `.github/workflows/security.yml`
+> and the runbook at [`docs/runbooks/security-automation.md`](docs/runbooks/security-automation.md)._
 
 The following GitOps workflows are owned by the GitOpsManager role
 and operate on this repository:
 
-| Workflow                                       | Trigger                            | Action                                           |
-| ---------------------------------------------- | ---------------------------------- | ------------------------------------------------ |
-| `.github/workflows/security.yml` (job `sbom-commit`) | push to `main` / daily 03:00 UTC  | Generates CycloneDX + SPDX SBOMs and commits them to [`security/sboms/`](security/sboms/) |
-| `.github/workflows/security.yml` (job `vuln-report`)  | `security.vulnerability.detected.v1` event | Appends findings to [`security/vulns/<date>.json`](security/vulns/) (NDJSON) |
-| `.github/workflows/security.yml` (job `weekly-digest`) | Mondays 06:00 UTC                 | Aggregates the prior 7 days into [`security/vulns/weekly-<ISO-week>.md`](security/vulns/) |
-| `.github/workflows/security-issue.yml`          | `repository_dispatch` (type `critical-cve-detected`) | Opens a deduplicated GitHub issue labelled `security` + `severity:critical` |
-| `.github/workflows/release.yml` (job `attach-sbom`)  | `git tag v*.*.*`                  | Attaches the latest SBOM artifacts to the GitHub Release |
+| Workflow                                               | Trigger                                              | Action                                                                                    |
+| ------------------------------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `.github/workflows/security.yml` (job `sbom-commit`)   | push to `main` / daily 03:00 UTC                     | Generates CycloneDX + SPDX SBOMs and commits them to [`security/sboms/`](security/sboms/) |
+| `.github/workflows/security.yml` (job `vuln-report`)   | `security.vulnerability.detected.v1` event           | Appends findings to [`security/vulns/<date>.json`](security/vulns/) (NDJSON)              |
+| `.github/workflows/security.yml` (job `weekly-digest`) | Mondays 06:00 UTC                                    | Aggregates the prior 7 days into [`security/vulns/weekly-<ISO-week>.md`](security/vulns/) |
+| `.github/workflows/security-issue.yml`                 | `repository_dispatch` (type `critical-cve-detected`) | Opens a deduplicated GitHub issue labelled `security` + `severity:critical`               |
+| `.github/workflows/release.yml` (job `attach-sbom`)    | `git tag v*.*.*`                                     | Attaches the latest SBOM artifacts to the GitHub Release                                  |
 
 All automation operates under the `github-actions[bot]` identity
 with the minimum required `permissions:` block declared in each
@@ -202,12 +207,12 @@ version).
 
 We thank the following reporters and projects (most recent first):
 
-- *Awaiting first coordinated disclosure report.*
+- _Awaiting first coordinated disclosure report._
 
 If you report a vulnerability and would like to be credited here,
 indicate so in your report. Otherwise we will anonymise the entry.
 
 ---
 
-*This document is licensed under
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).*
+_This document is licensed under
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)._

@@ -141,13 +141,13 @@ Open <http://localhost:5173> for the UI and <http://localhost:3001> for Grafana
 
 ## Testing requirements
 
-| Layer        | Tool             | Min coverage (line) |
-| ------------ | ---------------- | ------------------- |
-| Backend      | Vitest           | 80%                 |
-| Frontend     | Vitest + RTL     | 70%                 |
-| Agents       | Vitest           | 80%                 |
-| E2E          | Playwright       | critical paths      |
-| Contracts    | Pact / schemas   | n/a (must be green) |
+| Layer     | Tool           | Min coverage (line) |
+| --------- | -------------- | ------------------- |
+| Backend   | Vitest         | 80%                 |
+| Frontend  | Vitest + RTL   | 70%                 |
+| Agents    | Vitest         | 80%                 |
+| E2E       | Playwright     | critical paths      |
+| Contracts | Pact / schemas | n/a (must be green) |
 
 A PR that **drops** overall coverage by more than 1 percentage point requires
 a justification in the PR description.

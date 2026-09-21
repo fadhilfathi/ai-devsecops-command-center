@@ -61,9 +61,7 @@ function pickCluster<T>(clusters: Cluster[], requested: string | undefined): T {
   // The list calls share the same shape: a "subject" cluster. We
   // return the matching cluster, or the first one if only one is
   // available, or throw 404.
-  const found = requested
-    ? clusters.find((c) => c.id === requested)
-    : clusters[0];
+  const found = requested ? clusters.find((c) => c.id === requested) : clusters[0];
   if (!found) {
     const e = new Error('no cluster available for this tenant') as Error & { statusCode?: number };
     e.statusCode = 404;
@@ -101,7 +99,10 @@ async function getProvider(
   return p;
 }
 
-export const buildKubernetesRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildKubernetesRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, clusters, providers, bus } = opts;
 
   // ---- providers (auxiliary) -------------------------------------------

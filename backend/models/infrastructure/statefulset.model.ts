@@ -9,24 +9,19 @@
 import { z } from 'zod';
 import { WorkloadSchema } from './workload.model.js';
 
-export const StatefulSetUpdateStrategySchema = z.enum([
-  'rolling_update',
-  'on_delete',
-  'in_place',
-]);
+export const StatefulSetUpdateStrategySchema = z.enum(['rolling_update', 'on_delete', 'in_place']);
 export type StatefulSetUpdateStrategy = z.infer<typeof StatefulSetUpdateStrategySchema>;
 
-export const PodManagementPolicySchema = z.enum([
-  'ordered_ready',
-  'parallel',
-]);
+export const PodManagementPolicySchema = z.enum(['ordered_ready', 'parallel']);
 export type PodManagementPolicy = z.infer<typeof PodManagementPolicySchema>;
 
 export const VolumeClaimTemplateSchema = z.object({
   name: z.string().min(1),
   storageClassName: z.string().optional(),
   sizeBytes: z.number().int().nonnegative(),
-  accessModes: z.array(z.enum(['ReadWriteOnce', 'ReadOnlyMany', 'ReadWriteMany'])).default(['ReadWriteOnce']),
+  accessModes: z
+    .array(z.enum(['ReadWriteOnce', 'ReadOnlyMany', 'ReadWriteMany']))
+    .default(['ReadWriteOnce']),
 });
 export type VolumeClaimTemplate = z.infer<typeof VolumeClaimTemplateSchema>;
 

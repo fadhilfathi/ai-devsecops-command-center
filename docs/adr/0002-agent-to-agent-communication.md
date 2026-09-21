@@ -51,30 +51,33 @@ case" is:
 - **Failure isolation.** A direct call from A to B makes A's success
   depend on B's availability. With the bus, A succeeds as soon as it
   emits the handoff; B can be down, retried, or replaced.
-- **Bounded blast radius.** The bus is the *only* surface where agent
+- **Bounded blast radius.** The bus is the _only_ surface where agent
   authority is exercised (via the proposal pipeline). Adding a new
   communication channel would expand the threat model.
 
 ## Consequences
 
 ### Positive
+
 - Cleaner architecture; agents are truly independent workers.
 - Strong audit trail; every cross-agent action is an event.
 - Easier to test (record/replay the bus).
 - Lower coupling → easier to scale agents independently.
 
 ### Negative
+
 - Higher latency for some interactions (one event hop instead of
   an in-process call). Acceptable for our use cases.
 - Slightly more complex debugging: the call stack is spread across
   multiple runs and the bus.
 
 ### Risks
-- *Latent "telephone game" between agents* if the snapshot grows
+
+- _Latent "telephone game" between agents_ if the snapshot grows
   stale. Mitigation: snapshots are small, structured, and include
   a `snapshot_version`; consumers fetch fresh data via tools when
   they need it.
-- *Lost handoff events* would orphan a case. Mitigation: handoff
+- _Lost handoff events_ would orphan a case. Mitigation: handoff
   events use the outbox pattern; consumers use idempotent
   processing and re-delivery.
 

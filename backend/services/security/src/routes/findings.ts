@@ -17,7 +17,10 @@ const UpdateStatusSchema = z.object({
   status: z.enum(['open', 'triaging', 'in_progress', 'resolved', 'suppressed']),
 });
 
-export const buildFindingRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildFindingRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, findings } = opts;
 
   server.get('/v1/findings', async (req) => {

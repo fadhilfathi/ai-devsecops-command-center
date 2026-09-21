@@ -26,11 +26,11 @@ const ROLE_ALIASES: Record<string, UserRole> = {
   admin: 'platform_admin',
   'platform-admin': 'platform_admin',
   'security-engineer': 'security_engineer',
-  'security_analyst': 'security_analyst',
+  security_analyst: 'security_analyst',
   'security-analyst': 'security_analyst',
   'compliance-officer': 'compliance_officer',
-  'developer': 'developer',
-  'viewer': 'viewer',
+  developer: 'developer',
+  viewer: 'viewer',
 };
 
 export function normaliseRole(input: string): UserRole {
@@ -38,8 +38,14 @@ export function normaliseRole(input: string): UserRole {
   const mapped = ROLE_ALIASES[lower];
   if (mapped) return mapped;
   // Fall back to the canonical form if it already matches
-  if (lower === 'platform_admin' || lower === 'security_engineer' || lower === 'security_analyst' ||
-      lower === 'compliance_officer' || lower === 'developer' || lower === 'viewer') {
+  if (
+    lower === 'platform_admin' ||
+    lower === 'security_engineer' ||
+    lower === 'security_analyst' ||
+    lower === 'compliance_officer' ||
+    lower === 'developer' ||
+    lower === 'viewer'
+  ) {
     return lower as UserRole;
   }
   throw new AppError('VALIDATION_ERROR', `Unknown role: ${input}`);
@@ -83,10 +89,9 @@ export const requireTenantMatch: preHandlerHookHandler = async (req: FastifyRequ
   const headerTenant = req.headers['x-tenant-id'] as string | undefined;
   if (headerTenant && headerTenant !== req.user.tenantId) {
     authFailureTotal.inc(withService({ route, reason: 'tenant_mismatch' }));
-    throw new AppError(
-      'FORBIDDEN',
-      'Token tenantId does not match x-tenant-id header',
-      { statusCode: 403, details: { tokenTenant: req.user.tenantId, headerTenant } },
-    );
+    throw new AppError('FORBIDDEN', 'Token tenantId does not match x-tenant-id header', {
+      statusCode: 403,
+      details: { tokenTenant: req.user.tenantId, headerTenant },
+    });
   }
 };

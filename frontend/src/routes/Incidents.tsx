@@ -1,18 +1,18 @@
-import { ShieldAlert, Plus } from "lucide-react";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { fmtDate, titleCase } from "@/lib/format";
-import type { Incident } from "@/types";
+import { ShieldAlert, Plus } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { fmtDate, titleCase } from '@/lib/format';
+import type { Incident } from '@/types';
 
 const columns: Column<Incident>[] = [
   {
-    key: "id",
-    header: "Incident",
+    key: 'id',
+    header: 'Incident',
     cell: (i) => (
       <div>
         <div className="font-medium text-aion-text">{i.id}</div>
@@ -21,21 +21,21 @@ const columns: Column<Incident>[] = [
     ),
   },
   {
-    key: "sev",
-    header: "Severity",
+    key: 'sev',
+    header: 'Severity',
     cell: (i) => <Badge severity={i.severity}>{titleCase(i.severity)}</Badge>,
   },
   {
-    key: "status",
-    header: "Status",
+    key: 'status',
+    header: 'Status',
     cell: (i) => (
       <Badge
         variant={
-          i.status === "resolved"
-            ? "ok"
-            : i.status === "open" || i.status === "investigating"
-              ? "danger"
-              : "warn"
+          i.status === 'resolved'
+            ? 'ok'
+            : i.status === 'open' || i.status === 'investigating'
+              ? 'danger'
+              : 'warn'
         }
       >
         {titleCase(i.status)}
@@ -43,23 +43,23 @@ const columns: Column<Incident>[] = [
     ),
   },
   {
-    key: "source",
-    header: "Source",
+    key: 'source',
+    header: 'Source',
     cell: (i) => <span className="aion-mono">{i.source}</span>,
   },
   {
-    key: "assignee",
-    header: "Assignee",
+    key: 'assignee',
+    header: 'Assignee',
     cell: (i) => <span className="aion-mono">{i.assignee}</span>,
   },
   {
-    key: "created",
-    header: "Created",
+    key: 'created',
+    header: 'Created',
     cell: (i) => <span className="aion-mono">{fmtDate(i.createdAt)}</span>,
   },
   {
-    key: "updated",
-    header: "Updated",
+    key: 'updated',
+    header: 'Updated',
     cell: (i) => <span className="aion-mono">{fmtDate(i.updatedAt)}</span>,
   },
 ];
@@ -72,7 +72,7 @@ export function IncidentsPage() {
       <PageHeader
         title="Incidents"
         subtitle="Active and historical security incidents. Triage, investigate, and resolve from here."
-        breadcrumbs={[{ label: "AionUi" }, { label: "Incidents" }]}
+        breadcrumbs={[{ label: 'AionUi' }, { label: 'Incidents' }]}
         actions={
           <Button size="sm" variant="primary">
             <Plus className="h-3.5 w-3.5" /> Declare incident
@@ -81,7 +81,7 @@ export function IncidentsPage() {
       />
 
       {/* Active incidents callout */}
-      {(data ?? []).filter((i) => i.status !== "resolved").length > 0 && (
+      {(data ?? []).filter((i) => i.status !== 'resolved').length > 0 && (
         <Card className="mb-4 border-severity-critical/40">
           <Card.Header
             title={
@@ -92,13 +92,13 @@ export function IncidentsPage() {
             }
             actions={
               <Badge variant="danger">
-                {(data ?? []).filter((i) => i.status !== "resolved").length} active
+                {(data ?? []).filter((i) => i.status !== 'resolved').length} active
               </Badge>
             }
           />
           <Card.Body className="space-y-3">
             {(data ?? [])
-              .filter((i) => i.status !== "resolved")
+              .filter((i) => i.status !== 'resolved')
               .map((i) => (
                 <div
                   key={i.id}

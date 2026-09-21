@@ -11,6 +11,7 @@
  * `@aicc/auth.verifyJwt()` and a JWKS fetch from auth-service.
  */
 import type { FastifyInstance, FastifyRequest, onRequestHookHandler } from 'fastify';
+import { createHmac, createVerify, timingSafeEqual } from 'node:crypto';
 import { AppError, type UserRole } from '@aicc/shared';
 import { authFailureTotal, withService } from '../services/metrics.js';
 
@@ -34,12 +35,14 @@ function base64UrlDecode(input: string): Buffer {
 }
 
 function base64UrlEncode(buf: Buffer | string): string {
-  return Buffer.from(buf).toString('base64').replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  return Buffer.from(buf)
+    .toString('base64')
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');
 }
 
 function hmacSha256(key: string, data: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createHmac } = require('node:crypto') as typeof import('node:crypto');
   return base64UrlEncode(createHmac('sha256', key).update(data).digest());
 }
 
@@ -47,13 +50,19 @@ function hmacSha256(key: string, data: string): string {
  * Verify a JWT. For Sprint 2 dev we use HS256. RS256 with JWKS is the
  * Sprint 2.1 production path.
  */
-function verifyJwt(token: string, opts: { alg: 'HS256' | 'RS256'; secret?: string; publicKey?: string; issuer: string; audience: string }): AuthUser {
+function verifyJwt(
+  token: string,
+  opts: {
+    alg: 'HS256' | 'RS256';
+    secret?: string;
+    publicKey?: string;
+    issuer: string;
+    audience: string;
+  },
+): AuthUser {
   const parts = token.split('.');
   if (parts.length !== 3) throw new AppError('UNAUTHENTICATED', 'Malformed token');
   const [headerB64, payloadB64, sigB64] = parts as [string, string, string];
-
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createVerify, timingSafeEqual } = require('node:crypto') as typeof import('node:crypto');
 
   // 1. Verify signature
   if (opts.alg === 'HS256') {
@@ -74,16 +83,32 @@ function verifyJwt(token: string, opts: { alg: 'HS256' | 'RS256'; secret?: strin
   }
 
   // 2. Decode header + payload
-  const header = JSON.parse(base64UrlDecode(headerB64).toString('utf8')) as { alg?: string; typ?: string };
-  if (header.alg !== opts.alg) throw new AppError('UNAUTHENTICATED', `Unexpected alg: ${header.alg}`);
+  const header = JSON.parse(base64UrlDecode(headerB64).toString('utf8')) as {
+    alg?: string;
+    typ?: string;
+  };
+  if (header.alg !== opts.alg)
+    throw new AppError('UNAUTHENTICATED', `Unexpected alg: ${header.alg}`);
 
-  const payload = JSON.parse(base64UrlDecode(payloadB64).toString('utf8')) as Record<string, unknown> & {
-    iss?: string; aud?: string | string[]; exp?: number; sub?: string;
-    email?: string; role?: UserRole; tenantId?: string;
+  const payload = JSON.parse(base64UrlDecode(payloadB64).toString('utf8')) as Record<
+    string,
+    unknown
+  > & {
+    iss?: string;
+    aud?: string | string[];
+    exp?: number;
+    sub?: string;
+    email?: string;
+    role?: UserRole;
+    tenantId?: string;
   };
 
   if (payload.iss !== opts.issuer) throw new AppError('UNAUTHENTICATED', 'Bad issuer');
-  if (Array.isArray(payload.aud) ? !payload.aud.includes(opts.audience) : payload.aud !== opts.audience) {
+  if (
+    Array.isArray(payload.aud)
+      ? !payload.aud.includes(opts.audience)
+      : payload.aud !== opts.audience
+  ) {
     throw new AppError('UNAUTHENTICATED', 'Bad audience');
   }
   if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {

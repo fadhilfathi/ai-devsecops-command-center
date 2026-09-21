@@ -18,12 +18,12 @@ services:
       POSTGRES_PASSWORD: aicc
       POSTGRES_DB: aicc
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - aicc_pgdata:/var/lib/postgresql/data
       - ./init/postgres-databases.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aicc -d aicc"]
+      test: ['CMD-SHELL', 'pg_isready -U aicc -d aicc']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -32,13 +32,13 @@ services:
     image: redis:7-alpine
     container_name: aicc-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - aicc_redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -47,12 +47,12 @@ services:
     image: nats:2.10-alpine
     container_name: aicc-nats
     restart: unless-stopped
-    command: ["-js"]   # JetStream enabled
+    command: ['-js'] # JetStream enabled
     ports:
-      - "4222:4222"
-      - "8222:8222"    # management UI
+      - '4222:4222'
+      - '8222:8222' # management UI
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8222/healthz']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -87,12 +87,12 @@ services:
       NATS_URL: nats://nats:4222
       SYFT_BIN: /usr/local/bin/syft
     ports:
-      - "4007:4007"   # API
-      - "9407:9090"   # management (/healthz, /readyz, /startz, /metrics)
+      - '4007:4007' # API
+      - '9407:9090' # management (/healthz, /readyz, /startz, /metrics)
     volumes:
       - sbom_data:/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:9090/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -106,7 +106,7 @@ services:
       - aicc-net
     labels:
       ai-devsecops.io/service: sbom-pipeline
-      ai-devsecops.io/readyz: "http://sbom-pipeline:9090/readyz"
+      ai-devsecops.io/readyz: 'http://sbom-pipeline:9090/readyz'
 
   vuln-intel:
     build:
@@ -128,12 +128,12 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       OSV_API_URL: https://api.osv.dev
     ports:
-      - "4008:4008"
-      - "9408:9090"
+      - '4008:4008'
+      - '9408:9090'
     volumes:
       - vuln_intel_cache:/cache
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:9090/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -147,7 +147,7 @@ services:
       - aicc-net
     labels:
       ai-devsecops.io/service: vuln-intel
-      ai-devsecops.io/readyz: "http://vuln-intel:9090/readyz"
+      ai-devsecops.io/readyz: 'http://vuln-intel:9090/readyz'
 
   dependency-intel:
     build:
@@ -167,10 +167,10 @@ services:
       NATS_URL: nats://nats:4222
       NEO4J_URL: bolt://neo4j:7687
     ports:
-      - "4009:4009"
-      - "9409:9090"
+      - '4009:4009'
+      - '9409:9090'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9090/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:9090/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -184,7 +184,7 @@ services:
       - aicc-net
     labels:
       ai-devsecops.io/service: dependency-intel
-      ai-devsecops.io/readyz: "http://dependency-intel:9090/readyz"
+      ai-devsecops.io/readyz: 'http://dependency-intel:9090/readyz'
 
 volumes:
   aicc_pgdata:

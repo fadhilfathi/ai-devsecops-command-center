@@ -1,6 +1,7 @@
 packages:
-  - "frontend"
-  - "backend/services/*"
-  - "backend/packages/*"
-  - "backend/common/*"
-  - "backend/models"
+  - 'frontend'
+  - 'backend/services/*'
+  - 'backend/packages/*'
+  - 'backend/common/*'
+  - 'backend/models'
+  - 'tests/contracts'

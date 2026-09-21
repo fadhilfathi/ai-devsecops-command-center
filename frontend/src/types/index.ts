@@ -9,22 +9,17 @@
  * and rendered by the 5 visualizations in S2.6.
  */
 
-export type Severity = "critical" | "high" | "medium" | "low" | "info";
+export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
 export type AssetKind =
-  | "repository"
-  | "service"
-  | "container"
-  | "identity"
-  | "data-store"
-  | "saas-account";
+  'repository' | 'service' | 'container' | 'identity' | 'data-store' | 'saas-account';
 
 export type Asset = {
   id: string;
   name: string;
   kind: AssetKind;
   owner: string;
-  environment: "prod" | "staging" | "dev" | "sandbox";
+  environment: 'prod' | 'staging' | 'dev' | 'sandbox';
   criticality: Severity;
   lastSeen: string; // ISO
   tags: string[];
@@ -39,7 +34,7 @@ export type Vulnerability = {
   package: string;
   version: string;
   fixedIn?: string;
-  status: "open" | "triaged" | "in-progress" | "remediated" | "accepted";
+  status: 'open' | 'triaged' | 'in-progress' | 'remediated' | 'accepted';
   assetId: string;
   detectedAt: string;
 };
@@ -48,9 +43,9 @@ export type Incident = {
   id: string;
   title: string;
   severity: Severity;
-  status: "open" | "investigating" | "contained" | "resolved" | "postmortem";
+  status: 'open' | 'investigating' | 'contained' | 'resolved' | 'postmortem';
   assignee: string;
-  source: "github" | "siem" | "agent" | "user" | "cloud";
+  source: 'github' | 'siem' | 'agent' | 'user' | 'cloud';
   createdAt: string;
   updatedAt: string;
   summary: string;
@@ -69,9 +64,9 @@ export type SbomComponent = {
 export type ComplianceControl = {
   id: string;
   family: string; // e.g. "CIS 5 — Access Control"
-  framework: "CISv8" | "NIST-800-53" | "SOC2" | "ISO-27001";
+  framework: 'CISv8' | 'NIST-800-53' | 'SOC2' | 'ISO-27001';
   title: string;
-  status: "pass" | "fail" | "partial" | "not-assessed";
+  status: 'pass' | 'fail' | 'partial' | 'not-assessed';
   evidenceCount: number;
   lastAssessedAt: string;
 };
@@ -79,9 +74,9 @@ export type ComplianceControl = {
 export type Integration = {
   id: string;
   name: string;
-  category: "scm" | "ci" | "ticketing" | "chat" | "cloud" | "siem" | "iam";
+  category: 'scm' | 'ci' | 'ticketing' | 'chat' | 'cloud' | 'siem' | 'iam';
   vendor: string;
-  status: "connected" | "needs-attention" | "disconnected";
+  status: 'connected' | 'needs-attention' | 'disconnected';
   lastSyncAt?: string;
 };
 
@@ -89,14 +84,14 @@ export type Kpi = {
   label: string;
   value: string;
   delta?: number; // percent
-  trend?: "up" | "down" | "flat";
+  trend?: 'up' | 'down' | 'flat';
   hint?: string;
 };
 
 export type EventStreamEntry = {
   id: string;
   ts: string;
-  source: "agent" | "github" | "siem" | "system" | "user";
+  source: 'agent' | 'github' | 'siem' | 'system' | 'user';
   level: Severity;
   message: string;
 };
@@ -106,15 +101,7 @@ export type EventStreamEntry = {
 // -------------------------------------------------------------------------
 
 /** Package ecosystems recognized by the SBOM pipeline (Syft-derived). */
-export type Ecosystem =
-  | "npm"
-  | "pypi"
-  | "maven"
-  | "go"
-  | "rubygems"
-  | "cargo"
-  | "nuget"
-  | "other";
+export type Ecosystem = 'npm' | 'pypi' | 'maven' | 'go' | 'rubygems' | 'cargo' | 'nuget' | 'other';
 
 /** An enriched SBOM component, used by the SBOM Viewer and the graph. */
 export type SbomComponentEnhanced = SbomComponent & {
@@ -129,7 +116,7 @@ export type SbomDocument = {
   assetId: string;
   assetName: string;
   generatedAt: string;
-  format: "CycloneDX-1.5" | "SPDX-2.3";
+  format: 'CycloneDX-1.5' | 'SPDX-2.3';
   componentCount: number;
   components: SbomComponentEnhanced[];
 };
@@ -145,7 +132,7 @@ export type VulnTimelinePoint = {
 };
 
 /** Date range for the vulnerability timeline. */
-export type VulnTimelineRange = "7d" | "30d" | "90d" | "1y";
+export type VulnTimelineRange = '7d' | '30d' | '90d' | '1y';
 
 /** One cell of the risk heatmap. */
 export type RiskHeatmapCell = {
@@ -169,9 +156,9 @@ export type SecurityScoreSubMetric = {
   /** For "percent" / "score" / "duration" — interpret per `format`. */
   value: number;
   /** How to render `value` on the tile. */
-  format: "percent" | "count" | "duration" | "score";
+  format: 'percent' | 'count' | 'duration' | 'score';
   /** Direction the metric should be trending (used to color deltas). */
-  betterWhen: "higher" | "lower";
+  betterWhen: 'higher' | 'lower';
   /** Optional sub-label / hint. */
   hint?: string;
   /** Recent values for the sparkline (oldest first). */
@@ -185,7 +172,7 @@ export type SecurityScore = {
   /** 0..100 composite. */
   composite: number;
   /** Letter band derived from the composite. */
-  band: "A" | "B" | "C" | "D" | "F";
+  band: 'A' | 'B' | 'C' | 'D' | 'F';
   subMetrics: SecurityScoreSubMetric[];
   generatedAt: string;
 };

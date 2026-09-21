@@ -65,7 +65,9 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
   const route = opts.route ?? 'unknown';
   const targetService = opts.targetService ?? 'unknown';
   // startTimer returns a function that, when called, observes the elapsed seconds.
-  const endTimer = proxyRequestDuration.startTimer(withService({ route, target_service: targetService }));
+  const endTimer = proxyRequestDuration.startTimer(
+    withService({ route, target_service: targetService }),
+  );
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -105,11 +107,10 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
         { url: opts.url, method, status: res.status, requestId, durationMs: Date.now() - start },
         'upstream returned non-2xx',
       );
-      throw new AppError(
-        'UPSTREAM_FAILURE',
-        `Upstream ${opts.url} returned ${res.status}`,
-        { statusCode: 502, details: { upstreamStatus: res.status, upstreamBody: parsed, requestId } },
-      );
+      throw new AppError('UPSTREAM_FAILURE', `Upstream ${opts.url} returned ${res.status}`, {
+        statusCode: 502,
+        details: { upstreamStatus: res.status, upstreamBody: parsed, requestId },
+      });
     }
 
     return {
@@ -125,29 +126,42 @@ export async function proxyRequest<T = unknown>(opts: ProxyOptions): Promise<Pro
       if ((err as { name?: string }).name === 'AbortError') outcomeStatus = 504;
       else outcomeStatus = 502;
     }
-    if (err instanceof AppError && typeof (err.details as { statusCode?: number })?.statusCode === 'number') {
+    if (
+      err instanceof AppError &&
+      typeof (err.details as { statusCode?: number })?.statusCode === 'number'
+    ) {
       outcomeStatus = (err.details as { statusCode?: number }).statusCode ?? 502;
     }
     outcomeResult = 'error';
     if ((err as { name?: string }).name === 'AbortError') {
-      throw new AppError('UPSTREAM_FAILURE', `Upstream ${opts.url} timed out after ${timeoutMs}ms`, {
-        statusCode: 504,
-        details: { requestId, timeoutMs },
-      });
+      throw new AppError(
+        'UPSTREAM_FAILURE',
+        `Upstream ${opts.url} timed out after ${timeoutMs}ms`,
+        {
+          statusCode: 504,
+          details: { requestId, timeoutMs },
+        },
+      );
     }
     if (err instanceof AppError) throw err;
-    throw new AppError('UPSTREAM_FAILURE', `Upstream ${opts.url} unreachable: ${(err as Error).message}`, {
-      statusCode: 502,
-      details: { requestId, cause: (err as Error).message },
-    });
+    throw new AppError(
+      'UPSTREAM_FAILURE',
+      `Upstream ${opts.url} unreachable: ${(err as Error).message}`,
+      {
+        statusCode: 502,
+        details: { requestId, cause: (err as Error).message },
+      },
+    );
   } finally {
     clearTimeout(timer);
     // Observe the latency with the now-known result label, then increment the counter.
     endTimer({ result: outcomeResult });
-    proxyRequestTotal.inc(withService({
-      route,
-      target_service: targetService,
-      status_code: String(outcomeStatus ?? 'unknown'),
-    }));
+    proxyRequestTotal.inc(
+      withService({
+        route,
+        target_service: targetService,
+        status_code: String(outcomeStatus ?? 'unknown'),
+      }),
+    );
   }
 }

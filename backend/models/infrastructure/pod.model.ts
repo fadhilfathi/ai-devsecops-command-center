@@ -11,13 +11,7 @@
  */
 import { z } from 'zod';
 
-export const PodPhaseSchema = z.enum([
-  'pending',
-  'running',
-  'succeeded',
-  'failed',
-  'unknown',
-]);
+export const PodPhaseSchema = z.enum(['pending', 'running', 'succeeded', 'failed', 'unknown']);
 export type PodPhase = z.infer<typeof PodPhaseSchema>;
 
 export const PodConditionSchema = z.enum([
@@ -48,11 +42,7 @@ export const PodTerminationReasonSchema = z.enum([
 ]);
 export type PodTerminationReason = z.infer<typeof PodTerminationReasonSchema>;
 
-export const ContainerStateSchema = z.enum([
-  'waiting',
-  'running',
-  'terminated',
-]);
+export const ContainerStateSchema = z.enum(['waiting', 'running', 'terminated']);
 export type ContainerState = z.infer<typeof ContainerStateSchema>;
 
 export const ContainerSchema = z.object({
@@ -66,17 +56,19 @@ export const ContainerSchema = z.object({
   lastTerminationReason: PodTerminationReasonSchema.default('unknown'),
   /** Free-form message associated with the last termination. */
   lastTerminationMessage: z.string().optional(),
-  resources: z.object({
-    cpuRequestsMillicores: z.number().int().nonnegative().default(0),
-    cpuLimitsMillicores: z.number().int().nonnegative().default(0),
-    memoryRequestsBytes: z.number().int().nonnegative().default(0),
-    memoryLimitsBytes: z.number().int().nonnegative().default(0),
-  }).default({
-    cpuRequestsMillicores: 0,
-    cpuLimitsMillicores: 0,
-    memoryRequestsBytes: 0,
-    memoryLimitsBytes: 0,
-  }),
+  resources: z
+    .object({
+      cpuRequestsMillicores: z.number().int().nonnegative().default(0),
+      cpuLimitsMillicores: z.number().int().nonnegative().default(0),
+      memoryRequestsBytes: z.number().int().nonnegative().default(0),
+      memoryLimitsBytes: z.number().int().nonnegative().default(0),
+    })
+    .default({
+      cpuRequestsMillicores: 0,
+      cpuLimitsMillicores: 0,
+      memoryRequestsBytes: 0,
+      memoryLimitsBytes: 0,
+    }),
   /** Whether the container runs as privileged. */
   privileged: z.boolean().default(false),
   /** Whether the container runs as root (uid 0). */
@@ -106,12 +98,16 @@ export const PodSchema = z.object({
   serviceAccount: z.string().optional(),
   /** Container specs. */
   containers: z.array(ContainerSchema).min(1),
-  conditions: z.array(z.object({
-    type: PodConditionSchema,
-    status: z.enum(['true', 'false', 'unknown']),
-    message: z.string().optional(),
-    lastTransitionTime: z.string().datetime({ offset: true }).optional(),
-  })).default([]),
+  conditions: z
+    .array(
+      z.object({
+        type: PodConditionSchema,
+        status: z.enum(['true', 'false', 'unknown']),
+        message: z.string().optional(),
+        lastTransitionTime: z.string().datetime({ offset: true }).optional(),
+      }),
+    )
+    .default([]),
   restarts: z.number().int().nonnegative().default(0),
   startedAt: z.string().datetime({ offset: true }).optional(),
   /** Aggregate of `lastTerminationReason` across containers. */

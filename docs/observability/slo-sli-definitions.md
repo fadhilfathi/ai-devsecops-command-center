@@ -26,21 +26,21 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 ### SLIs
 
-| Name              | Type        | Query                                                                                                  |
-|-------------------|-------------|--------------------------------------------------------------------------------------------------------|
-| `availability`    | throughput  | `sum(rate(http_requests_total{service="auth",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="auth"}[5m]))` |
-| `login_latency`   | latency     | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="auth",route="/login"}[5m])))` |
-| `token_latency`   | latency     | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="auth",route="/token"}[5m])))` |
-| `token_correctness` | correctness | `sum(rate(jwt_validation_total{result="valid"}[5m])) / sum(rate(jwt_validation_total[5m]))`            |
+| Name                | Type        | Query                                                                                                                   |
+| ------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `availability`      | throughput  | `sum(rate(http_requests_total{service="auth",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="auth"}[5m]))` |
+| `login_latency`     | latency     | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="auth",route="/login"}[5m])))` |
+| `token_latency`     | latency     | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="auth",route="/token"}[5m])))` |
+| `token_correctness` | correctness | `sum(rate(jwt_validation_total{result="valid"}[5m])) / sum(rate(jwt_validation_total[5m]))`                             |
 
 ### SLOs
 
-| SLI                  | Target  | Window | Budget / 30d | Notes                                              |
-|----------------------|---------|--------|--------------|----------------------------------------------------|
-| `availability`       | 0.999   | 30d    | 43.2 min     | Excludes `/healthz` probes.                        |
-| `login_latency` < 500ms | 0.95 | 30d    | 36 h         | p99 < 500 ms.                                      |
-| `token_latency` < 250ms | 0.95 | 30d    | 36 h         | p99 < 250 ms.                                      |
-| `token_correctness`  | 0.99999 | 30d    | 0.43 min     | Valid tokens must validate. Hard cap.              |
+| SLI                     | Target  | Window | Budget / 30d | Notes                                 |
+| ----------------------- | ------- | ------ | ------------ | ------------------------------------- |
+| `availability`          | 0.999   | 30d    | 43.2 min     | Excludes `/healthz` probes.           |
+| `login_latency` < 500ms | 0.95    | 30d    | 36 h         | p99 < 500 ms.                         |
+| `token_latency` < 250ms | 0.95    | 30d    | 36 h         | p99 < 250 ms.                         |
+| `token_correctness`     | 0.99999 | 30d    | 0.43 min     | Valid tokens must validate. Hard cap. |
 
 ### Error Budget Policy
 
@@ -55,21 +55,21 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 ### SLIs
 
-| Name                   | Type        | Query                                                                                              |
-|------------------------|-------------|----------------------------------------------------------------------------------------------------|
-| `availability`         | throughput  | `sum(rate(http_requests_total{service="agent",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="agent"}[5m]))` |
-| `task_duration`        | latency     | `histogram_quantile(0.99, sum by (le) (rate(agent_task_duration_seconds_bucket{service="agent"}[5m]))` )` |
-| `task_success_rate`    | correctness | `sum(rate(agent_tasks_total{outcome="success"}[5m])) / sum(rate(agent_tasks_total[5m]))`           |
-| `queue_depth_ok`       | saturation  | `agent_tasks_in_flight{service="agent"} < 1000`                                                   |
+| Name                | Type        | Query                                                                                                                     |
+| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `availability`      | throughput  | `sum(rate(http_requests_total{service="agent",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="agent"}[5m]))` |
+| `task_duration`     | latency     | `histogram_quantile(0.99, sum by (le) (rate(agent_task_duration_seconds_bucket{service="agent"}[5m]))` )`                 |
+| `task_success_rate` | correctness | `sum(rate(agent_tasks_total{outcome="success"}[5m])) / sum(rate(agent_tasks_total[5m]))`                                  |
+| `queue_depth_ok`    | saturation  | `agent_tasks_in_flight{service="agent"} < 1000`                                                                           |
 
 ### SLOs
 
-| SLI                  | Target  | Window | Budget / 30d | Notes                                                  |
-|----------------------|---------|--------|--------------|--------------------------------------------------------|
-| `availability`       | 0.995   | 30d    | 3.6 h        | Some agent failures are recoverable.                   |
-| `task_duration` p99 < 60s | 0.90 | 30d    | 72 h         | End-to-end agent task; excludes LLM provider time.     |
-| `task_success_rate`  | 0.95    | 30d    | 36 h         | Successful completion / total tasks.                   |
-| `queue_depth_ok`     | 0.99    | 30d    | 7.2 h        | Queue depth below soft cap.                            |
+| SLI                       | Target | Window | Budget / 30d | Notes                                              |
+| ------------------------- | ------ | ------ | ------------ | -------------------------------------------------- |
+| `availability`            | 0.995  | 30d    | 3.6 h        | Some agent failures are recoverable.               |
+| `task_duration` p99 < 60s | 0.90   | 30d    | 72 h         | End-to-end agent task; excludes LLM provider time. |
+| `task_success_rate`       | 0.95   | 30d    | 36 h         | Successful completion / total tasks.               |
+| `queue_depth_ok`          | 0.99   | 30d    | 7.2 h        | Queue depth below soft cap.                        |
 
 ### Notes
 
@@ -84,21 +84,21 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 ### SLIs
 
-| Name                   | Type        | Query                                                                                              |
-|------------------------|-------------|----------------------------------------------------------------------------------------------------|
+| Name                   | Type        | Query                                                                                                                           |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `availability`         | throughput  | `sum(rate(http_requests_total{service="security",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="security"}[5m]))` |
-| `scan_completion_rate` | correctness | `sum(rate(scans_completed_total[5m])) / sum(rate(scans_started_total[5m]))`                        |
-| `scan_freshness`       | freshness   | `time() - max(security_last_scan_timestamp_seconds)`                                              |
-| `sbom_generation_rate` | throughput  | `sum(rate(sbom_artifacts_generated_total[5m]))`                                                   |
+| `scan_completion_rate` | correctness | `sum(rate(scans_completed_total[5m])) / sum(rate(scans_started_total[5m]))`                                                     |
+| `scan_freshness`       | freshness   | `time() - max(security_last_scan_timestamp_seconds)`                                                                            |
+| `sbom_generation_rate` | throughput  | `sum(rate(sbom_artifacts_generated_total[5m]))`                                                                                 |
 
 ### SLOs
 
-| SLI                   | Target  | Window | Budget / 30d | Notes                                                   |
-|-----------------------|---------|--------|--------------|---------------------------------------------------------|
-| `availability`        | 0.99    | 30d    | 7.2 h        |                                                         |
-| `scan_completion_rate`| 0.98    | 30d    | 14.4 h       | Canceled or errored scans count as failures.            |
-| `scan_freshness` < 24h | 0.95   | 30d    | 36 h         | 95% of assets scanned in the last 24h.                  |
-| `sbom_generation_rate`| 0.95    | 30d    | 36 h         | Of started SBOM jobs, 95% produce an artifact.          |
+| SLI                    | Target | Window | Budget / 30d | Notes                                          |
+| ---------------------- | ------ | ------ | ------------ | ---------------------------------------------- |
+| `availability`         | 0.99   | 30d    | 7.2 h        |                                                |
+| `scan_completion_rate` | 0.98   | 30d    | 14.4 h       | Canceled or errored scans count as failures.   |
+| `scan_freshness` < 24h | 0.95   | 30d    | 36 h         | 95% of assets scanned in the last 24h.         |
+| `sbom_generation_rate` | 0.95   | 30d    | 36 h         | Of started SBOM jobs, 95% produce an artifact. |
 
 ---
 
@@ -108,21 +108,21 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 ### SLIs
 
-| Name                | Type        | Query                                                                                              |
-|---------------------|-------------|----------------------------------------------------------------------------------------------------|
-| `availability`      | throughput  | `sum(rate(http_requests_total{service="incident",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="incident"}[5m]))` |
-| `mttd`              | latency     | `histogram_quantile(0.5, sum by (le) (rate(incident_time_to_detect_seconds_bucket[5m])))`         |
-| `mttr_p1`           | latency     | `histogram_quantile(0.5, sum by (le) (rate(incident_time_to_resolve_seconds_bucket{severity="P1"}[5m])))` |
-| `notification_delivery` | correctness | `sum(rate(notifications_sent_total{outcome="delivered"}[5m])) / sum(rate(notifications_sent_total[5m]))` |
+| Name                    | Type        | Query                                                                                                                           |
+| ----------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `availability`          | throughput  | `sum(rate(http_requests_total{service="incident",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="incident"}[5m]))` |
+| `mttd`                  | latency     | `histogram_quantile(0.5, sum by (le) (rate(incident_time_to_detect_seconds_bucket[5m])))`                                       |
+| `mttr_p1`               | latency     | `histogram_quantile(0.5, sum by (le) (rate(incident_time_to_resolve_seconds_bucket{severity="P1"}[5m])))`                       |
+| `notification_delivery` | correctness | `sum(rate(notifications_sent_total{outcome="delivered"}[5m])) / sum(rate(notifications_sent_total[5m]))`                        |
 
 ### SLOs
 
-| SLI                     | Target  | Window | Budget / 30d | Notes                                          |
-|-------------------------|---------|--------|--------------|------------------------------------------------|
-| `availability`          | 0.999   | 30d    | 43.2 min     |                                                |
-| `mttd` < 5 min (P1)     | 0.90    | 30d    | 72 h         | Median time-to-detect under 5 min for P1.      |
-| `mttr_p1` < 60 min      | 0.80    | 30d    | 144 h        | Median time-to-resolve under 60 min for P1.    |
-| `notification_delivery` | 0.999   | 30d    | 43.2 min     | Delivered / total notifications sent.          |
+| SLI                     | Target | Window | Budget / 30d | Notes                                       |
+| ----------------------- | ------ | ------ | ------------ | ------------------------------------------- |
+| `availability`          | 0.999  | 30d    | 43.2 min     |                                             |
+| `mttd` < 5 min (P1)     | 0.90   | 30d    | 72 h         | Median time-to-detect under 5 min for P1.   |
+| `mttr_p1` < 60 min      | 0.80   | 30d    | 144 h        | Median time-to-resolve under 60 min for P1. |
+| `notification_delivery` | 0.999  | 30d    | 43.2 min     | Delivered / total notifications sent.       |
 
 ---
 
@@ -132,19 +132,19 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 ### SLIs
 
-| Name                | Type        | Query                                                                                              |
-|---------------------|-------------|----------------------------------------------------------------------------------------------------|
-| `availability`      | throughput  | `sum(rate(http_requests_total{service="compliance",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="compliance"}[5m]))` |
-| `control_eval_rate` | correctness | `sum(rate(compliance_evaluations_total{outcome="pass"}[5m])) / sum(rate(compliance_evaluations_total[5m]))` |
-| `evidence_freshness`| freshness   | `time() - max(compliance_evidence_last_collected_seconds)`                                         |
+| Name                 | Type        | Query                                                                                                                               |
+| -------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `availability`       | throughput  | `sum(rate(http_requests_total{service="compliance",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="compliance"}[5m]))` |
+| `control_eval_rate`  | correctness | `sum(rate(compliance_evaluations_total{outcome="pass"}[5m])) / sum(rate(compliance_evaluations_total[5m]))`                         |
+| `evidence_freshness` | freshness   | `time() - max(compliance_evidence_last_collected_seconds)`                                                                          |
 
 ### SLOs
 
-| SLI                     | Target  | Window | Budget / 30d | Notes                                                |
-|-------------------------|---------|--------|--------------|------------------------------------------------------|
-| `availability`          | 0.999   | 30d    | 43.2 min     |                                                      |
-| `control_eval_rate`     | 0.98    | 30d    | 14.4 h       | Evaluations returning "pass" / total.                |
-| `evidence_freshness` < 24h | 0.99 | 30d    | 7.2 h        | 99% of frameworks' evidence < 24h old.               |
+| SLI                        | Target | Window | Budget / 30d | Notes                                  |
+| -------------------------- | ------ | ------ | ------------ | -------------------------------------- |
+| `availability`             | 0.999  | 30d    | 43.2 min     |                                        |
+| `control_eval_rate`        | 0.98   | 30d    | 14.4 h       | Evaluations returning "pass" / total.  |
+| `evidence_freshness` < 24h | 0.99   | 30d    | 7.2 h        | 99% of frameworks' evidence < 24h old. |
 
 ---
 
@@ -154,21 +154,21 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 ### SLIs
 
-| Name                  | Type        | Query                                                                                              |
-|-----------------------|-------------|----------------------------------------------------------------------------------------------------|
-| `availability`        | throughput  | `sum(rate(http_requests_total{service="integration",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="integration"}[5m]))` |
-| `webhook_delivery`    | correctness | `sum(rate(webhook_deliveries_total{outcome="success"}[5m])) / sum(rate(webhook_deliveries_total[5m]))` |
-| `api_call_latency`    | latency     | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="integration"}[5m]))` )` |
-| `github_rate_limit`   | saturation  | `github_rate_limit_remaining / github_rate_limit_max > 0.1`                                        |
+| Name                | Type        | Query                                                                                                                                 |
+| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `availability`      | throughput  | `sum(rate(http_requests_total{service="integration",status!~"5.."}[5m])) / sum(rate(http_requests_total{service="integration"}[5m]))` |
+| `webhook_delivery`  | correctness | `sum(rate(webhook_deliveries_total{outcome="success"}[5m])) / sum(rate(webhook_deliveries_total[5m]))`                                |
+| `api_call_latency`  | latency     | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="integration"}[5m]))` )`                     |
+| `github_rate_limit` | saturation  | `github_rate_limit_remaining / github_rate_limit_max > 0.1`                                                                           |
 
 ### SLOs
 
-| SLI                  | Target  | Window | Budget / 30d | Notes                                                |
-|----------------------|---------|--------|--------------|------------------------------------------------------|
-| `availability`       | 0.995   | 30d    | 3.6 h        |                                                      |
-| `webhook_delivery`   | 0.99    | 30d    | 7.2 h        | Successful delivery / total deliveries.              |
-| `api_call_latency` < 1s p99 | 0.95 | 30d | 36 h     | For inbound API calls to this service.               |
-| `github_rate_limit`  | 0.999   | 30d    | 43.2 min     | Staying above 10% of the GitHub rate-limit budget.   |
+| SLI                         | Target | Window | Budget / 30d | Notes                                              |
+| --------------------------- | ------ | ------ | ------------ | -------------------------------------------------- |
+| `availability`              | 0.995  | 30d    | 3.6 h        |                                                    |
+| `webhook_delivery`          | 0.99   | 30d    | 7.2 h        | Successful delivery / total deliveries.            |
+| `api_call_latency` < 1s p99 | 0.95   | 30d    | 36 h         | For inbound API calls to this service.             |
+| `github_rate_limit`         | 0.999  | 30d    | 43.2 min     | Staying above 10% of the GitHub rate-limit budget. |
 
 ---
 
@@ -176,12 +176,12 @@ This catalog defines the **Service Level Indicators (SLIs)**, **Service Level Ob
 
 These SLIs are not owned by a single service but measured across the platform.
 
-| SLI                    | Query                                                                                              | Target  | Notes                                       |
-|------------------------|----------------------------------------------------------------------------------------------------|---------|---------------------------------------------|
-| `api_availability`     | `sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))`            | 0.999   | All user-facing endpoints.                  |
-| `api_p99_latency`      | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))`            | < 1 s   | Tail latency for the slowest user route.    |
-| `event_bus_lag`        | `histogram_quantile(0.99, sum by (le) (rate(event_bus_lag_seconds_bucket[5m])))`                    | < 5 s   | End-to-end p99 lag from publish to consume. |
-| `agent_decision_drift` | `sum(rate(agent_decision_override_total[5m])) / sum(rate(agent_decision_total[5m]))`                | < 0.05  | Decisions overridden by humans (proxy for AI risk). |
+| SLI                    | Query                                                                                    | Target | Notes                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------- | ------ | --------------------------------------------------- |
+| `api_availability`     | `sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))` | 0.999  | All user-facing endpoints.                          |
+| `api_p99_latency`      | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))` | < 1 s  | Tail latency for the slowest user route.            |
+| `event_bus_lag`        | `histogram_quantile(0.99, sum by (le) (rate(event_bus_lag_seconds_bucket[5m])))`         | < 5 s  | End-to-end p99 lag from publish to consume.         |
+| `agent_decision_drift` | `sum(rate(agent_decision_override_total[5m])) / sum(rate(agent_decision_total[5m]))`     | < 0.05 | Decisions overridden by humans (proxy for AI risk). |
 
 ---
 
@@ -220,4 +220,4 @@ For each SLO, the quarterly review answers:
 
 ---
 
-*End of SLO & SLI Definitions v1.0*
+_End of SLO & SLI Definitions v1.0_

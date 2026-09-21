@@ -12,8 +12,7 @@ The workstream is split into four services:
 
 - **`kubernetes-service`** (port 4006) — the read-only
   inventory layer. Wraps a provider abstraction that can be
-  swapped between the in-process `fixture` provider (Sprint
-  4) and a live `@kubernetes/client-node` adapter (Sprint 5).
+  swapped between the in-process `fixture` provider (Sprint 4) and a live `@kubernetes/client-node` adapter (Sprint 5).
 - **`inventory-service`** (port 4009) — the asset catalog,
   relationship graph, and dependency graph.
 - **`k8s-health-service`** (port 4007) — health scoring +
@@ -40,17 +39,17 @@ mirror them.
 
 ## Asset kinds
 
-| Kind         | Source                                |
-| ------------ | ------------------------------------- |
-| cluster      | `Cluster` model                       |
-| namespace    | `Namespace` model                     |
-| service      | `Service` model                       |
-| deployment   | `Deployment` model                    |
-| statefulset  | `StatefulSet` model                   |
-| daemonset    | `DaemonSet` model                     |
-| ingress      | `Ingress` model                       |
-| workload     | generic union of deployment/ss/ds     |
-| pod          | `Pod` model                           |
+| Kind        | Source                            |
+| ----------- | --------------------------------- |
+| cluster     | `Cluster` model                   |
+| namespace   | `Namespace` model                 |
+| service     | `Service` model                   |
+| deployment  | `Deployment` model                |
+| statefulset | `StatefulSet` model               |
+| daemonset   | `DaemonSet` model                 |
+| ingress     | `Ingress` model                   |
+| workload    | generic union of deployment/ss/ds |
+| pod         | `Pod` model                       |
 
 ## Graph model
 

@@ -1,8 +1,8 @@
 ---
 name: Feature request
 about: Suggest a new capability for the Command Center
-title: "[Feature] "
-labels: ["enhancement", "triage"]
+title: '[Feature] '
+labels: ['enhancement', 'triage']
 assignees: []
 ---
 

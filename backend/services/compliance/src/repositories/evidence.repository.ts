@@ -6,7 +6,7 @@ export interface EvidenceRecord {
   controlId: UUID;
   kind: 'screenshot' | 'log' | 'config' | 'attestation' | 'other';
   description: string;
-  ref: string;       // URL or path
+  ref: string; // URL or path
   collectedBy: UUID; // userId
   collectedAt: string;
 }
@@ -18,11 +18,13 @@ export interface EvidenceRepository {
 }
 
 function newId(): UUID {
-  return globalThis.crypto?.randomUUID?.() ??
+  return (
+    globalThis.crypto?.randomUUID?.() ??
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    })
+  );
 }
 
 export function buildEvidenceRepository(): EvidenceRepository {

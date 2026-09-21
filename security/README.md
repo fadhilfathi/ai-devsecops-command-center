@@ -45,17 +45,23 @@ security/
 
 **Formats produced per SBOM:**
 
-| Format      | Extension        | Generator                          |
-| ----------- | ---------------- | ---------------------------------- |
-| CycloneDX   | `.cyclonedx.json`| `@cyclonedx/cyclonedx-npm`         |
-| CycloneDX   | `.cyclonedx.xml` | `@cyclonedx/cyclonedx-npm`         |
-| SPDX        | `.spdx.json`     | `@cyclonedx/cyclonedx-npm --spec spdx` (or `spdx-tools`) |
-| Provenance   | `provenance.intoto.jsonl` | SLSA-style attestation (if produced) |
+| Format     | Extension                 | Generator                                                |
+| ---------- | ------------------------- | -------------------------------------------------------- |
+| CycloneDX  | `.cyclonedx.json`         | `@cyclonedx/cyclonedx-npm`                               |
+| CycloneDX  | `.cyclonedx.xml`          | `@cyclonedx/cyclonedx-npm`                               |
+| SPDX       | `.spdx.json`              | `@cyclonedx/cyclonedx-npm --spec spdx` (or `spdx-tools`) |
+| Provenance | `provenance.intoto.jsonl` | SLSA-style attestation (if produced)                     |
 
 **Index file:** `security/sboms/index.json` is NDJSON. Each line:
 
 ```json
-{"sbom_id": "sbom-2026-06-12-a1b2c3d-monorepo", "generated_at": "2026-06-12T03:00:00Z", "scope": "monorepo", "git_sha": "a1b2c3d", "formats": ["cyclonedx.json", "cyclonedx.xml", "spdx.json"]}
+{
+  "sbom_id": "sbom-2026-06-12-a1b2c3d-monorepo",
+  "generated_at": "2026-06-12T03:00:00Z",
+  "scope": "monorepo",
+  "git_sha": "a1b2c3d",
+  "formats": ["cyclonedx.json", "cyclonedx.xml", "spdx.json"]
+}
 ```
 
 **Triggers** (in `.github/workflows/security.yml`, job `sbom-commit`):
@@ -89,19 +95,19 @@ generated SBOM on the Redis Stream subject
 }
 ```
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `schema` | `string` (const) | yes | Discriminator. Value: `"security.sbom.generated.v1"`. |
-| `sbom_id` | `string` | yes | The `<sbom_id>` of the generated SBOM. See schema above. |
-| `source` | `string` | yes | Where the SBOM was scanned from. Prefix-style per S2.1 v2 spec: `fs:`, `git:`, `docker:`, `lockfile:`. |
-| `format` | `string` (enum) | yes | `cyclonedx-json`, `cyclonedx-xml`, `spdx-json`. |
-| `component_count` | `integer` | yes | Number of components in the SBOM (drives `sbom_size_bucket` for S2.7 metrics). |
-| `generated_at` | `string` (RFC 3339) | yes | When the SBOM was generated. |
-| `git_sha` | `string \| null` | yes | Short or full git SHA of the scanned commit. Null for non-repo scans. |
-| `scope` | `string` | yes | `monorepo`, `<service-name>`, or `<package-name>`. |
-| `sbom_fingerprint` | `string` | yes | Content-addressable fingerprint. Format: `<alg>:<hex>` (e.g. `sha256:9f86...`). Computed over the **canonicalized** (RFC 8785 / JCS) primary-format SBOM bytes. Used by SecurityArchitect's S2.8 audit chain for deterministic risk-score calculation. The algorithm prefix MUST match `sbom_fingerprint_algorithm`; the canonicalization is described by `sbom_fingerprint_format`. |
-| `sbom_fingerprint_algorithm` | `string` (enum) | yes | Hash algorithm. Default `sha256`. Enum: `sha256`, `sha512`, `blake3`. Open-ended for Sprint 3+ migration. Added in O-3.7 (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention of explicitly describing the digest algorithm). |
-| `sbom_fingerprint_format` | `string` (enum) | yes | Canonicalization applied to the SBOM bytes before hashing. Default `cyclonedx-json+canonicalized-jcs`. Versioned enum: `cyclonedx-json+canonicalized-jcs`, `cyclonedx-json+raw`, `spdx-json+canonicalized-jcs`, `spdx-json+raw`. The format string is a contract, not an implementation detail. Added in O-3.7 (SecurityArchitect redline; eliminates the 'why doesn't my hash match?' debugging class). |
+| Field                        | Type                | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`                     | `string` (const)    | yes      | Discriminator. Value: `"security.sbom.generated.v1"`.                                                                                                                                                                                                                                                                                                                                                    |
+| `sbom_id`                    | `string`            | yes      | The `<sbom_id>` of the generated SBOM. See schema above.                                                                                                                                                                                                                                                                                                                                                 |
+| `source`                     | `string`            | yes      | Where the SBOM was scanned from. Prefix-style per S2.1 v2 spec: `fs:`, `git:`, `docker:`, `lockfile:`.                                                                                                                                                                                                                                                                                                   |
+| `format`                     | `string` (enum)     | yes      | `cyclonedx-json`, `cyclonedx-xml`, `spdx-json`.                                                                                                                                                                                                                                                                                                                                                          |
+| `component_count`            | `integer`           | yes      | Number of components in the SBOM (drives `sbom_size_bucket` for S2.7 metrics).                                                                                                                                                                                                                                                                                                                           |
+| `generated_at`               | `string` (RFC 3339) | yes      | When the SBOM was generated.                                                                                                                                                                                                                                                                                                                                                                             |
+| `git_sha`                    | `string \| null`    | yes      | Short or full git SHA of the scanned commit. Null for non-repo scans.                                                                                                                                                                                                                                                                                                                                    |
+| `scope`                      | `string`            | yes      | `monorepo`, `<service-name>`, or `<package-name>`.                                                                                                                                                                                                                                                                                                                                                       |
+| `sbom_fingerprint`           | `string`            | yes      | Content-addressable fingerprint. Format: `<alg>:<hex>` (e.g. `sha256:9f86...`). Computed over the **canonicalized** (RFC 8785 / JCS) primary-format SBOM bytes. Used by SecurityArchitect's S2.8 audit chain for deterministic risk-score calculation. The algorithm prefix MUST match `sbom_fingerprint_algorithm`; the canonicalization is described by `sbom_fingerprint_format`.                     |
+| `sbom_fingerprint_algorithm` | `string` (enum)     | yes      | Hash algorithm. Default `sha256`. Enum: `sha256`, `sha512`, `blake3`. Open-ended for Sprint 3+ migration. Added in O-3.7 (SecurityArchitect redline; aligns with in-toto / SLSA v1.0 attestation convention of explicitly describing the digest algorithm).                                                                                                                                              |
+| `sbom_fingerprint_format`    | `string` (enum)     | yes      | Canonicalization applied to the SBOM bytes before hashing. Default `cyclonedx-json+canonicalized-jcs`. Versioned enum: `cyclonedx-json+canonicalized-jcs`, `cyclonedx-json+raw`, `spdx-json+canonicalized-jcs`, `spdx-json+raw`. The format string is a contract, not an implementation detail. Added in O-3.7 (SecurityArchitect redline; eliminates the 'why doesn't my hash match?' debugging class). |
 
 A machine-readable JSON Schema is in
 [`security/wire-format/sbom-generated.schema.json`](wire-format/sbom-generated.schema.json).
@@ -169,29 +175,29 @@ of truth for the GitOps wire format; the rich internal schema
 
 ### Field-by-field (canonical, LOCKED 2026-06-12)
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `schema` | `string` (enum) | yes | Discriminator. Value: `"security.vulnerability.gitops-record.v1"`. |
-| `id` | `string` | yes | CVE-YYYY-NNNN or GHSA-xxxx-yyyy-zzzz (aliases joined by `\|`). |
-| `source` | `string` (enum) | yes | `nvd`, `github-advisory`, `osv`, `snyk`. |
-| `kind` | `string` (enum) | yes | `sca`, `sast`, `runtime`, `container`, `iac`. All Sprint 2 emissions are `sca` (Software Composition Analysis). |
-| `severity` | `string` (enum) | yes | `critical`, `high`, `medium`, `low`, `unknown`. The `unknown` bucket is the "feed is partially populated" early signal. |
-| `cvss_v3` | `number \| null` | no | Flat CVSS v3 base score (0.0–10.0). Project from `cvssV3.baseScore` in the rich schema; null if absent. |
-| `package` | `string` | yes | PURL or `@scope/name` for npm. One record per (CVE, package) pair. |
-| `ecosystem` | `string` (enum) | yes | The spec-locked enum (see column). Sourced from the package's ecosystem field. |
-| `introduced_in` | `string \| null` | no | Earliest vulnerable version (e.g. `0.1.0`). Null if unknown. |
-| `fixed_in` | `string[]` | no | List of fixed versions. Empty array if no fix yet. |
-| `vulnerable_range` | `string` | yes | Semver/range expression (e.g. `>=0.1.0 <0.1.3`). |
-| `summary` | `string` | yes | Short human-readable description. Projected from `descriptions[0].value` if not in the rich schema. |
-| `references` | `string[]` | yes | URLs only. The rich schema's `references: Array<{url, type, tags?}>` is projected to `url` strings. |
-| `detected_at` | `string` (RFC 3339) | yes | When **our scanner** detected the finding. Distinct from `publishedAt`/`lastModifiedAt` (upstream). |
-| `git_sha` | `string \| null` | no | Short git SHA of the scanned commit. Null for image/archive/directory scans. |
-| `epss_score` | `number \| null` | yes | EPSS exploit-likelihood score in `[0.0, 1.0]`. Null when EPSS has not yet been fetched. The 0.36 threshold is FIRST's "1 in 3" band (top-third exploit likelihood); the 0.36 default is the EPSS branch of the O-3.7 4-condition `auto_actionable` gate (condition 2). Tunable via `VULN_INTEL_AUTO_ACTION_EPSS_MIN` env var on vuln-intel :4008. |
-| `kev` | `boolean` | yes | True if the CVE is in the CISA Known Exploited Vulnerabilities catalog. Distinct from CVSS — a 9.8 CVE with no in-the-wild exploitation has `kev: false`. The KEV branch of condition 2. |
-| `last_modified_at` | `string \| null` (RFC 3339) | yes | ISO 8601 timestamp of the upstream feed's `modified` field. Null if the feed does not expose a modification time. Distinct from `detected_at` (our scanner) and `publishedAt` (CVE publication). |
-| `tenant_id` | `string` | yes | Multi-tenant identifier. Default `"default"` for single-tenant deployments. Multi-tenant deployments MUST set this to the tenant UUID. |
-| `consensus_sources` | `string[]` (enum) | yes | List of upstream source identifiers that independently confirmed this (CVE, package) pair (e.g. `["nvd", "github-advisory"]`). The primary source is in the `source` field; the full list is here. The 4-condition `auto_actionable` gate (condition 1: cross-source consensus) requires `length(consensus_sources) >= 2`. Min items: 1 (a record must have at least one confirming source to be emitted at all). |
-| `auto_actionable` | `boolean` | yes | `true` ONLY when all 4 conditions of the `auto_actionable` gate are satisfied (see the dedicated section below). Default `false`. Computed by security-service :4003 `vuln-projection.ts` as the AND of: (a) `(kev == true) OR (severity in {critical, high} AND epss_score >= 0.36)`, (b) `length(consensus_sources) >= 2`, (c) `length(fixed_in) > 0 AND has_reachable_fix(fixed_in, package)`, (d) `in_graph == true`. |
+| Field               | Type                        | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`            | `string` (enum)             | yes      | Discriminator. Value: `"security.vulnerability.gitops-record.v1"`.                                                                                                                                                                                                                                                                                                                                                        |
+| `id`                | `string`                    | yes      | CVE-YYYY-NNNN or GHSA-xxxx-yyyy-zzzz (aliases joined by `\|`).                                                                                                                                                                                                                                                                                                                                                            |
+| `source`            | `string` (enum)             | yes      | `nvd`, `github-advisory`, `osv`, `snyk`.                                                                                                                                                                                                                                                                                                                                                                                  |
+| `kind`              | `string` (enum)             | yes      | `sca`, `sast`, `runtime`, `container`, `iac`. All Sprint 2 emissions are `sca` (Software Composition Analysis).                                                                                                                                                                                                                                                                                                           |
+| `severity`          | `string` (enum)             | yes      | `critical`, `high`, `medium`, `low`, `unknown`. The `unknown` bucket is the "feed is partially populated" early signal.                                                                                                                                                                                                                                                                                                   |
+| `cvss_v3`           | `number \| null`            | no       | Flat CVSS v3 base score (0.0–10.0). Project from `cvssV3.baseScore` in the rich schema; null if absent.                                                                                                                                                                                                                                                                                                                   |
+| `package`           | `string`                    | yes      | PURL or `@scope/name` for npm. One record per (CVE, package) pair.                                                                                                                                                                                                                                                                                                                                                        |
+| `ecosystem`         | `string` (enum)             | yes      | The spec-locked enum (see column). Sourced from the package's ecosystem field.                                                                                                                                                                                                                                                                                                                                            |
+| `introduced_in`     | `string \| null`            | no       | Earliest vulnerable version (e.g. `0.1.0`). Null if unknown.                                                                                                                                                                                                                                                                                                                                                              |
+| `fixed_in`          | `string[]`                  | no       | List of fixed versions. Empty array if no fix yet.                                                                                                                                                                                                                                                                                                                                                                        |
+| `vulnerable_range`  | `string`                    | yes      | Semver/range expression (e.g. `>=0.1.0 <0.1.3`).                                                                                                                                                                                                                                                                                                                                                                          |
+| `summary`           | `string`                    | yes      | Short human-readable description. Projected from `descriptions[0].value` if not in the rich schema.                                                                                                                                                                                                                                                                                                                       |
+| `references`        | `string[]`                  | yes      | URLs only. The rich schema's `references: Array<{url, type, tags?}>` is projected to `url` strings.                                                                                                                                                                                                                                                                                                                       |
+| `detected_at`       | `string` (RFC 3339)         | yes      | When **our scanner** detected the finding. Distinct from `publishedAt`/`lastModifiedAt` (upstream).                                                                                                                                                                                                                                                                                                                       |
+| `git_sha`           | `string \| null`            | no       | Short git SHA of the scanned commit. Null for image/archive/directory scans.                                                                                                                                                                                                                                                                                                                                              |
+| `epss_score`        | `number \| null`            | yes      | EPSS exploit-likelihood score in `[0.0, 1.0]`. Null when EPSS has not yet been fetched. The 0.36 threshold is FIRST's "1 in 3" band (top-third exploit likelihood); the 0.36 default is the EPSS branch of the O-3.7 4-condition `auto_actionable` gate (condition 2). Tunable via `VULN_INTEL_AUTO_ACTION_EPSS_MIN` env var on vuln-intel :4008.                                                                         |
+| `kev`               | `boolean`                   | yes      | True if the CVE is in the CISA Known Exploited Vulnerabilities catalog. Distinct from CVSS — a 9.8 CVE with no in-the-wild exploitation has `kev: false`. The KEV branch of condition 2.                                                                                                                                                                                                                                  |
+| `last_modified_at`  | `string \| null` (RFC 3339) | yes      | ISO 8601 timestamp of the upstream feed's `modified` field. Null if the feed does not expose a modification time. Distinct from `detected_at` (our scanner) and `publishedAt` (CVE publication).                                                                                                                                                                                                                          |
+| `tenant_id`         | `string`                    | yes      | Multi-tenant identifier. Default `"default"` for single-tenant deployments. Multi-tenant deployments MUST set this to the tenant UUID.                                                                                                                                                                                                                                                                                    |
+| `consensus_sources` | `string[]` (enum)           | yes      | List of upstream source identifiers that independently confirmed this (CVE, package) pair (e.g. `["nvd", "github-advisory"]`). The primary source is in the `source` field; the full list is here. The 4-condition `auto_actionable` gate (condition 1: cross-source consensus) requires `length(consensus_sources) >= 2`. Min items: 1 (a record must have at least one confirming source to be emitted at all).         |
+| `auto_actionable`   | `boolean`                   | yes      | `true` ONLY when all 4 conditions of the `auto_actionable` gate are satisfied (see the dedicated section below). Default `false`. Computed by security-service :4003 `vuln-projection.ts` as the AND of: (a) `(kev == true) OR (severity in {critical, high} AND epss_score >= 0.36)`, (b) `length(consensus_sources) >= 2`, (c) `length(fixed_in) > 0 AND has_reachable_fix(fixed_in, package)`, (d) `in_graph == true`. |
 
 ### `auto_actionable` gate (LOCKED — 4 conditions, O-3.7 EPSS refinement)
 
@@ -219,7 +225,7 @@ auto_actionable =
    `consensus_sources: ["nvd"]` (length 1) and fail condition 1. Maps to
    SecurityArchitect's S2.8 T-03 cross-source consensus gate.
 2. **Exploited OR high-likelihood-exploitable.** `(kev == true) OR
-   (severity in {critical, high} AND epss_score >= 0.36)`. Either the
+(severity in {critical, high} AND epss_score >= 0.36)`. Either the
    CVE is in the CISA Known Exploited Vulnerabilities catalog
    ([cisa.gov/known-exploited-vulnerabilities-catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)),
    OR the EPSS top-third band (FIRST "1 in 3") is reached. The 0.36
@@ -299,11 +305,11 @@ The 4-condition `auto_actionable` gate determines which downstream
 consumer processes a finding. The 3 routing paths are MUTUALLY
 EXCLUSIVE based on `(auto_actionable, severity)`:
 
-| `auto_actionable` | `severity` | Downstream consumer | Output | Status flag |
-| --- | --- | --- | --- | --- |
-| `true` | `critical` | `.github/workflows/security-issue.yml` (via security.yml dispatch) | GitHub issue with labels `security`, `automated`, `cve`, `severity:critical` | `auto_actioned` |
-| `false` | `critical` or `high` | **ComplianceOfficer S2.9 POA&M auto-mapping** (via scan-listener.ts subscription to `security.vulnerability.detected.v1`) | POA&M item with `status: 'verification-pending'` | `tracked` |
-| any | any | security-service :4003 NDJSON appender | `security/vulns/<YYYY-MM-DD>.json` line | `recorded` |
+| `auto_actionable` | `severity`           | Downstream consumer                                                                                                       | Output                                                                       | Status flag     |
+| ----------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------- |
+| `true`            | `critical`           | `.github/workflows/security-issue.yml` (via security.yml dispatch)                                                        | GitHub issue with labels `security`, `automated`, `cve`, `severity:critical` | `auto_actioned` |
+| `false`           | `critical` or `high` | **ComplianceOfficer S2.9 POA&M auto-mapping** (via scan-listener.ts subscription to `security.vulnerability.detected.v1`) | POA&M item with `status: 'verification-pending'`                             | `tracked`       |
+| any               | any                  | security-service :4003 NDJSON appender                                                                                    | `security/vulns/<YYYY-MM-DD>.json` line                                      | `recorded`      |
 
 The second row is the **POA&M cross-ref** that SecurityArchitect's
 S2.8 mitigation § 3.6 calls out: a HIGH/CRITICAL with
@@ -336,13 +342,13 @@ the workflow dispatches a `repository_dispatch` event of type
 
 ## Owner & ownership
 
-| Path                         | Owner              | Workflow                              |
-| ---------------------------- | ------------------ | ------------------------------------- |
-| `security/sboms/**`          | GitOpsManager      | `.github/workflows/security.yml`      |
-| `security/vulns/**`          | GitOpsManager      | `.github/workflows/security.yml`      |
-| `security/.gitkeep`          | GitOpsManager      | (initial commit only)                 |
-| `SECURITY.md`                | GitOpsManager      | `.github/workflows/security.yml` (auto-update) |
-| `CHANGELOG.md` (Security)    | GitOpsManager      | `.github/workflows/security.yml` (auto-update) |
+| Path                      | Owner         | Workflow                                       |
+| ------------------------- | ------------- | ---------------------------------------------- |
+| `security/sboms/**`       | GitOpsManager | `.github/workflows/security.yml`               |
+| `security/vulns/**`       | GitOpsManager | `.github/workflows/security.yml`               |
+| `security/.gitkeep`       | GitOpsManager | (initial commit only)                          |
+| `SECURITY.md`             | GitOpsManager | `.github/workflows/security.yml` (auto-update) |
+| `CHANGELOG.md` (Security) | GitOpsManager | `.github/workflows/security.yml` (auto-update) |
 
 For operator-facing runbook, see
 [`docs/runbooks/security-automation.md`](../../docs/runbooks/security-automation.md).

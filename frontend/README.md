@@ -6,16 +6,16 @@
 
 ## Screens
 
-| Path              | Screen            | Purpose                                                       |
-| ----------------- | ----------------- | ------------------------------------------------------------- |
-| `/`               | **Dashboard**     | Live posture, open incidents, top risks, recent activity      |
-| `/assets`         | **Assets**        | Inventory of code, images, services, IaC                      |
-| `/incidents`      | **Incidents**     | Active and historical incidents, with playbooks               |
-| `/vulnerabilities`| **Vulnerabilities** | Findings, with filters, dedup, and remediation tracking   |
-| `/sbom`           | **SBOM**          | CycloneDX browser, diff, license and provenance               |
-| `/compliance`     | **Compliance**    | Posture per framework, evidence, attestations                 |
-| `/integrations`   | **Integrations**  | Configure GitHub, GitLab, scanners, etc.                      |
-| `/settings`       | **Settings**      | Users, roles, tenants, API tokens, audit log access           |
+| Path               | Screen              | Purpose                                                  |
+| ------------------ | ------------------- | -------------------------------------------------------- |
+| `/`                | **Dashboard**       | Live posture, open incidents, top risks, recent activity |
+| `/assets`          | **Assets**          | Inventory of code, images, services, IaC                 |
+| `/incidents`       | **Incidents**       | Active and historical incidents, with playbooks          |
+| `/vulnerabilities` | **Vulnerabilities** | Findings, with filters, dedup, and remediation tracking  |
+| `/sbom`            | **SBOM**            | CycloneDX browser, diff, license and provenance          |
+| `/compliance`      | **Compliance**      | Posture per framework, evidence, attestations            |
+| `/integrations`    | **Integrations**    | Configure GitHub, GitLab, scanners, etc.                 |
+| `/settings`        | **Settings**        | Users, roles, tenants, API tokens, audit log access      |
 
 ## Architecture
 

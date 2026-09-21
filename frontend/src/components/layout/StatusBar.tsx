@@ -1,5 +1,5 @@
-import { Activity, Database, Cpu, Radio } from "lucide-react";
-import type { ReactNode } from "react";
+import { Activity, Database, Cpu, Radio } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 /**
  * StatusBar — bottom-of-screen system posture. Reflects the live
@@ -30,14 +30,10 @@ function Item({
 }: {
   icon: ReactNode;
   label: string;
-  status: "ok" | "degraded" | "down";
+  status: 'ok' | 'degraded' | 'down';
 }) {
   const dot =
-    status === "ok"
-      ? "bg-aion-ok"
-      : status === "degraded"
-        ? "bg-aion-warn"
-        : "bg-aion-danger";
+    status === 'ok' ? 'bg-aion-ok' : status === 'degraded' ? 'bg-aion-warn' : 'bg-aion-danger';
   return (
     <span className="inline-flex items-center gap-1.5">
       {icon}

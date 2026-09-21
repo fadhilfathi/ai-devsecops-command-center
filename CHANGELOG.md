@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rewrote `compliance-service` entrypoint to the shared `buildServer()`
   pattern used by every other service.
 - CI: fixed workspace paths and dependency-aware contracts build filter.
+- CI: lint/format/typecheck green, Node 22, contract tests in workspace.
 
 ### Sprint 5 — S5-1: vitest test baseline
 
@@ -179,8 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`kubernetes-service`** (S4-EPIC-1, port 4006) — read-only
   K8s inventory across the tenant's onboarded clusters.
   - Endpoints: `/v1/kubernetes/{clusters,namespaces,workloads,
-    pods,services,ingresses,deployments,statefulsets,
-    daemonsets}` + `POST /v1/kubernetes/test-connection` +
+pods,services,ingresses,deployments,statefulsets,
+daemonsets}` + `POST /v1/kubernetes/test-connection` +
     `/v1/kubernetes/providers`.
   - Provider abstraction: `fixture` (deterministic in-process
     data) and `live` (placeholder for Sprint 5).
@@ -194,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Score = `100 - 8*critical - 4*high - 2*medium - 1*low`,
     band A..F.
   - Endpoints: `/v1/health/{clusters,namespaces,workloads,
-    pods,clusters/:id,issues,recommendations}`.
+pods,clusters/:id,issues,recommendations}`.
 
 - **`runtime-security-service`** (S4-EPIC-3, port 4008) —
   runtime-risk detection + report generation.
@@ -202,20 +203,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     dangerous capability, weak SecurityContext, ServiceAccount
     risk, RBAC risk stub, missing limits, unpinned image).
   - Endpoints: `/v1/runtime-security/{rules,risks,risks/:id,
-    scan,report,report/cluster/:id}`.
+scan,report,report/cluster/:id}`.
 
 - **`inventory-service`** (S4-EPIC-4, port 4009) — unified
   asset catalog + relationship / dependency graphs.
   - Endpoints: `/v1/inventory/{assets,assets/:id,clusters,
-    namespaces,services,deployments,graph/asset,
-    graph/relationships,graph/dependencies,
-    graph/dependencies/:assetId}`.
+namespaces,services,deployments,graph/asset,
+graph/relationships,graph/dependencies,
+graph/dependencies/:assetId}`.
 
 - **`cost-intelligence-service`** (S4-EPIC-5, port 4010) —
   resource waste, over-provisioning, under-utilization, cost
   optimisation recommendations.
   - Endpoints: `/v1/cost/{analysis,analysis/cluster/:id,
-    workloads,findings,recommendations}`.
+workloads,findings,recommendations}`.
   - Configurable USD/hour pricing via
     `AICC_COST_CPU_USD_PER_HOUR` /
     `AICC_COST_MEMORY_USD_PER_HOUR`.
@@ -224,8 +225,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Application Graph, Topology Graph, per-namespace view,
   namespace relationships.
   - Endpoints: `/v1/topology/{graphs,service-map,
-    application-graph,graph,namespace/:name,
-    namespace-relationships}`.
+application-graph,graph,namespace/:name,
+namespace-relationships}`.
 
 - **`reporting-service`** (S4-EPIC-10, port 4012) — six
   canonical reports × {json, md, pdf}.
@@ -282,21 +283,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Sprint roadmap (planned)
 
-| Sprint | Focus                                                     |
-| ------ | --------------------------------------------------------- |
-| 1      | Repo, architecture, documentation, service skeletons      |
-| 2      | Auth service: users, tenants, JWT, RBAC                   |
-| 3      | Agent runtime: dispatcher, memory, contract registry      |
-| 4      | **Security service: assets, SBOM, vulnerabilities** ✅    |
-| 4      | **Infrastructure Intelligence** (Sprint 4 workstream) ✅  |
-| 5      | Live Kubernetes + Postgres persistence + Prometheus       |
+| Sprint | Focus                                                       |
+| ------ | ----------------------------------------------------------- |
+| 1      | Repo, architecture, documentation, service skeletons        |
+| 2      | Auth service: users, tenants, JWT, RBAC                     |
+| 3      | Agent runtime: dispatcher, memory, contract registry        |
+| 4      | **Security service: assets, SBOM, vulnerabilities** ✅      |
+| 4      | **Infrastructure Intelligence** (Sprint 4 workstream) ✅    |
+| 5      | Live Kubernetes + Postgres persistence + Prometheus         |
 | 6      | Compliance service: control mapping, evidence, attestations |
-| 7      | Integration service: GitHub App, webhooks, outbound       |
-| 8      | Frontend: Dashboard, Assets, Incidents                    |
-| 9      | Frontend: Vulnerabilities, SBOM, Compliance               |
-| 10     | End-to-end workflows, observability, SRE playbooks       |
-| 11     | Hardening, security review, OpenSSF Scorecard pass        |
-| 12     | 0.1.0 release, public docs, demo data                    |
+| 7      | Integration service: GitHub App, webhooks, outbound         |
+| 8      | Frontend: Dashboard, Assets, Incidents                      |
+| 9      | Frontend: Vulnerabilities, SBOM, Compliance                 |
+| 10     | End-to-end workflows, observability, SRE playbooks          |
+| 11     | Hardening, security review, OpenSSF Scorecard pass          |
+| 12     | 0.1.0 release, public docs, demo data                       |
 
 ## Sprint 2 — Security foundation (2026-06-12)
 
@@ -375,20 +376,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Sprint roadmap (planned)
 
-| Sprint | Focus                                                     |
-| ------ | --------------------------------------------------------- |
-| 1      | Repo, architecture, documentation, service skeletons      |
-| 2      | Auth service: users, tenants, JWT, RBAC                   |
-| 3      | Agent runtime: dispatcher, memory, contract registry      |
-| 4      | Security service: assets, SBOM, vulnerabilities           |
-| 5      | Incident service: lifecycle, correlation, playbooks       |
+| Sprint | Focus                                                       |
+| ------ | ----------------------------------------------------------- |
+| 1      | Repo, architecture, documentation, service skeletons        |
+| 2      | Auth service: users, tenants, JWT, RBAC                     |
+| 3      | Agent runtime: dispatcher, memory, contract registry        |
+| 4      | Security service: assets, SBOM, vulnerabilities             |
+| 5      | Incident service: lifecycle, correlation, playbooks         |
 | 6      | Compliance service: control mapping, evidence, attestations |
-| 7      | Integration service: GitHub App, webhooks, outbound       |
-| 8      | Frontend: Dashboard, Assets, Incidents                    |
-| 9      | Frontend: Vulnerabilities, SBOM, Compliance               |
-| 10     | End-to-end workflows, observability, SRE playbooks       |
-| 11     | Hardening, security review, OpenSSF Scorecard pass        |
-| 12     | 0.1.0 release, public docs, demo data                    |
+| 7      | Integration service: GitHub App, webhooks, outbound         |
+| 8      | Frontend: Dashboard, Assets, Incidents                      |
+| 9      | Frontend: Vulnerabilities, SBOM, Compliance                 |
+| 10     | End-to-end workflows, observability, SRE playbooks          |
+| 11     | Hardening, security review, OpenSSF Scorecard pass          |
+| 12     | 0.1.0 release, public docs, demo data                       |
 
 ## Security changelog
 
@@ -405,15 +406,15 @@ updated continuously by CI.
 
 ### Where to look
 
-| What                                  | Where                                                                                          |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Daily vulnerability findings (NDJSON) | [`security/vulns/<YYYY-MM-DD>.json`](security/vulns/) (90-day retention)                        |
-| Weekly digest (Markdown)              | [`security/vulns/weekly-<YYYY-Www>.md`](security/vulns/) (kept indefinitely)                   |
-| SBOM artifacts                        | [`security/sboms/<sbom_id>/`](security/sboms/) (kept indefinitely; also attached to Releases)   |
-| SBOM index                            | [`security/sboms/index.json`](security/sboms/index.json) (NDJSON, one line per SBOM)            |
-| Response SLA                          | [`SECURITY.md` → Response targets (SLA)](SECURITY.md#response-targets-sla)                     |
-| Coordinated disclosures               | GitHub Security Advisories tab                                                                 |
-| Disclosed CVEs (post-disclosure)      | `CHANGELOG.md` "Security" section of the corresponding release entry                            |
+| What                                  | Where                                                                                         |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Daily vulnerability findings (NDJSON) | [`security/vulns/<YYYY-MM-DD>.json`](security/vulns/) (90-day retention)                      |
+| Weekly digest (Markdown)              | [`security/vulns/weekly-<YYYY-Www>.md`](security/vulns/) (kept indefinitely)                  |
+| SBOM artifacts                        | [`security/sboms/<sbom_id>/`](security/sboms/) (kept indefinitely; also attached to Releases) |
+| SBOM index                            | [`security/sboms/index.json`](security/sboms/index.json) (NDJSON, one line per SBOM)          |
+| Response SLA                          | [`SECURITY.md` → Response targets (SLA)](SECURITY.md#response-targets-sla)                    |
+| Coordinated disclosures               | GitHub Security Advisories tab                                                                |
+| Disclosed CVEs (post-disclosure)      | `CHANGELOG.md` "Security" section of the corresponding release entry                          |
 
 ### Schema & contract
 
@@ -427,9 +428,9 @@ for the operator runbook (triage, override, rollback).
 
 ## Release history
 
-| Version | Date       | Notes                           |
-| ------- | ---------- | ------------------------------- |
-| 0.0.0   | 2026-06-12 | Initial repository skeleton     |
+| Version | Date       | Notes                       |
+| ------- | ---------- | --------------------------- |
+| 0.0.0   | 2026-06-12 | Initial repository skeleton |
 
 <!--
 ## [0.1.0] - YYYY-MM-DD

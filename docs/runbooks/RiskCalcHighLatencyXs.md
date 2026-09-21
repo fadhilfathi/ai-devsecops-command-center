@@ -5,11 +5,13 @@
 **Service:** `dependency-intel` (port 4009)
 **Source metric:** `devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="xs"}`
 **PromQL:**
+
 ```promql
 histogram_quantile(0.95,
   sum by (le) (rate(devsecops_risk_calculation_duration_seconds_bucket{service="dependency-intel",sbom_size_bucket="xs"}[5m]))
 ) > 0.5
 ```
+
 **Locked in:** S2.7 round 6 (D7 5-bucket scheme, 2026-06-12)
 
 ---
@@ -111,6 +113,7 @@ reference but the alert is no longer emitted.
 ## Escalation
 
 If p95 > 2s sustained for 15+ minutes, escalate to:
+
 1. **SRE on-call** — page via PagerDuty
 2. **PlatformArchitect** — for graph-DB tuning or capacity planning
 3. **SecurityArchitect** — if the latency is causing a downstream

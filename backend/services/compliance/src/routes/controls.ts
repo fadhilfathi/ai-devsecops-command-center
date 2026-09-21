@@ -21,14 +21,16 @@ const UpdateStatusSchema = z.object({
   status: z.enum(['pass', 'fail', 'not_applicable', 'manual_review']),
 });
 
-export const buildControlRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildControlRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, controls, bus } = opts;
 
   server.get('/v1/controls', async (req) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const framework = (req.query as { framework?: string }).framework as
-      | 'cis_v8' | 'nist_800_53' | 'soc2' | 'iso_27001'
-      | undefined;
+      'cis_v8' | 'nist_800_53' | 'soc2' | 'iso_27001' | undefined;
     const items = await controls.list(tenantId, { framework });
     return { items, total: items.length };
   });
@@ -47,7 +49,12 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
       source: 'compliance-service',
       tenantId,
       severity: 'info',
-      data: { controlId: control.id, framework: control.framework, status: control.status, kind: 'created' },
+      data: {
+        controlId: control.id,
+        framework: control.framework,
+        status: control.status,
+        kind: 'created',
+      },
     });
     return reply.code(201).send({ control });
   });
@@ -70,7 +77,12 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
       source: 'compliance-service',
       tenantId,
       severity: body.status === 'fail' ? 'high' : 'info',
-      data: { controlId: updated.id, framework: updated.framework, status: body.status, kind: 'status_changed' },
+      data: {
+        controlId: updated.id,
+        framework: updated.framework,
+        status: body.status,
+        kind: 'status_changed',
+      },
     });
     return { control: updated };
   });

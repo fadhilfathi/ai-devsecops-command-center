@@ -37,8 +37,8 @@ metadata:
     # The cosign-verify initContainer authenticates this identity against
     # the OIDC issuer. If you change the ServiceAccount name, update the
     # initContainer's --certificate-identity accordingly.
-    cosign.sigstore.dev/identity: "https://github.com/anchore/syft/.github/workflows/release.yml@refs/tags/v1.6.0"
-    cosign.sigstore.dev/issuer: "https://token.actions.githubusercontent.com"
+    cosign.sigstore.dev/identity: 'https://github.com/anchore/syft/.github/workflows/release.yml@refs/tags/v1.6.0'
+    cosign.sigstore.dev/issuer: 'https://token.actions.githubusercontent.com'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -48,7 +48,7 @@ metadata:
   labels:
     app.kubernetes.io/name: sbom-generator
     app.kubernetes.io/component: sbom-pipeline
-    app.kubernetes.io/version: "1.6.0"
+    app.kubernetes.io/version: '1.6.0'
 spec:
   replicas: 2
   strategy:
@@ -63,7 +63,7 @@ spec:
     metadata:
       annotations:
         # Trigger redeploy on ConfigMap or Secret changes.
-        config.checksum: "REPLACE_AT_DEPLOY"
+        config.checksum: 'REPLACE_AT_DEPLOY'
       labels:
         app.kubernetes.io/name: sbom-generator
         app.kubernetes.io/component: sbom-pipeline
@@ -130,13 +130,13 @@ spec:
             - name: SYFT_BINARY
               value: /usr/local/bin/syft
             - name: PORT
-              value: "4007"
+              value: '4007'
             - name: HOST
-              value: "0.0.0.0"
+              value: '0.0.0.0'
             - name: REQUEST_TIMEOUT_SECONDS
-              value: "600"
+              value: '600'
             - name: MAX_CONCURRENT_SCANS
-              value: "4"
+              value: '4'
             - name: BUS_URL
               valueFrom:
                 secretKeyRef:
@@ -145,17 +145,17 @@ spec:
                   optional: true
             # T-07 (S2.8): SSRF defense environment overrides.
             - name: SBOM_GENERATOR_GIT_HOST_ALLOWLIST
-              value: "github.com,*.github.com,gitlab.com,*.gitlab.com,bitbucket.org,*.bitbucket.org"
+              value: 'github.com,*.github.com,gitlab.com,*.gitlab.com,bitbucket.org,*.bitbucket.org'
             - name: SBOM_GENERATOR_SSRF_DEFAULT_DENY
-              value: "true"
+              value: 'true'
             - name: SBOM_GENERATOR_SSRF_DNS_TIMEOUT_SECONDS
-              value: "5"
+              value: '5'
           resources:
             requests:
               cpu: 250m
               memory: 512Mi
             limits:
-              cpu: "2"
+              cpu: '2'
               memory: 4Gi
           securityContext:
             allowPrivilegeEscalation: false

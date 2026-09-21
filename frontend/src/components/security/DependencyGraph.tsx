@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -9,16 +9,16 @@ import ReactFlow, {
   type Edge,
   type Node,
   type NodeProps,
-} from "reactflow";
-import "reactflow/dist/style.css";
-import { X, ExternalLink } from "lucide-react";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { titleCase } from "@/lib/format";
-import type { GraphData, GraphNode, Severity } from "@/types";
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { X, ExternalLink } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { titleCase } from '@/lib/format';
+import type { GraphData, GraphNode, Severity } from '@/types';
 
 /**
  * DependencyGraph — force-directed graph of SBOM components.
@@ -71,17 +71,17 @@ function DependencyGraphInner({ sbomId }: { sbomId: string }) {
       const gn = byId.get(node.id);
       if (gn) setSelected(gn);
     },
-    [byId]
+    [byId],
   );
 
   // Close side panel on Escape.
   useEffect(() => {
     if (!selected) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelected(null);
+      if (e.key === 'Escape') setSelected(null);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [selected]);
 
   return (
@@ -92,15 +92,13 @@ function DependencyGraphInner({ sbomId }: { sbomId: string }) {
           subtitle="Components and their direct / transitive dependencies. Red border = has open vulnerabilities."
           actions={
             <span className="aion-mono text-[11px]">
-              {data ? `${data.nodes.length} nodes · ${data.edges.length} edges` : "…"}
+              {data ? `${data.nodes.length} nodes · ${data.edges.length} edges` : '…'}
             </span>
           }
         />
         <div className="h-[640px] bg-bg">
           {loading || !data ? (
-            <div className="grid h-full place-items-center text-sm text-muted">
-              Loading graph…
-            </div>
+            <div className="grid h-full place-items-center text-sm text-muted">Loading graph…</div>
           ) : nodes.length === 0 ? (
             <div className="grid h-full place-items-center text-sm text-muted">
               No components to graph.
@@ -124,13 +122,13 @@ function DependencyGraphInner({ sbomId }: { sbomId: string }) {
                 zoomable
                 nodeColor={(n) => {
                   const gn = byId.get(n.id);
-                  if (!gn || !gn.highestSeverity) return "hsl(var(--surface-2))";
+                  if (!gn || !gn.highestSeverity) return 'hsl(var(--surface-2))';
                   return SEV_COLOR[gn.highestSeverity];
                 }}
                 maskColor="hsl(var(--bg) / 0.7)"
                 style={{
-                  background: "hsl(var(--surface))",
-                  border: "1px solid hsl(var(--border))",
+                  background: 'hsl(var(--surface))',
+                  border: '1px solid hsl(var(--border))',
                 }}
               />
             </ReactFlow>
@@ -146,8 +144,8 @@ function DependencyGraphInner({ sbomId }: { sbomId: string }) {
           <Card.Header title="Component details" />
           <Card.Body>
             <p className="text-sm text-muted">
-              Click any node in the graph to see its details, dependencies,
-              and vulnerability status.
+              Click any node in the graph to see its details, dependencies, and vulnerability
+              status.
             </p>
             <div className="mt-4 aion-mono text-[11px]">
               <div>Pan: drag the background</div>
@@ -162,13 +160,7 @@ function DependencyGraphInner({ sbomId }: { sbomId: string }) {
   );
 }
 
-function ComponentPanel({
-  node,
-  onClose,
-}: {
-  node: GraphNode;
-  onClose: () => void;
-}) {
+function ComponentPanel({ node, onClose }: { node: GraphNode; onClose: () => void }) {
   return (
     <Card>
       <Card.Header
@@ -196,7 +188,7 @@ function ComponentPanel({
             <div className="mt-1">
               <Badge severity={node.highestSeverity}>
                 {node.vulnCount} {titleCase(node.highestSeverity)} vuln
-                {node.vulnCount === 1 ? "" : "s"}
+                {node.vulnCount === 1 ? '' : 's'}
               </Badge>
             </div>
           ) : (
@@ -229,11 +221,11 @@ function ComponentPanel({
 // -------------------------------------------------------------------------
 
 const SEV_COLOR: Record<Severity, string> = {
-  critical: "hsl(0 84% 60%)",
-  high:     "hsl(20 90% 55%)",
-  medium:   "hsl(38 92% 50%)",
-  low:      "hsl(199 89% 60%)",
-  info:     "hsl(215 14% 60%)",
+  critical: 'hsl(0 84% 60%)',
+  high: 'hsl(20 90% 55%)',
+  medium: 'hsl(38 92% 50%)',
+  low: 'hsl(199 89% 60%)',
+  info: 'hsl(215 14% 60%)',
 };
 
 function SbomNode({ data }: NodeProps<{ node: GraphNode }>) {
@@ -244,19 +236,17 @@ function SbomNode({ data }: NodeProps<{ node: GraphNode }>) {
       tabIndex={0}
       role="button"
       aria-label={`${n.label}, ${n.ecosystem} ${n.version}${
-        sev ? `, ${n.vulnCount} ${sev} vulnerabilities` : ", no vulnerabilities"
+        sev ? `, ${n.vulnCount} ${sev} vulnerabilities` : ', no vulnerabilities'
       }`}
       className="rounded-md border-2 bg-surface px-2 py-1.5 text-left shadow-sm hover:border-accent/60"
       style={{
-        borderColor: sev ? SEV_COLOR[sev] : "hsl(var(--border))",
+        borderColor: sev ? SEV_COLOR[sev] : 'hsl(var(--border))',
         minWidth: 140,
       }}
     >
       <Handle type="target" position={Position.Left} style={handleStyle} />
       <div className="flex items-center gap-2">
-        <span className="aion-mono text-[10px] uppercase text-muted">
-          {n.ecosystem}
-        </span>
+        <span className="aion-mono text-[10px] uppercase text-muted">{n.ecosystem}</span>
         {sev && (
           <span
             aria-hidden="true"
@@ -275,8 +265,8 @@ function SbomNode({ data }: NodeProps<{ node: GraphNode }>) {
 const handleStyle = {
   width: 6,
   height: 6,
-  background: "hsl(var(--muted))",
-  border: "1px solid hsl(var(--border))",
+  background: 'hsl(var(--muted))',
+  border: '1px solid hsl(var(--border))',
 };
 
 const NODE_TYPES = { sbom: SbomNode };
@@ -296,7 +286,7 @@ function layoutByDepth(data: GraphData): { nodes: Node[]; edges: Edge[] } {
     list.forEach((n, i) => {
       nodes.push({
         id: n.id,
-        type: "sbom",
+        type: 'sbom',
         position: { x: depth * COL_W, y: i * ROW_H - (list.length * ROW_H) / 2 },
         data: { node: n },
         draggable: true,
@@ -307,9 +297,9 @@ function layoutByDepth(data: GraphData): { nodes: Node[]; edges: Edge[] } {
     id: `${e.source}->${e.target}`,
     source: e.source,
     target: e.target,
-    type: "smoothstep",
+    type: 'smoothstep',
     animated: false,
-    style: { stroke: "hsl(var(--muted))", strokeWidth: 1, opacity: 0.6 },
+    style: { stroke: 'hsl(var(--muted))', strokeWidth: 1, opacity: 0.6 },
   }));
   return { nodes, edges };
 }

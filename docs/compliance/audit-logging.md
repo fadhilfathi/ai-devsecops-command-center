@@ -54,7 +54,7 @@ In scope:
 Out of scope (covered elsewhere):
 
 - Cloud-provider audit logs (CloudTrail / Azure Activity) — these are
-  *ingested* but the authoritative retention and review is the cloud
+  _ingested_ but the authoritative retention and review is the cloud
   provider's responsibility; see inherited controls in
   [`nist-800-53.md`](./nist-800-53.md).
 - Network flow logs (VPC / VNet flow logs) — collected by the SRE team,
@@ -70,112 +70,112 @@ maintained in `backend/services/audit/src/events.ts`.
 
 ### 3.1 Identity & authentication
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `auth.login.success` | user / service | session | tenant_id, user_id, mfa_used, source_ip, user_agent |
-| `auth.login.failure` | user / service | session | reason, attempted_username_hash, source_ip |
-| `auth.logout` | user | session | session_id |
-| `auth.mfa.challenge` | user | session | method, success |
-| `auth.mfa.enroll` | user | user | method |
-| `auth.password.changed` | user | user | — |
-| `auth.token.issued` | service | token | scope, ttl, audience |
-| `auth.token.revoked` | service / user | token | reason |
-| `auth.session.locked` | system | user | reason |
-| `auth.account.locked` | system | user | reason (e.g., 5 failed attempts) |
-| `auth.account.disabled` | admin | user | reason |
-| `auth.account.deleted` | admin | user | reason |
-| `auth.impersonation.started` | admin | user | justification (required) |
-| `auth.impersonation.ended` | admin | user | duration |
+| Event type                   | Actor          | Object  | Disposition                                         |
+| ---------------------------- | -------------- | ------- | --------------------------------------------------- |
+| `auth.login.success`         | user / service | session | tenant_id, user_id, mfa_used, source_ip, user_agent |
+| `auth.login.failure`         | user / service | session | reason, attempted_username_hash, source_ip          |
+| `auth.logout`                | user           | session | session_id                                          |
+| `auth.mfa.challenge`         | user           | session | method, success                                     |
+| `auth.mfa.enroll`            | user           | user    | method                                              |
+| `auth.password.changed`      | user           | user    | —                                                   |
+| `auth.token.issued`          | service        | token   | scope, ttl, audience                                |
+| `auth.token.revoked`         | service / user | token   | reason                                              |
+| `auth.session.locked`        | system         | user    | reason                                              |
+| `auth.account.locked`        | system         | user    | reason (e.g., 5 failed attempts)                    |
+| `auth.account.disabled`      | admin          | user    | reason                                              |
+| `auth.account.deleted`       | admin          | user    | reason                                              |
+| `auth.impersonation.started` | admin          | user    | justification (required)                            |
+| `auth.impersonation.ended`   | admin          | user    | duration                                            |
 
 ### 3.2 Authorization & access
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
+| Event type             | Actor          | Object   | Disposition                                   |
+| ---------------------- | -------------- | -------- | --------------------------------------------- |
 | `authz.access.granted` | user / service | resource | resource_type, resource_id, action, policy_id |
-| `authz.access.denied` | user / service | resource | reason (policy_id, missing scope, etc.) |
-| `authz.role.granted` | admin | user | role, granted_scope |
-| `authz.role.revoked` | admin | user | role, revoked_scope |
-| `authz.policy.created` | admin | policy | policy_hash |
-| `authz.policy.updated` | admin | policy | diff_hash |
-| `authz.policy.deleted` | admin | policy | reason |
+| `authz.access.denied`  | user / service | resource | reason (policy_id, missing scope, etc.)       |
+| `authz.role.granted`   | admin          | user     | role, granted_scope                           |
+| `authz.role.revoked`   | admin          | user     | role, revoked_scope                           |
+| `authz.policy.created` | admin          | policy   | policy_hash                                   |
+| `authz.policy.updated` | admin          | policy   | diff_hash                                     |
+| `authz.policy.deleted` | admin          | policy   | reason                                        |
 
 ### 3.3 Data access (per-tenant)
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `data.read` | user / service | record | tenant_id, record_type, record_id, classification |
-| `data.write` | user / service | record | same; plus before/after hash |
-| `data.delete` | user / service | record | same |
-| `data.export` | user / service | dataset | dataset_id, format, row_count, hash |
-| `data.share.created` | user | share_link | scope, ttl, watermark |
-| `data.share.revoked` | user | share_link | — |
-| `data.access.anomaly` | system | user | anomaly_type, score |
+| Event type            | Actor          | Object     | Disposition                                       |
+| --------------------- | -------------- | ---------- | ------------------------------------------------- |
+| `data.read`           | user / service | record     | tenant_id, record_type, record_id, classification |
+| `data.write`          | user / service | record     | same; plus before/after hash                      |
+| `data.delete`         | user / service | record     | same                                              |
+| `data.export`         | user / service | dataset    | dataset_id, format, row_count, hash               |
+| `data.share.created`  | user           | share_link | scope, ttl, watermark                             |
+| `data.share.revoked`  | user           | share_link | —                                                 |
+| `data.access.anomaly` | system         | user       | anomaly_type, score                               |
 
 ### 3.4 Configuration change
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `config.updated` | user / service | setting | tenant_id, setting_path, old_hash, new_hash, pr_url |
-| `config.deleted` | user / service | setting | same |
-| `config.bulk.imported` | user | scope | import_id, item_count, source |
-| `config.policy.changed` | user | policy | diff_summary |
+| Event type              | Actor          | Object  | Disposition                                         |
+| ----------------------- | -------------- | ------- | --------------------------------------------------- |
+| `config.updated`        | user / service | setting | tenant_id, setting_path, old_hash, new_hash, pr_url |
+| `config.deleted`        | user / service | setting | same                                                |
+| `config.bulk.imported`  | user           | scope   | import_id, item_count, source                       |
+| `config.policy.changed` | user           | policy  | diff_summary                                        |
 
 ### 3.5 Vulnerability & incident lifecycle
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `vuln.found` | scanner | finding | cve, severity, cvss, epss, asset_id |
-| `vuln.triaged` | user | finding | priority, assignee |
-| `vuln.suppressed` | user | finding | reason, expiry |
-| `vuln.remediated` | user / automation | finding | pr_url, fix_version |
-| `vuln.reopened` | system | finding | reason |
-| `incident.created` | user / system | incident | severity, category, source |
-| `incident.escalated` | system | incident | new_severity, reason |
-| `incident.closed` | user | incident | resolution_code |
-| `incident.postmortem.published` | user | incident | url |
+| Event type                      | Actor             | Object   | Disposition                         |
+| ------------------------------- | ----------------- | -------- | ----------------------------------- |
+| `vuln.found`                    | scanner           | finding  | cve, severity, cvss, epss, asset_id |
+| `vuln.triaged`                  | user              | finding  | priority, assignee                  |
+| `vuln.suppressed`               | user              | finding  | reason, expiry                      |
+| `vuln.remediated`               | user / automation | finding  | pr_url, fix_version                 |
+| `vuln.reopened`                 | system            | finding  | reason                              |
+| `incident.created`              | user / system     | incident | severity, category, source          |
+| `incident.escalated`            | system            | incident | new_severity, reason                |
+| `incident.closed`               | user              | incident | resolution_code                     |
+| `incident.postmortem.published` | user              | incident | url                                 |
 
 ### 3.6 Agent & integration
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `agent.enrolled` | agent | host | host_id, tenant_id, agent_version |
-| `agent.unenrolled` | user / system | host | reason |
-| `agent.heartbeat.missed` | system | host | duration, last_seen |
-| `agent.finding.uploaded` | agent | finding | finding_type, target_id |
-| `integration.connected` | user | integration | provider, scopes |
-| `integration.disconnected` | user | integration | reason |
-| `integration.token.rotated` | system | integration | — |
-| `integration.api_call` | integration | resource | provider, action, result |
+| Event type                  | Actor         | Object      | Disposition                       |
+| --------------------------- | ------------- | ----------- | --------------------------------- |
+| `agent.enrolled`            | agent         | host        | host_id, tenant_id, agent_version |
+| `agent.unenrolled`          | user / system | host        | reason                            |
+| `agent.heartbeat.missed`    | system        | host        | duration, last_seen               |
+| `agent.finding.uploaded`    | agent         | finding     | finding_type, target_id           |
+| `integration.connected`     | user          | integration | provider, scopes                  |
+| `integration.disconnected`  | user          | integration | reason                            |
+| `integration.token.rotated` | system        | integration | —                                 |
+| `integration.api_call`      | integration   | resource    | provider, action, result          |
 
 ### 3.7 Platform & system
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `service.started` | system | service | version, commit_sha |
-| `service.stopped` | system | service | reason, signal |
-| `service.deployed` | system | service | version, commit_sha, deployer, pr_url |
-| `service.config.reloaded` | system | service | setting_paths |
-| `db.user.created` | admin | db_user | purpose |
-| `db.user.dropped` | admin | db_user | reason |
-| `db.privilege.granted` | admin | db_user | privilege |
-| `db.privilege.revoked` | admin | db_user | — |
-| `kek.rotated` | system | tenant | tenant_id, key_version |
-| `kek.disabled` | system | tenant | reason |
-| `backup.started` | system | backup | target, type |
-| `backup.completed` | system | backup | target, size, duration, status |
-| `backup.failed` | system | backup | target, error |
+| Event type                | Actor  | Object  | Disposition                           |
+| ------------------------- | ------ | ------- | ------------------------------------- |
+| `service.started`         | system | service | version, commit_sha                   |
+| `service.stopped`         | system | service | reason, signal                        |
+| `service.deployed`        | system | service | version, commit_sha, deployer, pr_url |
+| `service.config.reloaded` | system | service | setting_paths                         |
+| `db.user.created`         | admin  | db_user | purpose                               |
+| `db.user.dropped`         | admin  | db_user | reason                                |
+| `db.privilege.granted`    | admin  | db_user | privilege                             |
+| `db.privilege.revoked`    | admin  | db_user | —                                     |
+| `kek.rotated`             | system | tenant  | tenant_id, key_version                |
+| `kek.disabled`            | system | tenant  | reason                                |
+| `backup.started`          | system | backup  | target, type                          |
+| `backup.completed`        | system | backup  | target, size, duration, status        |
+| `backup.failed`           | system | backup  | target, error                         |
 
 ### 3.8 Security-relevant system events
 
-| Event type | Actor | Object | Disposition |
-|---|---|---|---|
-| `ids.alert` | system | event | rule_id, severity, asset |
-| `malware.detected` | system | file | file_hash, scanner, asset |
-| `process.suspicious` | system | process | rule_id, asset, process |
-| `network.anomaly` | system | flow | rule_id, src, dst |
-| `secrets.accessed` | user | secret | secret_ref, reason |
-| `breakglass.activated` | user | scope | justification, ticket |
-| `breakglass.deactivated` | user | scope | duration |
+| Event type               | Actor  | Object  | Disposition               |
+| ------------------------ | ------ | ------- | ------------------------- |
+| `ids.alert`              | system | event   | rule_id, severity, asset  |
+| `malware.detected`       | system | file    | file_hash, scanner, asset |
+| `process.suspicious`     | system | process | rule_id, asset, process   |
+| `network.anomaly`        | system | flow    | rule_id, src, dst         |
+| `secrets.accessed`       | user   | secret  | secret_ref, reason        |
+| `breakglass.activated`   | user   | scope   | justification, ticket     |
+| `breakglass.deactivated` | user   | scope   | duration                  |
 
 ## 4. Record schema
 
@@ -247,11 +247,11 @@ the previous two major versions.
 
 Audit records flow through three storage tiers:
 
-| Tier | Storage | Retention | Access | Use case |
-|---|---|---|---|---|
-| **Hot** | Object storage index (per-tenant) + searchable SIEM | 13 months | Tenant-scoped read; auditor read | Live investigation, recent audit |
-| **Warm** | Compressed object storage, queryable via Athena/equivalent | 7 years | Auditor + legal hold | Internal/external audit |
-| **Cold** | Object storage with object lock, WORM | 7 years (configurable) | Two-person unlock; legal hold only | Regulatory requests, litigation |
+| Tier     | Storage                                                    | Retention              | Access                             | Use case                         |
+| -------- | ---------------------------------------------------------- | ---------------------- | ---------------------------------- | -------------------------------- |
+| **Hot**  | Object storage index (per-tenant) + searchable SIEM        | 13 months              | Tenant-scoped read; auditor read   | Live investigation, recent audit |
+| **Warm** | Compressed object storage, queryable via Athena/equivalent | 7 years                | Auditor + legal hold               | Internal/external audit          |
+| **Cold** | Object storage with object lock, WORM                      | 7 years (configurable) | Two-person unlock; legal hold only | Regulatory requests, litigation  |
 
 ### 5.1 Per-tenant isolation
 
@@ -327,16 +327,16 @@ addresses, action descriptions). Access is restricted to the
 
 ## 7. Access control
 
-| Role | Read | Export | Configure retention | Legal hold | Notes |
-|---|---|---|---|---|---|
-| Tenant user (own tenant) | ✅ | ✅ | ❌ | ❌ | Via UI/API |
-| Tenant admin (own tenant) | ✅ | ✅ | Configure for own tenant | ❌ | |
-| Tenant auditor (own tenant) | ✅ | ✅ | ❌ | ❌ | Read-only API |
-| Platform auditor (all tenants) | ✅ | ✅ | ❌ | ❌ | Justification required per query |
-| Compliance officer (all) | ✅ | ✅ | ✅ | ✅ | |
-| Security admin (all) | ✅ | ❌ | ❌ | ❌ | Forensics only |
-| Breakglass-compliance | ✅ | ✅ | ❌ | ✅ | Two-person activation |
-| On-call SRE | ❌ | ❌ | ❌ | ❌ | Access via break-glass |
+| Role                           | Read | Export | Configure retention      | Legal hold | Notes                            |
+| ------------------------------ | ---- | ------ | ------------------------ | ---------- | -------------------------------- |
+| Tenant user (own tenant)       | ✅   | ✅     | ❌                       | ❌         | Via UI/API                       |
+| Tenant admin (own tenant)      | ✅   | ✅     | Configure for own tenant | ❌         |                                  |
+| Tenant auditor (own tenant)    | ✅   | ✅     | ❌                       | ❌         | Read-only API                    |
+| Platform auditor (all tenants) | ✅   | ✅     | ❌                       | ❌         | Justification required per query |
+| Compliance officer (all)       | ✅   | ✅     | ✅                       | ✅         |                                  |
+| Security admin (all)           | ✅   | ❌     | ❌                       | ❌         | Forensics only                   |
+| Breakglass-compliance          | ✅   | ✅     | ❌                       | ✅         | Two-person activation            |
+| On-call SRE                    | ❌   | ❌     | ❌                       | ❌         | Access via break-glass           |
 
 ### 7.1 Break-glass
 
@@ -353,15 +353,15 @@ justification is stored immutably with the activation record.
 
 ## 8. Review and monitoring
 
-| Activity | Frequency | Owner | Output |
-|---|---|---|---|
-| Automated anomaly detection | Real-time | SREEngineer | SIEM alerts |
-| Privileged-action review (random sample) | Weekly | ComplianceOfficer | Review report |
-| All break-glass activations | Within 24 h of activation | SecurityArchitect | Investigation |
-| Failed-auth spike | Real-time | SREEngineer | SIEM alert |
-| High-severity event review | Within 1 h | SecurityArchitect | Incident response |
-| Audit log itself (chain integrity) | Every 15 min | SREEngineer | Integrity report |
-| External audit (SOC 2 / ISO) | Annually | ComplianceOfficer | Auditor report |
+| Activity                                 | Frequency                 | Owner             | Output            |
+| ---------------------------------------- | ------------------------- | ----------------- | ----------------- |
+| Automated anomaly detection              | Real-time                 | SREEngineer       | SIEM alerts       |
+| Privileged-action review (random sample) | Weekly                    | ComplianceOfficer | Review report     |
+| All break-glass activations              | Within 24 h of activation | SecurityArchitect | Investigation     |
+| Failed-auth spike                        | Real-time                 | SREEngineer       | SIEM alert        |
+| High-severity event review               | Within 1 h                | SecurityArchitect | Incident response |
+| Audit log itself (chain integrity)       | Every 15 min              | SREEngineer       | Integrity report  |
+| External audit (SOC 2 / ISO)             | Annually                  | ComplianceOfficer | Auditor report    |
 
 ### 8.1 Detection rules (minimum set)
 
@@ -409,7 +409,7 @@ its emitter.
 
 ### 9.3 Cardinality protections
 
-The audit log is not a metrics store. The following are *not* allowed
+The audit log is not a metrics store. The following are _not_ allowed
 in audit records: free-form user-supplied strings in indexed fields,
 high-cardinality tags, payload dumps. PII is stored only when required
 for the event's purpose and is hashed where possible.
@@ -430,16 +430,16 @@ Customer-facing audit access is itself audited.
 
 ## 11. Retention schedule
 
-| Data class | Hot | Warm | Cold | Notes |
-|---|---|---|---|---|
-| Authentication events | 13 months | 7 years | 7 years | |
-| Authorization events | 13 months | 7 years | 7 years | |
-| Data access (PII) | 13 months | 7 years | 7 years | |
-| Configuration change | 13 months | 7 years | 7 years | |
-| Vulnerability / incident | 13 months | 7 years | 7 years | |
-| Agent / integration | 13 months | 7 years | 7 years | |
-| Platform events | 13 months | 7 years | 7 years | |
-| Merkle roots (notary) | 7 years | — | — | Independent store |
+| Data class               | Hot       | Warm    | Cold    | Notes             |
+| ------------------------ | --------- | ------- | ------- | ----------------- |
+| Authentication events    | 13 months | 7 years | 7 years |                   |
+| Authorization events     | 13 months | 7 years | 7 years |                   |
+| Data access (PII)        | 13 months | 7 years | 7 years |                   |
+| Configuration change     | 13 months | 7 years | 7 years |                   |
+| Vulnerability / incident | 13 months | 7 years | 7 years |                   |
+| Agent / integration      | 13 months | 7 years | 7 years |                   |
+| Platform events          | 13 months | 7 years | 7 years |                   |
+| Merkle roots (notary)    | 7 years   | —       | —       | Independent store |
 
 Retention is configurable per tenant for non-regulatory classes, with
 a floor of 13 months.

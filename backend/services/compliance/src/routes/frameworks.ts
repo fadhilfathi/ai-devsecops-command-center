@@ -7,7 +7,10 @@ interface Deps {
   frameworks: FrameworkRepository;
 }
 
-export const buildFrameworkRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildFrameworkRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, frameworks } = opts;
 
   server.get('/v1/frameworks', async (req) => {

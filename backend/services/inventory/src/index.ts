@@ -29,7 +29,8 @@ export interface InventoryServiceDeps {
 
 export async function buildServer(deps?: Partial<InventoryServiceDeps>): Promise<FastifyInstance> {
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
-  const logger = deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
+  const logger =
+    deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? new InMemoryEventBus();
 
   const inventory = buildInventoryClient({ logger });
@@ -60,7 +61,10 @@ export async function buildServer(deps?: Partial<InventoryServiceDeps>): Promise
   server.setErrorHandler((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');
     if (reply.statusCode < 400) reply.code(err.statusCode ?? 500);
-    reply.send({ code: err.code ?? 'INTERNAL_ERROR', message: err.message ?? 'Internal Server Error' });
+    reply.send({
+      code: err.code ?? 'INTERNAL_ERROR',
+      message: err.message ?? 'Internal Server Error',
+    });
   });
 
   return server;

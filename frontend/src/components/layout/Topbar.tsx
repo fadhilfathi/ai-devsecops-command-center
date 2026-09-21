@@ -1,4 +1,4 @@
-import { Search, Bell, UserCircle2, Command } from "lucide-react";
+import { Search, Bell, UserCircle2, Command } from 'lucide-react';
 
 export function Topbar() {
   return (

@@ -10,11 +10,7 @@
 import { z } from 'zod';
 import { WorkloadSchema } from './workload.model.js';
 
-export const DaemonSetUpdateStrategySchema = z.enum([
-  'rolling_update',
-  'on_delete',
-  'in_place',
-]);
+export const DaemonSetUpdateStrategySchema = z.enum(['rolling_update', 'on_delete', 'in_place']);
 export type DaemonSetUpdateStrategy = z.infer<typeof DaemonSetUpdateStrategySchema>;
 
 export const DaemonSetSchema = WorkloadSchema.extend({

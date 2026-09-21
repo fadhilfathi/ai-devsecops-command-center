@@ -74,14 +74,14 @@ sit on, and the deployment topology. It is intentionally implementation-light
 
 ### Backend services (six)
 
-| Service          | Port | Responsibility                                                  |
-| ---------------- | ---- | --------------------------------------------------------------- |
-| `auth`           | 3001 | Identity, RBAC, sessions, multi-tenant isolation               |
-| `agent`          | 3002 | Agent runtime: scheduling, dispatch, memory, contract registry |
-| `security`       | 3003 | Asset inventory, vulnerabilities, SBOM                          |
-| `incident`       | 3004 | Incident lifecycle, correlation, response playbooks            |
-| `compliance`     | 3005 | Control mapping (CIS / NIST), evidence collection, attestations |
-| `integration`    | 3006 | External system adapters (GitHub, GitLab, scanners, etc.)       |
+| Service       | Port | Responsibility                                                  |
+| ------------- | ---- | --------------------------------------------------------------- |
+| `auth`        | 3001 | Identity, RBAC, sessions, multi-tenant isolation                |
+| `agent`       | 3002 | Agent runtime: scheduling, dispatch, memory, contract registry  |
+| `security`    | 3003 | Asset inventory, vulnerabilities, SBOM                          |
+| `incident`    | 3004 | Incident lifecycle, correlation, response playbooks             |
+| `compliance`  | 3005 | Control mapping (CIS / NIST), evidence collection, attestations |
+| `integration` | 3006 | External system adapters (GitHub, GitLab, scanners, etc.)       |
 
 All services are Node.js + TypeScript on Fastify, exposing JSON over HTTP and
 subscribing to a shared event bus.
@@ -128,14 +128,14 @@ A typical "vulnerability discovered in a PR" flow:
 
 ## Trust boundaries
 
-| Boundary                 | Inside                                | Outside                          |
-| ------------------------ | ------------------------------------- | -------------------------------- |
-| **Browser → Gateway**    | Authenticated, validated              | Untrusted user input             |
-| **Gateway → Services**   | Authenticated, mTLS, traced           | Trusts Gateway                   |
-| **Service → Event bus**  | Service identity                      | Trusts bus, but mTLS in prod     |
-| **Service → Postgres**   | Per-service role, TLS                 | Trusts service role              |
-| **Service → Object store** | Scoped tokens per service           | Trusts scoped token              |
-| **Service → External**   | Outbound via `integration` only       | Public internet                  |
+| Boundary                   | Inside                          | Outside                      |
+| -------------------------- | ------------------------------- | ---------------------------- |
+| **Browser → Gateway**      | Authenticated, validated        | Untrusted user input         |
+| **Gateway → Services**     | Authenticated, mTLS, traced     | Trusts Gateway               |
+| **Service → Event bus**    | Service identity                | Trusts bus, but mTLS in prod |
+| **Service → Postgres**     | Per-service role, TLS           | Trusts service role          |
+| **Service → Object store** | Scoped tokens per service       | Trusts scoped token          |
+| **Service → External**     | Outbound via `integration` only | Public internet              |
 
 ## Deployment topology
 

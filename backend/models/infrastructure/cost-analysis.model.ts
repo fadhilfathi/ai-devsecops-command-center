@@ -56,12 +56,14 @@ export const WorkloadCostSchema = z.object({
   /** Potential monthly savings (USD) — `current - recommended`. */
   potentialMonthlySavingsUsd: z.number().nonnegative(),
   /** Resource utilisation estimates (0..1). */
-  utilisation: z.object({
-    cpuP50: z.number().min(0).max(1).default(0),
-    cpuP95: z.number().min(0).max(1).default(0),
-    memoryP50: z.number().min(0).max(1).default(0),
-    memoryP95: z.number().min(0).max(1).default(0),
-  }).default({ cpuP50: 0, cpuP95: 0, memoryP50: 0, memoryP95: 0 }),
+  utilisation: z
+    .object({
+      cpuP50: z.number().min(0).max(1).default(0),
+      cpuP95: z.number().min(0).max(1).default(0),
+      memoryP50: z.number().min(0).max(1).default(0),
+      memoryP95: z.number().min(0).max(1).default(0),
+    })
+    .default({ cpuP50: 0, cpuP95: 0, memoryP50: 0, memoryP95: 0 }),
   /** Per-dimension requests vs. actual use. */
   requests: z.object({
     cpuMillicores: z.number().int().nonnegative(),

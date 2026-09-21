@@ -6,7 +6,10 @@ interface Deps {
   cfg: { name: string; version: string };
 }
 
-export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, cfg } = opts;
   const startedAt = new Date();
   server.get('/healthz', async () => ({ status: 'ok' }));
@@ -16,6 +19,10 @@ export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (server: Fastif
     version: cfg.version,
     uptimeSeconds: Math.round((Date.now() - startedAt.getTime()) / 1000),
   }));
-  server.get('/version', async () => ({ service: cfg.name, version: cfg.version, startedAt: startedAt.toISOString() }));
+  server.get('/version', async () => ({
+    service: cfg.name,
+    version: cfg.version,
+    startedAt: startedAt.toISOString(),
+  }));
   logger.debug('compliance-service health routes registered');
 };

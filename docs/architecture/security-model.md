@@ -5,6 +5,7 @@
 > the **Service-to-service contracts** section and the **REST API surface**
 > section (added in Sprint 2, O-3).
 > **Owner**:
+>
 > - Threat model & RBAC: SecurityArchitect (canonical) → [`./authentication-and-security-design.md`](./authentication-and-security-design.md)
 > - Event contracts & REST surface: GitOpsManager (Sprint 2)
 
@@ -20,14 +21,14 @@ disclosure) or for the compliance docs.
 
 ## Actors
 
-| Actor           | Authenticates as            | Typical actions                          |
-| --------------- | --------------------------- | ---------------------------------------- |
-| **Operator**    | Human via SSO/OIDC          | Investigate, triage, approve             |
-| **Admin**       | Human via SSO/OIDC          | Manage tenants, users, integrations      |
-| **Service**     | Service identity (mTLS / token) | Internal API calls, consume bus      |
-| **Agent**       | Service identity + scope    | Produce / consume bus, call tools        |
-| **Webhook**     | HMAC of payload + secret    | Push external events (GitHub, etc.)      |
-| **Auditor**     | Human via SSO (read-only)   | View audit log, export evidence          |
+| Actor        | Authenticates as                | Typical actions                     |
+| ------------ | ------------------------------- | ----------------------------------- |
+| **Operator** | Human via SSO/OIDC              | Investigate, triage, approve        |
+| **Admin**    | Human via SSO/OIDC              | Manage tenants, users, integrations |
+| **Service**  | Service identity (mTLS / token) | Internal API calls, consume bus     |
+| **Agent**    | Service identity + scope        | Produce / consume bus, call tools   |
+| **Webhook**  | HMAC of payload + secret        | Push external events (GitHub, etc.) |
+| **Auditor**  | Human via SSO (read-only)       | View audit log, export evidence     |
 
 ## Authentication
 
@@ -61,15 +62,15 @@ RBAC is **role-based** with **scope-based** granularity for actions and
 
 ### Built-in roles
 
-| Role           | Description                                                    |
-| -------------- | -------------------------------------------------------------- |
-| `super_admin`  | Platform operators (the people running the system)             |
-| `tenant_admin` | Customer-side administrators                                   |
-| `security_lead`| Triage, approve, configure scanners                            |
-| `operator`     | Triage incidents, manage assets, run playbooks                 |
-| `auditor`      | Read-only across the tenant, with export of audit logs         |
-| `developer`    | View findings on their own projects, respond to PR comments     |
-| `viewer`       | Read-only dashboard                                            |
+| Role            | Description                                                 |
+| --------------- | ----------------------------------------------------------- |
+| `super_admin`   | Platform operators (the people running the system)          |
+| `tenant_admin`  | Customer-side administrators                                |
+| `security_lead` | Triage, approve, configure scanners                         |
+| `operator`      | Triage incidents, manage assets, run playbooks              |
+| `auditor`       | Read-only across the tenant, with export of audit logs      |
+| `developer`     | View findings on their own projects, respond to PR comments |
+| `viewer`        | Read-only dashboard                                         |
 
 ### Scope examples
 
@@ -105,14 +106,14 @@ RBAC is **role-based** with **scope-based** granularity for actions and
 
 ## Threat model (STRIDE summary)
 
-| Category      | Threats                                            | Primary mitigation |
-| ------------- | -------------------------------------------------- | ------------------ |
-| **S**poofing  | Stolen JWT, forged webhook                         | MFA, mTLS, HMAC    |
-| **T**ampering | Mutating audit log, altering evidence              | Append-only audit, signed evidence |
-| **R**epudiation| Operator denies action                            | Audit log with actor + trace |
-| **I**nfo disc.| Cross-tenant leak via mis-scoped query             | Tenant filters in DAL, automated tests |
-| **D**oS       | Runaway agent, event bus flood, expensive prompt   | Rate limits, circuit breakers, max-token budgets |
-| **E**oP       | RBAC bypass, scope escalation                      | Centralized authz checks, fuzz tests |
+| Category        | Threats                                          | Primary mitigation                               |
+| --------------- | ------------------------------------------------ | ------------------------------------------------ |
+| **S**poofing    | Stolen JWT, forged webhook                       | MFA, mTLS, HMAC                                  |
+| **T**ampering   | Mutating audit log, altering evidence            | Append-only audit, signed evidence               |
+| **R**epudiation | Operator denies action                           | Audit log with actor + trace                     |
+| **I**nfo disc.  | Cross-tenant leak via mis-scoped query           | Tenant filters in DAL, automated tests           |
+| **D**oS         | Runaway agent, event bus flood, expensive prompt | Rate limits, circuit breakers, max-token budgets |
+| **E**oP         | RBAC bypass, scope escalation                    | Centralized authz checks, fuzz tests             |
 
 A full threat model with diagrams is in [`/docs/security/threat-model.md`](../security/threat-model.md).
 
@@ -137,7 +138,7 @@ A full threat model with diagrams is in [`/docs/security/threat-model.md`](../se
 
 - Agents have a **declared blast radius**. An agent whose blast radius
   is "open incidents" cannot be promoted to a role that allows it to
-  *close* incidents.
+  _close_ incidents.
 - The agent runtime enforces a **tool allowlist**. A prompt that tries to
   call an unauthorized tool is rejected and the run is failed loudly.
 - All LLM inputs and outputs are **logged** (with secrets redacted) and
@@ -160,11 +161,11 @@ event interfaces** live in
 > the constant from `@aicc/shared/security`. The string-form is in
 > this document for clarity; the constant is the source of truth.
 
-| Constant                | Subject                                       | Producer        | Consumers                                              | Schema path                                                          |
-| ----------------------- | --------------------------------------------- | --------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
-| `SBOM_TOPIC`            | `security.sbom.generated.v1`                  | sbom-pipeline   | dependency-intel, security-service, security-automation | `backend/models/security/sbom.model.ts`                              |
-| `VULN_TOPIC`            | `security.vulnerability.detected.v1`          | vuln-intel      | dependency-intel, security-service, security-automation | `backend/models/security/vulnerability.model.ts`                     |
-| `RISK_TOPIC`            | `security.risk.calculated.v1`                 | dependency-intel| security-service, security-automation                  | `backend/models/security/risk-score.model.ts`                        |
+| Constant     | Subject                              | Producer         | Consumers                                               | Schema path                                      |
+| ------------ | ------------------------------------ | ---------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| `SBOM_TOPIC` | `security.sbom.generated.v1`         | sbom-pipeline    | dependency-intel, security-service, security-automation | `backend/models/security/sbom.model.ts`          |
+| `VULN_TOPIC` | `security.vulnerability.detected.v1` | vuln-intel       | dependency-intel, security-service, security-automation | `backend/models/security/vulnerability.model.ts` |
+| `RISK_TOPIC` | `security.risk.calculated.v1`        | dependency-intel | security-service, security-automation                   | `backend/models/security/risk-score.model.ts`    |
 
 Versions follow the subject (`…v1`, `…v2`); a breaking payload change
 requires a new subject version. See
@@ -174,16 +175,13 @@ naming convention.
 **Example consumer wiring** (Node.js / Fastify service):
 
 ```ts
-import { SBOM_TOPIC, type SbomGeneratedEvent } from "@aicc/shared/security";
+import { SBOM_TOPIC, type SbomGeneratedEvent } from '@aicc/shared/security';
 
-await bus.subscribe(
-  { subject: SBOM_TOPIC, consumerGroup: "security-service" },
-  async (msg) => {
-    const event = msg.data as SbomGeneratedEvent;
-    // event.sbom is CycloneDX-shaped (validated by Zod at the producer)
-    // event.tenantId, event.gitSha, event.scanner are all present
-  }
-);
+await bus.subscribe({ subject: SBOM_TOPIC, consumerGroup: 'security-service' }, async (msg) => {
+  const event = msg.data as SbomGeneratedEvent;
+  // event.sbom is CycloneDX-shaped (validated by Zod at the producer)
+  // event.tenantId, event.gitSha, event.scanner are all present
+});
 ```
 
 > **GitOps wire format:** the rich per-CVE `VulnerabilitySchema` is
@@ -211,13 +209,13 @@ surface of the security stack. All endpoints are OpenAPI-documented at
 runtime via `@fastify/swagger` + `@fastify/swagger-ui` and rate-limited
 at 10 req/s per route.
 
-| Method | Path                          | Purpose                                    | RBAC                                | Idempotency key header | Status codes                            |
-| ------ | ----------------------------- | ------------------------------------------ | ----------------------------------- | ---------------------- | --------------------------------------- |
-| `POST` | `/sbom/generate`              | Kick off a SBOM generation job             | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
-| `POST` | `/sbom/analyze`               | Analyse an existing SBOM (no regen)        | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
-| `POST` | `/vulnerabilities/ingest`     | Bulk-ingest CVE feed (NVD/GHSA/OSV)        | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
-| `POST` | `/risk/calculate`             | Recompute risk for a tenant / scope        | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4)        | `202`, `400`, `401`, `403`, `409`, `429` |
-| `GET`  | `/security/dashboard`         | Aggregate view (scores, top vulns, trend)  | any authenticated role             | n/a                    | `200`, `401`, `429`                     |
+| Method | Path                      | Purpose                                   | RBAC                                   | Idempotency key header     | Status codes                             |
+| ------ | ------------------------- | ----------------------------------------- | -------------------------------------- | -------------------------- | ---------------------------------------- |
+| `POST` | `/sbom/generate`          | Kick off a SBOM generation job            | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4) | `202`, `400`, `401`, `403`, `409`, `429` |
+| `POST` | `/sbom/analyze`           | Analyse an existing SBOM (no regen)       | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4) | `202`, `400`, `401`, `403`, `409`, `429` |
+| `POST` | `/vulnerabilities/ingest` | Bulk-ingest CVE feed (NVD/GHSA/OSV)       | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4) | `202`, `400`, `401`, `403`, `409`, `429` |
+| `POST` | `/risk/calculate`         | Recompute risk for a tenant / scope       | `security_engineer` / `platform_admin` | `Idempotency-Key` (UUIDv4) | `202`, `400`, `401`, `403`, `409`, `429` |
+| `GET`  | `/security/dashboard`     | Aggregate view (scores, top vulns, trend) | any authenticated role                 | n/a                        | `200`, `401`, `429`                      |
 
 **Auth:** HS256 or RS256 JWT (`Authorization: Bearer <jwt>`). The
 HS256/RS256 selection is per-tenant (configured in tenant settings).
@@ -225,16 +223,16 @@ The middleware is `backend/services/security/src/middleware/auth.ts`.
 
 **RBAC roles** (built-in, in `backend/services/security/src/middleware/rbac.ts`):
 
-| Canonical role          | Aliases (in middleware)           | Can call POSTs         | Can call GETs |
-| ----------------------- | --------------------------------- | ---------------------- | ------------- |
-| `security_engineer`     | `sec_eng`, `security-engineer`    | ✅                     | ✅            |
-| `platform_admin`        | `admin`, `platform-admin`         | ✅                     | ✅            |
-| `tenant_admin`          | `tenant-admin`                    | ❌                     | ✅            |
-| `security_lead`         | `sec_lead`, `security-lead`       | ❌ (read-only triage)  | ✅            |
-| `operator`              | `ops`                             | ❌                     | ✅            |
-| `auditor`               | `audit`                           | ❌                     | ✅            |
-| `developer`             | `dev`                             | ❌                     | ✅            |
-| `viewer`                | `view`                            | ❌                     | ✅            |
+| Canonical role      | Aliases (in middleware)        | Can call POSTs        | Can call GETs |
+| ------------------- | ------------------------------ | --------------------- | ------------- |
+| `security_engineer` | `sec_eng`, `security-engineer` | ✅                    | ✅            |
+| `platform_admin`    | `admin`, `platform-admin`      | ✅                    | ✅            |
+| `tenant_admin`      | `tenant-admin`                 | ❌                    | ✅            |
+| `security_lead`     | `sec_lead`, `security-lead`    | ❌ (read-only triage) | ✅            |
+| `operator`          | `ops`                          | ❌                    | ✅            |
+| `auditor`           | `audit`                        | ❌                    | ✅            |
+| `developer`         | `dev`                          | ❌                    | ✅            |
+| `viewer`            | `view`                         | ❌                    | ✅            |
 
 > **Tenant match:** All endpoints enforce `requireTenantMatch` — the
 > JWT's `tenant_id` claim must match the request's `X-Tenant-Id` header

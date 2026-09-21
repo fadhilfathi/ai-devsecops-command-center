@@ -56,48 +56,39 @@ async function loadInput(
   };
 }
 
-export const buildK8sHealthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildK8sHealthRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, inventory, engine, bus } = opts;
 
-  server.get<{ Reply: InfrastructureHealthListResponse }>(
-    '/v1/health/clusters',
-    async (req) => {
-      const tenantId = requireTenant(req.tenantId);
-      const input = await loadInput(inventory, tenantId);
-      const items = engine.score(input).filter((h) => h.scope === 'cluster');
-      return { items, total: items.length };
-    },
-  );
+  server.get<{ Reply: InfrastructureHealthListResponse }>('/v1/health/clusters', async (req) => {
+    const tenantId = requireTenant(req.tenantId);
+    const input = await loadInput(inventory, tenantId);
+    const items = engine.score(input).filter((h) => h.scope === 'cluster');
+    return { items, total: items.length };
+  });
 
-  server.get<{ Reply: InfrastructureHealthListResponse }>(
-    '/v1/health/namespaces',
-    async (req) => {
-      const tenantId = requireTenant(req.tenantId);
-      const input = await loadInput(inventory, tenantId);
-      const items = engine.score(input).filter((h) => h.scope === 'namespace');
-      return { items, total: items.length };
-    },
-  );
+  server.get<{ Reply: InfrastructureHealthListResponse }>('/v1/health/namespaces', async (req) => {
+    const tenantId = requireTenant(req.tenantId);
+    const input = await loadInput(inventory, tenantId);
+    const items = engine.score(input).filter((h) => h.scope === 'namespace');
+    return { items, total: items.length };
+  });
 
-  server.get<{ Reply: InfrastructureHealthListResponse }>(
-    '/v1/health/workloads',
-    async (req) => {
-      const tenantId = requireTenant(req.tenantId);
-      const input = await loadInput(inventory, tenantId);
-      const items = engine.score(input).filter((h) => h.scope === 'workload');
-      return { items, total: items.length };
-    },
-  );
+  server.get<{ Reply: InfrastructureHealthListResponse }>('/v1/health/workloads', async (req) => {
+    const tenantId = requireTenant(req.tenantId);
+    const input = await loadInput(inventory, tenantId);
+    const items = engine.score(input).filter((h) => h.scope === 'workload');
+    return { items, total: items.length };
+  });
 
-  server.get<{ Reply: InfrastructureHealthListResponse }>(
-    '/v1/health/pods',
-    async (req) => {
-      const tenantId = requireTenant(req.tenantId);
-      const input = await loadInput(inventory, tenantId);
-      const items = engine.score(input).filter((h) => h.scope === 'pod');
-      return { items, total: items.length };
-    },
-  );
+  server.get<{ Reply: InfrastructureHealthListResponse }>('/v1/health/pods', async (req) => {
+    const tenantId = requireTenant(req.tenantId);
+    const input = await loadInput(inventory, tenantId);
+    const items = engine.score(input).filter((h) => h.scope === 'pod');
+    return { items, total: items.length };
+  });
 
   server.get<{
     Params: { id: string };
@@ -106,9 +97,9 @@ export const buildK8sHealthRoutes: FastifyPluginAsync<Deps> = async (server: Fas
     const tenantId = requireTenant(req.tenantId);
     const q = QuerySchema.parse(req.query ?? {});
     const input = await loadInput(inventory, tenantId, q.clusterId ?? req.params.id);
-    const items = engine.score(input).filter(
-      (h) => h.scope === 'cluster' && h.subject.clusterId === req.params.id,
-    );
+    const items = engine
+      .score(input)
+      .filter((h) => h.scope === 'cluster' && h.subject.clusterId === req.params.id);
     const item = items[0] as InfrastructureHealth | undefined;
     if (!item) {
       const e = new Error('cluster not found') as Error & { statusCode?: number };

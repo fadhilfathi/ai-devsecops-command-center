@@ -36,188 +36,188 @@ derived but is not duplicated here.
 
 ## 1. CIS v8 → NIST 800-53
 
-| CIS Safeguard | Title (abbrev.) | NIST 800-53 controls |
-|---|---|---|
-| **Control 01 — Inventory of Enterprise Assets** | | |
-| 1.1 | Establish and maintain asset inventory | CM-8, PM-5 |
-| 1.2 | Address unauthorized assets | CM-8, SI-4 |
-| 1.3 | Active discovery tool | CM-8, RA-5 |
-| 1.4 | DHCP logging | AU-2, AU-3 |
-| 1.5 | Passive discovery | CM-8, SI-4 |
-| **Control 02 — Inventory of Software Assets** | | |
-| 2.1 | Software inventory | CM-8, SA-10 |
-| 2.2 | Authorized software is supported | SA-22, SI-2 |
-| 2.3 | Address unauthorized software | CM-7, SI-4 |
-| 2.4 | Automated software inventory | CM-8, SI-7 |
-| **Control 03 — Data Protection** | | |
-| 3.1 | Data management program | PM-18, PM-19, PM-23, PM-24 |
-| 3.2 | Data inventory | PM-24, PM-25 |
-| 3.3 | Data access control lists | AC-3, AC-6 |
-| 3.4 | Enforce data retention | SI-12, AU-11 |
-| 3.5 | Securely dispose of data | MP-6, SI-12(3) |
-| 3.6 | Encrypt data on end-user devices | (out of scope for SaaS) |
-| 3.7 | Data classification scheme | RA-2, AC-16, PM-26 |
-| 3.8 | Document data flows | PL-8, SA-4(12), PM-24 |
-| 3.9 | Encrypt data in transit | SC-8, SC-13 |
-| 3.10 | Encrypt sensitive data at rest | SC-28, SC-13 |
-| 3.11 | Encrypt sensitive data in use | SC-28(3), SI-16 |
-| 3.12 | Segment data processing and storage | SC-32, AC-4 |
-| 3.13 | DLP | AC-23, SI-15 |
-| **Control 04 — Secure Configuration** | | |
-| 4.1 | Secure configuration process | CM-2, CM-9 |
-| 4.2 | Secure network config | CM-2, CM-6 |
-| 4.3 | Automatic session locking | AC-2(5), AC-12 |
-| 4.4 | Firewall on end-user devices | (out of scope) |
-| 4.5 | Host-based firewall | CM-7, SC-7 |
-| 4.6 | Securely manage enterprise assets | CM-3, CM-5 |
-| 4.7 | Manage default accounts | AC-2, IA-5 |
-| 4.8 | Uninstall unnecessary services | CM-7, SA-7 |
-| 4.9 | Trusted DNS | SC-20, SC-21 |
-| 4.10 | Automatic device lockout | (out of scope) |
-| 4.11 | Remote wiping | (out of scope) |
-| 4.12 | Manage assets remotely | AC-17, MA-2 |
-| **Control 05 — Account Management** | | |
-| 5.1 | Account inventory | AC-2, IA-4 |
-| 5.2 | Unique passwords | IA-5(1) |
-| 5.3 | Disable inactive accounts | AC-2(3) |
-| 5.4 | Restrict administrator privileges | AC-2(7), AC-6(5) |
-| 5.5 | Service account inventory | AC-2, IA-4 |
-| 5.6 | Centralize account management | AC-2, IA-4(5) |
-| **Control 06 — Access Control Management** | | |
-| 6.1 | Access granting process | AC-2, AC-6 |
-| 6.2 | Access revoking process | AC-2(2), PS-4 |
-| 6.3 | Require MFA for privileged access | IA-2(1), IA-2(2) |
-| 6.4 | Require MFA for remote access | IA-2(2), AC-17 |
-| 6.5 | Require MFA for admin access | IA-2(1) |
-| 6.6 | Privileged account inventory | AC-2, AC-6(6) |
-| 6.7 | Centralize access control | AC-3, AC-6 |
-| 6.8 | RBAC | AC-2, AC-3, AC-5, AC-6 |
-| **Control 07 — Continuous Vulnerability Management** | | |
-| 7.1 | Vulnerability management process | RA-5, SI-2 |
-| 7.2 | Remediation process | RA-5, SI-2 |
-| 7.3 | OS patch management | SI-2, MA-2 |
-| 7.4 | App patch management | SI-2, SA-10 |
-| 7.5 | Automated vulnerability scans | RA-5 |
-| 7.6 | Automated OS patch management | SI-2, MA-2 |
-| 7.7 | Automated app patch management | SI-2, SA-10 |
-| **Control 08 — Audit Log Management** | | |
-| 8.1 | Audit log management process | AU-1, AU-2 |
-| 8.2 | Collect audit logs | AU-2, AU-3 |
-| 8.3 | Adequate audit log storage | AU-4, AU-11 |
-| 8.4 | Standardize time synchronization | AU-8 |
-| 8.5 | Centralize audit logs | AU-3(2), AU-6(4) |
-| 8.6 | Collect DNS query logs | AU-2 |
-| 8.7 | Collect URL request logs | AU-2, AU-3 |
-| 8.8 | Collect command-line audit logs | AU-2 |
-| 8.9 | Centralize, review, report audit logs | AU-6, AU-7 |
-| 8.10 | Retain audit logs | AU-11 |
-| 8.11 | Conduct audit log reviews | AU-6 |
-| 8.12 | Collect service provider logs | AU-2, AU-12 |
-| **Control 09 — Email and Web Browser Protections** | | |
-| 9.1 | Fully supported browsers | SA-22 |
-| 9.2 | DNS filtering | SC-20, SC-21 |
-| 9.3 | URL filters | SC-7, SI-4 |
-| 9.4–9.7 | Browser extensions, DMARC, etc. | SC-7, SI-8 |
-| **Control 10 — Malware Defenses** | | |
-| 10.1 | Deploy anti-malware | SI-3 |
-| 10.2 | Automatic signature updates | SI-3, SI-8 |
-| 10.3 | Disable autorun | (out of scope) |
-| 10.4 | Auto-scan removable media | (out of scope) |
-| 10.5 | Anti-exploitation features | SI-16, SC-39 |
-| 10.6 | Central management | SI-3(1) |
-| 10.7 | Behavior-based | SI-4, SI-3 |
-| **Control 11 — Data Recovery** | | |
-| 11.1 | Data recovery process | CP-1, CP-2 |
-| 11.2 | Automated backups | CP-9 |
-| 11.3 | Protect recovery data | CP-9(3), SC-28 |
-| 11.4 | Isolated instance of recovery data | CP-9(3) |
-| 11.5 | Test data recovery | CP-4, CP-9(1) |
-| **Control 12 — Network Infrastructure Management** | | |
-| 12.1 | Network device inventory | CM-8 |
-| 12.2 | Secure network architecture | PL-8, SC-7 |
-| 12.3 | Securely manage network | CM-3, CM-5 |
-| 12.4 | Architecture diagrams | PL-8 |
-| 12.5–12.8 | Hardening, segmentation | CM-6, SC-7 |
-| **Control 13 — Network Monitoring and Defense** | | |
-| 13.1 | Centralize security alerts | AU-6, SI-4 |
-| 13.2 | Host-based IDS | SI-4, SI-4(1) |
-| 13.3 | Network IDS/IPS | SI-4(1) |
-| 13.4 | Traffic filtering between segments | SC-7, AC-4 |
-| 13.5 | Manage remote access | AC-17 |
-| 13.6 | Network flow logs | AU-2, SI-4 |
-| 13.7 | Honeypot / canary | SC-26, SC-30 |
-| 13.8 | NDR | SI-4 |
-| 13.9 | Document traffic | PL-8 |
-| 13.10 | Encrypt traffic | SC-8 |
-| **Control 14 — Security Awareness and Skills Training** | | |
-| 14.1 | Security awareness program | AT-1, AT-2 |
-| 14.2 | Social engineering training | AT-2(1), AT-2(2) |
-| 14.3 | Role-based training | AT-3 |
-| 14.4 | Suspicious communications | AT-2 |
-| 14.5 | Sensitive data recognition | AT-3 |
-| 14.6 | Insider threat | AT-2(2), PM-12 |
-| 14.7 | Social media | PL-4(1) |
-| 14.8 | Third-party security | SA-16, SR-6 |
-| 14.9 | Maximum functional development | SA-16 |
-| **Control 15 — Service Provider Management** | | |
-| 15.1 | Service provider inventory | SR-1, PM-30 |
-| 15.2 | Classify service providers | SR-3 |
-| 15.3 | Review third-party services | SR-6, SA-9 |
-| 15.4 | Contracts with security requirements | SA-9, SR-8 |
-| 15.5 | Assess service provider compliance | SR-6, CA-7 |
-| 15.6 | Monitor service providers | SR-6, CA-7 |
-| 15.7 | Capacity and redundancy | CP-2, CP-7 |
-| **Control 16 — Application Software Security** | | |
-| 16.1 | Secure app development process | SA-3, SA-15 |
-| 16.2 | Accept and track vulnerabilities | RA-5, SI-2 |
-| 16.3 | Root cause analysis | IR-4, SI-2 |
-| 16.4 | Vulnerability disclosure | RA-5(11) |
-| 16.5 | Up-to-date scanning tools | RA-5, SI-7 |
-| 16.6 | Evaluate and rank | RA-3, SI-2 |
-| 16.7 | Threat modeling | SA-15, RA-5 |
-| 16.8 | Static analysis | SA-11(1) |
-| 16.9 | Dynamic analysis | SA-11(2) |
-| 16.10 | IAST | SA-11(9) |
-| 16.11 | SBOM | SA-10, SR-11 |
-| 16.12 | Sign software updates | SI-7, SR-4 |
-| 16.13 | Code reviews | SA-11(3), SA-15 |
-| 16.14 | Manage SDLC | SA-3, SA-15 |
-| **Control 17 — Incident Response Management** | | |
-| 17.1 | Designate IR lead | IR-1, PM-2 |
-| 17.2 | Contact information | IR-1, IR-8 |
-| 17.3 | Reporting process | IR-6, IR-8 |
-| 17.4 | Response process | IR-4 |
-| 17.5 | Track incidents | IR-4, IR-6 |
-| 17.6 | Containment | IR-4 |
-| 17.7 | Automate response | IR-4(1), IR-4(2) |
-| 17.8 | Post-incident reviews | IR-4, IR-5 |
-| 17.9 | Incident thresholds | IR-4, IR-6 |
-| **Control 18 — Penetration Testing** | | |
-| 18.1 | Pen-test program | CA-8, RA-5(9) |
-| 18.2 | External pen-test | CA-8, CA-8(1) |
-| 18.3 | Remediate findings | CA-5, SI-2 |
-| 18.4 | Validate after changes | CA-7, SI-7 |
-| 18.5 | Internal pen-test | CA-8(2), RA-5 |
+| CIS Safeguard                                           | Title (abbrev.)                        | NIST 800-53 controls       |
+| ------------------------------------------------------- | -------------------------------------- | -------------------------- |
+| **Control 01 — Inventory of Enterprise Assets**         |                                        |                            |
+| 1.1                                                     | Establish and maintain asset inventory | CM-8, PM-5                 |
+| 1.2                                                     | Address unauthorized assets            | CM-8, SI-4                 |
+| 1.3                                                     | Active discovery tool                  | CM-8, RA-5                 |
+| 1.4                                                     | DHCP logging                           | AU-2, AU-3                 |
+| 1.5                                                     | Passive discovery                      | CM-8, SI-4                 |
+| **Control 02 — Inventory of Software Assets**           |                                        |                            |
+| 2.1                                                     | Software inventory                     | CM-8, SA-10                |
+| 2.2                                                     | Authorized software is supported       | SA-22, SI-2                |
+| 2.3                                                     | Address unauthorized software          | CM-7, SI-4                 |
+| 2.4                                                     | Automated software inventory           | CM-8, SI-7                 |
+| **Control 03 — Data Protection**                        |                                        |                            |
+| 3.1                                                     | Data management program                | PM-18, PM-19, PM-23, PM-24 |
+| 3.2                                                     | Data inventory                         | PM-24, PM-25               |
+| 3.3                                                     | Data access control lists              | AC-3, AC-6                 |
+| 3.4                                                     | Enforce data retention                 | SI-12, AU-11               |
+| 3.5                                                     | Securely dispose of data               | MP-6, SI-12(3)             |
+| 3.6                                                     | Encrypt data on end-user devices       | (out of scope for SaaS)    |
+| 3.7                                                     | Data classification scheme             | RA-2, AC-16, PM-26         |
+| 3.8                                                     | Document data flows                    | PL-8, SA-4(12), PM-24      |
+| 3.9                                                     | Encrypt data in transit                | SC-8, SC-13                |
+| 3.10                                                    | Encrypt sensitive data at rest         | SC-28, SC-13               |
+| 3.11                                                    | Encrypt sensitive data in use          | SC-28(3), SI-16            |
+| 3.12                                                    | Segment data processing and storage    | SC-32, AC-4                |
+| 3.13                                                    | DLP                                    | AC-23, SI-15               |
+| **Control 04 — Secure Configuration**                   |                                        |                            |
+| 4.1                                                     | Secure configuration process           | CM-2, CM-9                 |
+| 4.2                                                     | Secure network config                  | CM-2, CM-6                 |
+| 4.3                                                     | Automatic session locking              | AC-2(5), AC-12             |
+| 4.4                                                     | Firewall on end-user devices           | (out of scope)             |
+| 4.5                                                     | Host-based firewall                    | CM-7, SC-7                 |
+| 4.6                                                     | Securely manage enterprise assets      | CM-3, CM-5                 |
+| 4.7                                                     | Manage default accounts                | AC-2, IA-5                 |
+| 4.8                                                     | Uninstall unnecessary services         | CM-7, SA-7                 |
+| 4.9                                                     | Trusted DNS                            | SC-20, SC-21               |
+| 4.10                                                    | Automatic device lockout               | (out of scope)             |
+| 4.11                                                    | Remote wiping                          | (out of scope)             |
+| 4.12                                                    | Manage assets remotely                 | AC-17, MA-2                |
+| **Control 05 — Account Management**                     |                                        |                            |
+| 5.1                                                     | Account inventory                      | AC-2, IA-4                 |
+| 5.2                                                     | Unique passwords                       | IA-5(1)                    |
+| 5.3                                                     | Disable inactive accounts              | AC-2(3)                    |
+| 5.4                                                     | Restrict administrator privileges      | AC-2(7), AC-6(5)           |
+| 5.5                                                     | Service account inventory              | AC-2, IA-4                 |
+| 5.6                                                     | Centralize account management          | AC-2, IA-4(5)              |
+| **Control 06 — Access Control Management**              |                                        |                            |
+| 6.1                                                     | Access granting process                | AC-2, AC-6                 |
+| 6.2                                                     | Access revoking process                | AC-2(2), PS-4              |
+| 6.3                                                     | Require MFA for privileged access      | IA-2(1), IA-2(2)           |
+| 6.4                                                     | Require MFA for remote access          | IA-2(2), AC-17             |
+| 6.5                                                     | Require MFA for admin access           | IA-2(1)                    |
+| 6.6                                                     | Privileged account inventory           | AC-2, AC-6(6)              |
+| 6.7                                                     | Centralize access control              | AC-3, AC-6                 |
+| 6.8                                                     | RBAC                                   | AC-2, AC-3, AC-5, AC-6     |
+| **Control 07 — Continuous Vulnerability Management**    |                                        |                            |
+| 7.1                                                     | Vulnerability management process       | RA-5, SI-2                 |
+| 7.2                                                     | Remediation process                    | RA-5, SI-2                 |
+| 7.3                                                     | OS patch management                    | SI-2, MA-2                 |
+| 7.4                                                     | App patch management                   | SI-2, SA-10                |
+| 7.5                                                     | Automated vulnerability scans          | RA-5                       |
+| 7.6                                                     | Automated OS patch management          | SI-2, MA-2                 |
+| 7.7                                                     | Automated app patch management         | SI-2, SA-10                |
+| **Control 08 — Audit Log Management**                   |                                        |                            |
+| 8.1                                                     | Audit log management process           | AU-1, AU-2                 |
+| 8.2                                                     | Collect audit logs                     | AU-2, AU-3                 |
+| 8.3                                                     | Adequate audit log storage             | AU-4, AU-11                |
+| 8.4                                                     | Standardize time synchronization       | AU-8                       |
+| 8.5                                                     | Centralize audit logs                  | AU-3(2), AU-6(4)           |
+| 8.6                                                     | Collect DNS query logs                 | AU-2                       |
+| 8.7                                                     | Collect URL request logs               | AU-2, AU-3                 |
+| 8.8                                                     | Collect command-line audit logs        | AU-2                       |
+| 8.9                                                     | Centralize, review, report audit logs  | AU-6, AU-7                 |
+| 8.10                                                    | Retain audit logs                      | AU-11                      |
+| 8.11                                                    | Conduct audit log reviews              | AU-6                       |
+| 8.12                                                    | Collect service provider logs          | AU-2, AU-12                |
+| **Control 09 — Email and Web Browser Protections**      |                                        |                            |
+| 9.1                                                     | Fully supported browsers               | SA-22                      |
+| 9.2                                                     | DNS filtering                          | SC-20, SC-21               |
+| 9.3                                                     | URL filters                            | SC-7, SI-4                 |
+| 9.4–9.7                                                 | Browser extensions, DMARC, etc.        | SC-7, SI-8                 |
+| **Control 10 — Malware Defenses**                       |                                        |                            |
+| 10.1                                                    | Deploy anti-malware                    | SI-3                       |
+| 10.2                                                    | Automatic signature updates            | SI-3, SI-8                 |
+| 10.3                                                    | Disable autorun                        | (out of scope)             |
+| 10.4                                                    | Auto-scan removable media              | (out of scope)             |
+| 10.5                                                    | Anti-exploitation features             | SI-16, SC-39               |
+| 10.6                                                    | Central management                     | SI-3(1)                    |
+| 10.7                                                    | Behavior-based                         | SI-4, SI-3                 |
+| **Control 11 — Data Recovery**                          |                                        |                            |
+| 11.1                                                    | Data recovery process                  | CP-1, CP-2                 |
+| 11.2                                                    | Automated backups                      | CP-9                       |
+| 11.3                                                    | Protect recovery data                  | CP-9(3), SC-28             |
+| 11.4                                                    | Isolated instance of recovery data     | CP-9(3)                    |
+| 11.5                                                    | Test data recovery                     | CP-4, CP-9(1)              |
+| **Control 12 — Network Infrastructure Management**      |                                        |                            |
+| 12.1                                                    | Network device inventory               | CM-8                       |
+| 12.2                                                    | Secure network architecture            | PL-8, SC-7                 |
+| 12.3                                                    | Securely manage network                | CM-3, CM-5                 |
+| 12.4                                                    | Architecture diagrams                  | PL-8                       |
+| 12.5–12.8                                               | Hardening, segmentation                | CM-6, SC-7                 |
+| **Control 13 — Network Monitoring and Defense**         |                                        |                            |
+| 13.1                                                    | Centralize security alerts             | AU-6, SI-4                 |
+| 13.2                                                    | Host-based IDS                         | SI-4, SI-4(1)              |
+| 13.3                                                    | Network IDS/IPS                        | SI-4(1)                    |
+| 13.4                                                    | Traffic filtering between segments     | SC-7, AC-4                 |
+| 13.5                                                    | Manage remote access                   | AC-17                      |
+| 13.6                                                    | Network flow logs                      | AU-2, SI-4                 |
+| 13.7                                                    | Honeypot / canary                      | SC-26, SC-30               |
+| 13.8                                                    | NDR                                    | SI-4                       |
+| 13.9                                                    | Document traffic                       | PL-8                       |
+| 13.10                                                   | Encrypt traffic                        | SC-8                       |
+| **Control 14 — Security Awareness and Skills Training** |                                        |                            |
+| 14.1                                                    | Security awareness program             | AT-1, AT-2                 |
+| 14.2                                                    | Social engineering training            | AT-2(1), AT-2(2)           |
+| 14.3                                                    | Role-based training                    | AT-3                       |
+| 14.4                                                    | Suspicious communications              | AT-2                       |
+| 14.5                                                    | Sensitive data recognition             | AT-3                       |
+| 14.6                                                    | Insider threat                         | AT-2(2), PM-12             |
+| 14.7                                                    | Social media                           | PL-4(1)                    |
+| 14.8                                                    | Third-party security                   | SA-16, SR-6                |
+| 14.9                                                    | Maximum functional development         | SA-16                      |
+| **Control 15 — Service Provider Management**            |                                        |                            |
+| 15.1                                                    | Service provider inventory             | SR-1, PM-30                |
+| 15.2                                                    | Classify service providers             | SR-3                       |
+| 15.3                                                    | Review third-party services            | SR-6, SA-9                 |
+| 15.4                                                    | Contracts with security requirements   | SA-9, SR-8                 |
+| 15.5                                                    | Assess service provider compliance     | SR-6, CA-7                 |
+| 15.6                                                    | Monitor service providers              | SR-6, CA-7                 |
+| 15.7                                                    | Capacity and redundancy                | CP-2, CP-7                 |
+| **Control 16 — Application Software Security**          |                                        |                            |
+| 16.1                                                    | Secure app development process         | SA-3, SA-15                |
+| 16.2                                                    | Accept and track vulnerabilities       | RA-5, SI-2                 |
+| 16.3                                                    | Root cause analysis                    | IR-4, SI-2                 |
+| 16.4                                                    | Vulnerability disclosure               | RA-5(11)                   |
+| 16.5                                                    | Up-to-date scanning tools              | RA-5, SI-7                 |
+| 16.6                                                    | Evaluate and rank                      | RA-3, SI-2                 |
+| 16.7                                                    | Threat modeling                        | SA-15, RA-5                |
+| 16.8                                                    | Static analysis                        | SA-11(1)                   |
+| 16.9                                                    | Dynamic analysis                       | SA-11(2)                   |
+| 16.10                                                   | IAST                                   | SA-11(9)                   |
+| 16.11                                                   | SBOM                                   | SA-10, SR-11               |
+| 16.12                                                   | Sign software updates                  | SI-7, SR-4                 |
+| 16.13                                                   | Code reviews                           | SA-11(3), SA-15            |
+| 16.14                                                   | Manage SDLC                            | SA-3, SA-15                |
+| **Control 17 — Incident Response Management**           |                                        |                            |
+| 17.1                                                    | Designate IR lead                      | IR-1, PM-2                 |
+| 17.2                                                    | Contact information                    | IR-1, IR-8                 |
+| 17.3                                                    | Reporting process                      | IR-6, IR-8                 |
+| 17.4                                                    | Response process                       | IR-4                       |
+| 17.5                                                    | Track incidents                        | IR-4, IR-6                 |
+| 17.6                                                    | Containment                            | IR-4                       |
+| 17.7                                                    | Automate response                      | IR-4(1), IR-4(2)           |
+| 17.8                                                    | Post-incident reviews                  | IR-4, IR-5                 |
+| 17.9                                                    | Incident thresholds                    | IR-4, IR-6                 |
+| **Control 18 — Penetration Testing**                    |                                        |                            |
+| 18.1                                                    | Pen-test program                       | CA-8, RA-5(9)              |
+| 18.2                                                    | External pen-test                      | CA-8, CA-8(1)              |
+| 18.3                                                    | Remediate findings                     | CA-5, SI-2                 |
+| 18.4                                                    | Validate after changes                 | CA-7, SI-7                 |
+| 18.5                                                    | Internal pen-test                      | CA-8(2), RA-5              |
 
 ## 2. Control family quick reference
 
-| Topic | CIS Control | NIST Family | Primary owner (this team) |
-|---|---|---|---|
-| Asset & software inventory | 1, 2 | CM, PM | FullstackEngineer |
-| Data protection & classification | 3 | SC, SI, PM | ComplianceOfficer + SecurityArchitect |
-| Secure configuration | 4, 12 | CM, SC | SREEngineer + PlatformArchitect |
-| Account & access management | 5, 6 | AC, IA, PS | SecurityArchitect |
-| Vulnerability management | 7 | RA, SI | SecurityArchitect |
-| Audit log management | 8 | AU | ComplianceOfficer + SREEngineer |
-| Email & web protections | 9 | SC, SI | UIUXEngineer + SecurityArchitect |
-| Malware defenses | 10 | SI, SC | SREEngineer + SecurityArchitect |
-| Data recovery | 11 | CP | SREEngineer |
-| Network management & monitoring | 12, 13 | SC, SI, AU | PlatformArchitect + SREEngineer |
-| Awareness & training | 14 | AT | ComplianceOfficer |
-| Service provider management | 15 | SR, SA, CA | ComplianceOfficer |
-| Application security | 16 | SA, SI, RA | SecurityArchitect + FullstackEngineer |
-| Incident response | 17 | IR | ComplianceOfficer + FullstackEngineer |
-| Penetration testing | 18 | CA, RA | SecurityArchitect |
+| Topic                            | CIS Control | NIST Family | Primary owner (this team)             |
+| -------------------------------- | ----------- | ----------- | ------------------------------------- |
+| Asset & software inventory       | 1, 2        | CM, PM      | FullstackEngineer                     |
+| Data protection & classification | 3           | SC, SI, PM  | ComplianceOfficer + SecurityArchitect |
+| Secure configuration             | 4, 12       | CM, SC      | SREEngineer + PlatformArchitect       |
+| Account & access management      | 5, 6        | AC, IA, PS  | SecurityArchitect                     |
+| Vulnerability management         | 7           | RA, SI      | SecurityArchitect                     |
+| Audit log management             | 8           | AU          | ComplianceOfficer + SREEngineer       |
+| Email & web protections          | 9           | SC, SI      | UIUXEngineer + SecurityArchitect      |
+| Malware defenses                 | 10          | SI, SC      | SREEngineer + SecurityArchitect       |
+| Data recovery                    | 11          | CP          | SREEngineer                           |
+| Network management & monitoring  | 12, 13      | SC, SI, AU  | PlatformArchitect + SREEngineer       |
+| Awareness & training             | 14          | AT          | ComplianceOfficer                     |
+| Service provider management      | 15          | SR, SA, CA  | ComplianceOfficer                     |
+| Application security             | 16          | SA, SI, RA  | SecurityArchitect + FullstackEngineer |
+| Incident response                | 17          | IR          | ComplianceOfficer + FullstackEngineer |
+| Penetration testing              | 18          | CA, RA      | SecurityArchitect                     |
 
 ## 3. Customer audit response playbook
 
@@ -245,21 +245,21 @@ While the v1 platform targets NIST 800-53 Moderate as its primary
 framework, the most common customer-facing audit requests are **SOC 2
 Type II** and **ISO 27001**. The mapping is:
 
-| SOC 2 Trust Service Criteria | ISO 27001 Annex A | CIS v8 | NIST 800-53 |
-|---|---|---|---|
-| CC1 (Control Environment) | A.5 | (process) | PM family |
-| CC2 (Communication & Info) | A.5, A.6 | 3, 14 | PM, AT |
-| CC3 (Risk Assessment) | A.6 | 18 | RA family |
-| CC4 (Monitoring) | A.8, A.9 | 8, 13 | CA, SI, AU |
-| CC5 (Control Activities) | A.5–A.18 | 4–18 | All |
-| CC6 (Logical & Physical Access) | A.5, A.8, A.9 | 5, 6, 12 | AC, IA, PE |
-| CC7 (System Operations) | A.8, A.12, A.13 | 7, 8, 10, 11 | AU, CP, SI, MA |
-| CC8 (Change Management) | A.8, A.12, A.14 | 4, 16 | CM, SA |
-| CC9 (Risk Mitigation) | A.6 | 3, 15 | RA, SR |
-| C (Confidentiality) | A.8 | 3 | SC, PM |
-| P (Processing Integrity) | A.8, A.14 | 7, 16 | SI, SA |
-| A (Availability) | A.11, A.17 | 11 | CP, PE |
-| PI (Privacy) — optional | A.18 | (privacy overlay) | PM-18 to PM-32 |
+| SOC 2 Trust Service Criteria    | ISO 27001 Annex A | CIS v8            | NIST 800-53    |
+| ------------------------------- | ----------------- | ----------------- | -------------- |
+| CC1 (Control Environment)       | A.5               | (process)         | PM family      |
+| CC2 (Communication & Info)      | A.5, A.6          | 3, 14             | PM, AT         |
+| CC3 (Risk Assessment)           | A.6               | 18                | RA family      |
+| CC4 (Monitoring)                | A.8, A.9          | 8, 13             | CA, SI, AU     |
+| CC5 (Control Activities)        | A.5–A.18          | 4–18              | All            |
+| CC6 (Logical & Physical Access) | A.5, A.8, A.9     | 5, 6, 12          | AC, IA, PE     |
+| CC7 (System Operations)         | A.8, A.12, A.13   | 7, 8, 10, 11      | AU, CP, SI, MA |
+| CC8 (Change Management)         | A.8, A.12, A.14   | 4, 16             | CM, SA         |
+| CC9 (Risk Mitigation)           | A.6               | 3, 15             | RA, SR         |
+| C (Confidentiality)             | A.8               | 3                 | SC, PM         |
+| P (Processing Integrity)        | A.8, A.14         | 7, 16             | SI, SA         |
+| A (Availability)                | A.11, A.17        | 11                | CP, PE         |
+| PI (Privacy) — optional         | A.18              | (privacy overlay) | PM-18 to PM-32 |
 
 The Compliance service is structured so that adding a SOC 2 or ISO
 27001 mapping is a Sprint 2 follow-up: it is largely a
@@ -280,7 +280,7 @@ structure is:
 
 ## 5. FedRAMP and federal — readiness notes
 
-The platform is *not* FedRAMP-authorized in v1, but the
+The platform is _not_ FedRAMP-authorized in v1, but the
 [`nist-800-53.md`](./nist-800-53.md) document maps the platform to
 NIST 800-53 Rev. 5, which is the basis of FedRAMP. A future FedRAMP
 Moderate authorization would require:
@@ -319,7 +319,7 @@ controls are in the PM-18 to PM-32 family. Specific commitments:
 
 ## 7. PCI DSS 4.0 — readiness notes
 
-The platform is *not* a payment processor; the customer's PCI scope
+The platform is _not_ a payment processor; the customer's PCI scope
 depends on how they integrate the platform. For customers in CDE
 scopes, the platform provides:
 

@@ -19,7 +19,11 @@ import { RULES, type RuleInput, type RuleContext, type Rule } from './rules.js';
 export interface RuntimeSecurityEngine {
   listRules(): Rule[];
   evaluate(input: RuntimeSecurityInput): RuntimeRisk[];
-  report(input: RuntimeSecurityInput, windowStart: string, windowEnd: string): RuntimeSecurityReport;
+  report(
+    input: RuntimeSecurityInput,
+    windowStart: string,
+    windowEnd: string,
+  ): RuntimeSecurityReport;
 }
 
 export interface RuntimeSecurityInput {
@@ -90,7 +94,10 @@ export function buildRuntimeSecurityEngine(): RuntimeSecurityEngine {
       }
 
       // Top recommendations: one per (rule) with the most findings.
-      const recMap = new Map<string, { title: string; detail: string; level: RiskLevel; affectedCount: number }>();
+      const recMap = new Map<
+        string,
+        { title: string; detail: string; level: RiskLevel; affectedCount: number }
+      >();
       for (const f of findings) {
         const existing = recMap.get(f.ruleId);
         if (existing) {

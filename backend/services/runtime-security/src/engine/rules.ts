@@ -126,20 +126,27 @@ const privilegedRule: Rule = {
   category: 'privileged_container',
   level: 'critical',
   severity: 'critical',
-  remediation: 'Drop `securityContext.privileged: true` and use a narrowly-scoped `capabilities` set instead.',
+  remediation:
+    'Drop `securityContext.privileged: true` and use a narrowly-scoped `capabilities` set instead.',
   references: [`${CIS_K8S}#5-2-1`, POD_SECURITY],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
     for (const pod of input.pods) {
       for (const c of pod.containers) {
         if (c.privileged) {
-          out.push(makeRisk({
-            ctx, rule: privilegedRule,
-            subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-            message: `Container ${c.name} runs in privileged mode`,
-            evidencePath: `pod.spec.containers[${c.name}].securityContext.privileged`,
-            evidenceValue: true,
-          }));
+          out.push(
+            makeRisk({
+              ctx,
+              rule: privilegedRule,
+              subject: 'pod',
+              subjectKind: 'Pod',
+              subjectName: pod.name,
+              namespace: pod.namespace,
+              message: `Container ${c.name} runs in privileged mode`,
+              evidencePath: `pod.spec.containers[${c.name}].securityContext.privileged`,
+              evidenceValue: true,
+            }),
+          );
         }
       }
     }
@@ -155,7 +162,8 @@ const hostPathRule: Rule = {
   category: 'host_path_volume',
   level: 'high',
   severity: 'high',
-  remediation: 'Avoid `hostPath` mounts. Use `emptyDir`, `CSI`, or a projected volume for required data.',
+  remediation:
+    'Avoid `hostPath` mounts. Use `emptyDir`, `CSI`, or a projected volume for required data.',
   references: [`${CIS_K8S}#5-2-2`],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
@@ -163,17 +171,23 @@ const hostPathRule: Rule = {
       for (const c of pod.containers) {
         for (const hp of c.hostPaths) {
           const sensitive = SENSITIVE_HOST_PATHS.has(hp);
-          out.push(makeRisk({
-            ctx, rule: hostPathRule,
-            subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-            message: sensitive
-              ? `Container ${c.name} mounts sensitive hostPath ${hp}`
-              : `Container ${c.name} mounts hostPath ${hp}`,
-            evidencePath: `pod.spec.containers[${c.name}].volumeMounts[hostPath=${hp}]`,
-            evidenceValue: hp,
-            level: sensitive ? 'critical' : 'high',
-            severity: sensitive ? 'critical' : 'high',
-          }));
+          out.push(
+            makeRisk({
+              ctx,
+              rule: hostPathRule,
+              subject: 'pod',
+              subjectKind: 'Pod',
+              subjectName: pod.name,
+              namespace: pod.namespace,
+              message: sensitive
+                ? `Container ${c.name} mounts sensitive hostPath ${hp}`
+                : `Container ${c.name} mounts hostPath ${hp}`,
+              evidencePath: `pod.spec.containers[${c.name}].volumeMounts[hostPath=${hp}]`,
+              evidenceValue: hp,
+              level: sensitive ? 'critical' : 'high',
+              severity: sensitive ? 'critical' : 'high',
+            }),
+          );
         }
       }
     }
@@ -189,20 +203,27 @@ const rootUserRule: Rule = {
   category: 'root_user',
   level: 'high',
   severity: 'high',
-  remediation: 'Set `securityContext.runAsNonRoot: true` and `runAsUser: <non-zero>` (or use a `runAsUser` from your platform range).',
+  remediation:
+    'Set `securityContext.runAsNonRoot: true` and `runAsUser: <non-zero>` (or use a `runAsUser` from your platform range).',
   references: [`${CIS_K8S}#5-2-6`, POD_SECURITY],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
     for (const pod of input.pods) {
       for (const c of pod.containers) {
         if (c.runAsRoot) {
-          out.push(makeRisk({
-            ctx, rule: rootUserRule,
-            subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-            message: `Container ${c.name} runs as root (uid 0)`,
-            evidencePath: `pod.spec.containers[${c.name}].securityContext.runAsNonRoot`,
-            evidenceValue: false,
-          }));
+          out.push(
+            makeRisk({
+              ctx,
+              rule: rootUserRule,
+              subject: 'pod',
+              subjectKind: 'Pod',
+              subjectName: pod.name,
+              namespace: pod.namespace,
+              message: `Container ${c.name} runs as root (uid 0)`,
+              evidencePath: `pod.spec.containers[${c.name}].securityContext.runAsNonRoot`,
+              evidenceValue: false,
+            }),
+          );
         }
       }
     }
@@ -218,7 +239,8 @@ const dangerousCapRule: Rule = {
   category: 'dangerous_capability',
   level: 'high',
   severity: 'high',
-  remediation: 'Drop the dangerous capability. If required, use `capabilities.add` with the minimal set.',
+  remediation:
+    'Drop the dangerous capability. If required, use `capabilities.add` with the minimal set.',
   references: [`${CIS_K8S}#5-2-8`, POD_SECURITY],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
@@ -226,14 +248,20 @@ const dangerousCapRule: Rule = {
       for (const c of pod.containers) {
         for (const cap of c.addedCapabilities) {
           if (DANGEROUS_CAPABILITIES.has(cap)) {
-            out.push(makeRisk({
-              ctx, rule: dangerousCapRule,
-              subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-              message: `Container ${c.name} adds dangerous capability ${cap}`,
-              evidencePath: `pod.spec.containers[${c.name}].securityContext.capabilities.add`,
-              evidenceValue: cap,
-              level: cap === 'SYS_ADMIN' || cap === 'ALL' ? 'critical' : 'high',
-            }));
+            out.push(
+              makeRisk({
+                ctx,
+                rule: dangerousCapRule,
+                subject: 'pod',
+                subjectKind: 'Pod',
+                subjectName: pod.name,
+                namespace: pod.namespace,
+                message: `Container ${c.name} adds dangerous capability ${cap}`,
+                evidencePath: `pod.spec.containers[${c.name}].securityContext.capabilities.add`,
+                evidenceValue: cap,
+                level: cap === 'SYS_ADMIN' || cap === 'ALL' ? 'critical' : 'high',
+              }),
+            );
           }
         }
       }
@@ -250,7 +278,8 @@ const securityContextRule: Rule = {
   category: 'unsafe_security_context',
   level: 'medium',
   severity: 'medium',
-  remediation: 'Set `securityContext.runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, and drop all capabilities.',
+  remediation:
+    'Set `securityContext.runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, and drop all capabilities.',
   references: [POD_SECURITY],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
@@ -262,13 +291,20 @@ const securityContextRule: Rule = {
       if (isSystemNs) continue;
       const anyExplicit = pod.containers.some((c: Container) => !c.runAsRoot);
       if (anyExplicit) continue;
-      out.push(makeRisk({
-        ctx, rule: securityContextRule,
-        subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-        message: 'Pod does not declare a hardened SecurityContext (runAsNonRoot, readOnlyRootFilesystem, allowPrivilegeEscalation).',
-        evidencePath: 'pod.spec.securityContext',
-        evidenceValue: null,
-      }));
+      out.push(
+        makeRisk({
+          ctx,
+          rule: securityContextRule,
+          subject: 'pod',
+          subjectKind: 'Pod',
+          subjectName: pod.name,
+          namespace: pod.namespace,
+          message:
+            'Pod does not declare a hardened SecurityContext (runAsNonRoot, readOnlyRootFilesystem, allowPrivilegeEscalation).',
+          evidencePath: 'pod.spec.securityContext',
+          evidenceValue: null,
+        }),
+      );
     }
     return out;
   },
@@ -282,21 +318,28 @@ const serviceAccountRule: Rule = {
   category: 'service_account_risk',
   level: 'medium',
   severity: 'medium',
-  remediation: 'Bind a dedicated ServiceAccount with `automountServiceAccountToken: false` and minimal RBAC. Never use the `default` SA in production.',
+  remediation:
+    'Bind a dedicated ServiceAccount with `automountServiceAccountToken: false` and minimal RBAC. Never use the `default` SA in production.',
   references: [`${CIS_K8S}#5-1-5`],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
     for (const pod of input.pods) {
       const sa = pod.serviceAccount ?? 'default';
       if (sa === 'default' && pod.namespace !== 'kube-system' && pod.namespace !== 'kube-public') {
-        out.push(makeRisk({
-          ctx, rule: serviceAccountRule,
-          subject: 'service_account', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-          message: 'Pod uses the `default` ServiceAccount',
-          evidencePath: 'pod.spec.serviceAccountName',
-          evidenceValue: sa,
-          level: 'medium',
-        }));
+        out.push(
+          makeRisk({
+            ctx,
+            rule: serviceAccountRule,
+            subject: 'service_account',
+            subjectKind: 'Pod',
+            subjectName: pod.name,
+            namespace: pod.namespace,
+            message: 'Pod uses the `default` ServiceAccount',
+            evidencePath: 'pod.spec.serviceAccountName',
+            evidenceValue: sa,
+            level: 'medium',
+          }),
+        );
       }
     }
     void input;
@@ -312,7 +355,8 @@ const rbacRule: Rule = {
   category: 'rbac_risk',
   level: 'high',
   severity: 'high',
-  remediation: 'Replace `cluster-admin` with a namespace-scoped `Role`. Review ClusterRole grants; prefer individual verbs.',
+  remediation:
+    'Replace `cluster-admin` with a namespace-scoped `Role`. Review ClusterRole grants; prefer individual verbs.',
   references: [`${CIS_K8S}#5-1-3`],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
@@ -335,20 +379,27 @@ const resourceLimitRule: Rule = {
   category: 'resource_limits_missing',
   level: 'low',
   severity: 'low',
-  remediation: 'Set CPU and memory `limits` on every container. Consider Vertical Pod Autoscaler for recommendation.',
+  remediation:
+    'Set CPU and memory `limits` on every container. Consider Vertical Pod Autoscaler for recommendation.',
   references: [`${CIS_K8S}#5-7-1`],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
     for (const pod of input.pods) {
       for (const c of pod.containers) {
         if (c.resources.cpuLimitsMillicores === 0 || c.resources.memoryLimitsBytes === 0) {
-          out.push(makeRisk({
-            ctx, rule: resourceLimitRule,
-            subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-            message: `Container ${c.name} has no CPU or memory limit`,
-            evidencePath: `pod.spec.containers[${c.name}].resources.limits`,
-            evidenceValue: null,
-          }));
+          out.push(
+            makeRisk({
+              ctx,
+              rule: resourceLimitRule,
+              subject: 'pod',
+              subjectKind: 'Pod',
+              subjectName: pod.name,
+              namespace: pod.namespace,
+              message: `Container ${c.name} has no CPU or memory limit`,
+              evidencePath: `pod.spec.containers[${c.name}].resources.limits`,
+              evidenceValue: null,
+            }),
+          );
         }
       }
     }
@@ -364,20 +415,27 @@ const imageDigestRule: Rule = {
   category: 'image_risk',
   level: 'medium',
   severity: 'medium',
-  remediation: 'Pin the image by digest (sha256:...) and add a supply-chain verification step (cosign / Kyverno).',
+  remediation:
+    'Pin the image by digest (sha256:...) and add a supply-chain verification step (cosign / Kyverno).',
   references: ['https://kubernetes.io/docs/concepts/containers/images/'],
   evaluate(ctx, input) {
     const out: RuntimeRisk[] = [];
     for (const pod of input.pods) {
       for (const c of pod.containers) {
         if (!c.imageDigest) {
-          out.push(makeRisk({
-            ctx, rule: imageDigestRule,
-            subject: 'pod', subjectKind: 'Pod', subjectName: pod.name, namespace: pod.namespace,
-            message: `Container ${c.name} uses mutable image tag (${c.image})`,
-            evidencePath: `pod.spec.containers[${c.name}].image`,
-            evidenceValue: c.image,
-          }));
+          out.push(
+            makeRisk({
+              ctx,
+              rule: imageDigestRule,
+              subject: 'pod',
+              subjectKind: 'Pod',
+              subjectName: pod.name,
+              namespace: pod.namespace,
+              message: `Container ${c.name} uses mutable image tag (${c.image})`,
+              evidencePath: `pod.spec.containers[${c.name}].image`,
+              evidenceValue: c.image,
+            }),
+          );
         }
       }
     }

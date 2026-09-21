@@ -37,4 +37,4 @@ evidence/
 - Files are immutable once written; corrections are new files with a
   `superseded_by` pointer.
 - Retention: matches the audit log retention schedule (13 months hot
-  + 7 years warm/cold).
+  - 7 years warm/cold).

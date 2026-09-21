@@ -11,24 +11,13 @@
  */
 import { z } from 'zod';
 
-export const HealthStatusSchema = z.enum([
-  'healthy',
-  'degraded',
-  'unhealthy',
-  'unknown',
-]);
+export const HealthStatusSchema = z.enum(['healthy', 'degraded', 'unhealthy', 'unknown']);
 export type HealthStatus = z.infer<typeof HealthStatusSchema>;
 
 export const HealthBandSchema = z.enum(['A', 'B', 'C', 'D', 'F']);
 export type HealthBand = z.infer<typeof HealthBandSchema>;
 
-export const HealthIssueSeveritySchema = z.enum([
-  'critical',
-  'high',
-  'medium',
-  'low',
-  'info',
-]);
+export const HealthIssueSeveritySchema = z.enum(['critical', 'high', 'medium', 'low', 'info']);
 export type HealthIssueSeverity = z.infer<typeof HealthIssueSeveritySchema>;
 
 export const HealthIssueKindSchema = z.enum([
@@ -120,7 +109,9 @@ export const InfrastructureHealthListResponseSchema = z.object({
   items: z.array(InfrastructureHealthSchema),
   total: z.number().int().nonnegative(),
 });
-export type InfrastructureHealthListResponse = z.infer<typeof InfrastructureHealthListResponseSchema>;
+export type InfrastructureHealthListResponse = z.infer<
+  typeof InfrastructureHealthListResponseSchema
+>;
 
 export function toInfrastructureHealthJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(InfrastructureHealthSchema, {

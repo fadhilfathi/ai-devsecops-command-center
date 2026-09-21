@@ -34,13 +34,15 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
 
   const bus = deps?.bus ?? new InMemoryEventBus();
   const users = deps?.users ?? buildUserRepository();
-  const tokens = deps?.tokens ?? buildTokenService({
-    secret: env.JWT_SECRET,
-    issuer: env.JWT_ISSUER,
-    audience: env.JWT_AUDIENCE,
-    accessTtl: env.JWT_ACCESS_TTL,
-    refreshTtl: env.JWT_REFRESH_TTL,
-  });
+  const tokens =
+    deps?.tokens ??
+    buildTokenService({
+      secret: env.JWT_SECRET,
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+      accessTtl: env.JWT_ACCESS_TTL,
+      refreshTtl: env.JWT_REFRESH_TTL,
+    });
 
   const server = Fastify({
     logger: logger,
@@ -88,10 +90,7 @@ async function main(): Promise<void> {
 
   try {
     await server.listen({ port: cfg.port, host: cfg.host });
-    logger.info(
-      { port: cfg.port, host: cfg.host, env: env.NODE_ENV },
-      `${SERVICE_NAME} listening`,
-    );
+    logger.info({ port: cfg.port, host: cfg.host, env: env.NODE_ENV }, `${SERVICE_NAME} listening`);
   } catch (err) {
     logger.error({ err }, 'failed to start');
     process.exit(1);

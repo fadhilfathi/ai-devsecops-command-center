@@ -1,9 +1,37 @@
-import type { Cluster, Namespace, Workload, Pod, Service, Ingress, Deployment, StatefulSet, DaemonSet } from '@aicc/models';
-export interface ListOptions { clusterId: string; namespace?: string; labelSelector?: string; }
-export interface TestConnectionInput { server: string; token?: string; caBundle?: string; insecureSkipVerify?: boolean; name?: string; }
-export interface TestConnectionResult { ok: boolean; latencyMs: number; serverVersion?: string; platform?: string; message?: string; }
+import type {
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Ingress,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
+} from '@aicc/models';
+export interface ListOptions {
+  clusterId: string;
+  namespace?: string;
+  labelSelector?: string;
+}
+export interface TestConnectionInput {
+  server: string;
+  token?: string;
+  caBundle?: string;
+  insecureSkipVerify?: boolean;
+  name?: string;
+}
+export interface TestConnectionResult {
+  ok: boolean;
+  latencyMs: number;
+  serverVersion?: string;
+  platform?: string;
+  message?: string;
+}
 export interface KubernetesProvider {
-  readonly id: string; readonly name: string; readonly readOnly: boolean;
+  readonly id: string;
+  readonly name: string;
+  readonly readOnly: boolean;
   testConnection(input: TestConnectionInput): Promise<TestConnectionResult>;
   listClusters(tenantId: string): Promise<Cluster[]>;
   listNamespaces(tenantId: string, clusterId: string): Promise<Namespace[]>;

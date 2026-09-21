@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -8,27 +8,27 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import { Card } from "@/components/ui/Card";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import type { Severity, VulnTimelineRange } from "@/types";
+} from 'recharts';
+import { Card } from '@/components/ui/Card';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import type { Severity, VulnTimelineRange } from '@/types';
 
 const RANGES: { id: VulnTimelineRange; label: string }[] = [
-  { id: "7d",  label: "7d" },
-  { id: "30d", label: "30d" },
-  { id: "90d", label: "90d" },
-  { id: "1y",  label: "1y" },
+  { id: '7d', label: '7d' },
+  { id: '30d', label: '30d' },
+  { id: '90d', label: '90d' },
+  { id: '1y', label: '1y' },
 ];
 
-const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"];
+const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
 
 const SEVERITY_COLORS: Record<Severity, string> = {
-  critical: "hsl(0 84% 60%)",
-  high:     "hsl(20 90% 55%)",
-  medium:   "hsl(38 92% 50%)",
-  low:      "hsl(199 89% 60%)",
-  info:     "hsl(215 14% 60%)",
+  critical: 'hsl(0 84% 60%)',
+  high: 'hsl(20 90% 55%)',
+  medium: 'hsl(38 92% 50%)',
+  low: 'hsl(199 89% 60%)',
+  info: 'hsl(215 14% 60%)',
 };
 
 /**
@@ -43,7 +43,7 @@ const SEVERITY_COLORS: Record<Severity, string> = {
  * range with the tab-cycle button group.
  */
 export function VulnTimeline() {
-  const [range, setRange] = useState<VulnTimelineRange>("30d");
+  const [range, setRange] = useState<VulnTimelineRange>('30d');
   const { data, loading } = useFetch(() => api.vulnTimeline(range), [], [range]);
 
   return (
@@ -64,9 +64,7 @@ export function VulnTimeline() {
                 onClick={() => setRange(r.id)}
                 aria-pressed={range === r.id}
                 className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${
-                  range === r.id
-                    ? "bg-accent/15 text-accent"
-                    : "text-muted hover:text-text"
+                  range === r.id ? 'bg-accent/15 text-accent' : 'text-muted hover:text-text'
                 }`}
               >
                 {r.label}
@@ -77,9 +75,7 @@ export function VulnTimeline() {
       />
       <Card.Body>
         {loading || !data ? (
-          <div className="grid h-64 place-items-center text-sm text-muted">
-            Loading timeline…
-          </div>
+          <div className="grid h-64 place-items-center text-sm text-muted">Loading timeline…</div>
         ) : data.length === 0 ? (
           <div className="grid h-64 place-items-center text-sm text-muted">
             No data for this range.
@@ -92,30 +88,12 @@ export function VulnTimeline() {
               aria-label={`Vulnerability timeline, last ${range}, stacked by severity`}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={data}
-                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-                >
+                <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     {SEVERITY_ORDER.map((s) => (
-                      <linearGradient
-                        key={s}
-                        id={`grad-${s}`}
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor={SEVERITY_COLORS[s]}
-                          stopOpacity={0.6}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor={SEVERITY_COLORS[s]}
-                          stopOpacity={0.1}
-                        />
+                      <linearGradient key={s} id={`grad-${s}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={SEVERITY_COLORS[s]} stopOpacity={0.6} />
+                        <stop offset="100%" stopColor={SEVERITY_COLORS[s]} stopOpacity={0.1} />
                       </linearGradient>
                     ))}
                   </defs>
@@ -136,18 +114,14 @@ export function VulnTimeline() {
                   />
                   <Tooltip
                     contentStyle={{
-                      background: "hsl(var(--surface))",
-                      border: "1px solid hsl(var(--border))",
+                      background: 'hsl(var(--surface))',
+                      border: '1px solid hsl(var(--border))',
                       borderRadius: 6,
                       fontSize: 12,
                     }}
-                    labelStyle={{ color: "hsl(var(--text))" }}
+                    labelStyle={{ color: 'hsl(var(--text))' }}
                   />
-                  <Legend
-                    wrapperStyle={{ fontSize: 11 }}
-                    iconType="circle"
-                    iconSize={8}
-                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
                   {SEVERITY_ORDER.map((s) => (
                     <Area
                       key={s}
@@ -183,10 +157,7 @@ export function VulnTimeline() {
                   </thead>
                   <tbody>
                     {data.map((p) => {
-                      const total = SEVERITY_ORDER.reduce(
-                        (acc, s) => acc + (p[s] as number),
-                        0
-                      );
+                      const total = SEVERITY_ORDER.reduce((acc, s) => acc + (p[s] as number), 0);
                       return (
                         <tr key={p.date} className="border-t border-border/60">
                           <td className="px-2 py-1">{p.date}</td>
@@ -195,9 +166,7 @@ export function VulnTimeline() {
                               {p[s]}
                             </td>
                           ))}
-                          <td className="px-2 py-1 text-right font-semibold">
-                            {total}
-                          </td>
+                          <td className="px-2 py-1 text-right font-semibold">{total}</td>
                         </tr>
                       );
                     })}

@@ -6,6 +6,7 @@
 > **Classification:** Internal — Engineering
 > **Last Updated:** 2026-06-12
 > **Related Docs:**
+>
 > - [security-model.md](./security-model.md) — architecture-level overview (PlatformArchitect)
 > - [system-architecture.md](./system-architecture.md)
 > - [event-bus.md](./event-bus.md)
@@ -18,6 +19,7 @@
 This document is the **detailed Authentication & Security Design** for the AI-DevSecOps Command Center. It is the engineering reference that implements the architecture-level overview in [`security-model.md`](./security-model.md) and provides the concrete specifications, algorithms, and configurations that backend services must follow.
 
 **This document is authoritative** for:
+
 - Token formats, lifetimes, and rotation policies
 - RBAC permission catalog and resolution algorithm
 - Session management tables and policies
@@ -34,16 +36,16 @@ The shorter [security-model.md](./security-model.md) is the **onboarding-friendl
 
 ## 2. Design Principles
 
-| # | Principle | Implication |
-|---|-----------|-------------|
-| 1 | **Zero Trust by default** | Every request is authenticated and authorized; no implicit trust between services or networks. |
-| 2 | **Least privilege** | Roles, service accounts, and tokens are scoped to the minimum permissions required. |
-| 3 | **Defense in depth** | Layered controls (network → identity → application → data) so a single failure does not breach the system. |
-| 4 | **Fail closed** | If an auth/audit check is unreachable, the request is **denied** and a security event is raised. |
-| 5 | **Tenant isolation is non-negotiable** | Tenant boundaries are enforced at the data layer, not just the UI. |
-| 6 | **Verifiable, not presumed** | Every security decision produces an audit record. |
-| 7 | **Secure by default configuration** | New services ship with secure defaults; insecure config requires explicit opt-in. |
-| 8 | **Cryptographic agility** | Algorithms are abstracted so they can be rotated without code changes. |
+| #   | Principle                              | Implication                                                                                                |
+| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | **Zero Trust by default**              | Every request is authenticated and authorized; no implicit trust between services or networks.             |
+| 2   | **Least privilege**                    | Roles, service accounts, and tokens are scoped to the minimum permissions required.                        |
+| 3   | **Defense in depth**                   | Layered controls (network → identity → application → data) so a single failure does not breach the system. |
+| 4   | **Fail closed**                        | If an auth/audit check is unreachable, the request is **denied** and a security event is raised.           |
+| 5   | **Tenant isolation is non-negotiable** | Tenant boundaries are enforced at the data layer, not just the UI.                                         |
+| 6   | **Verifiable, not presumed**           | Every security decision produces an audit record.                                                          |
+| 7   | **Secure by default configuration**    | New services ship with secure defaults; insecure config requires explicit opt-in.                          |
+| 8   | **Cryptographic agility**              | Algorithms are abstracted so they can be rotated without code changes.                                     |
 
 ---
 
@@ -51,13 +53,13 @@ The shorter [security-model.md](./security-model.md) is the **onboarding-friendl
 
 ### 3.1 Identity Types
 
-| Identity | Description | Authentication | Lifetime |
-|----------|-------------|----------------|----------|
-| **Human User** | Engineer, security analyst, compliance officer, admin | Username + password + TOTP MFA, or SSO (OIDC/SAML) | Long-lived, human-managed |
-| **Service Account** | Backend service authenticating to other services | mTLS or signed JWT (client credentials grant) | Long-lived, machine-managed |
-| **AI Agent Identity** | Autonomous agents (Scanner, Triage, Remediation) | Short-lived JWT issued by Agent Service; scoped to specific capabilities | Short-lived (≤15 min) |
-| **Integration Identity** | GitHub App, Slack, Jira, etc. | OAuth2 or App-signed JWT (per provider) | Provider-managed, rotated |
-| **API Key Holder** | Programmatic external access (read-only) | Static API key + HMAC signature | Long-lived, revocable |
+| Identity                 | Description                                           | Authentication                                                           | Lifetime                    |
+| ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------- |
+| **Human User**           | Engineer, security analyst, compliance officer, admin | Username + password + TOTP MFA, or SSO (OIDC/SAML)                       | Long-lived, human-managed   |
+| **Service Account**      | Backend service authenticating to other services      | mTLS or signed JWT (client credentials grant)                            | Long-lived, machine-managed |
+| **AI Agent Identity**    | Autonomous agents (Scanner, Triage, Remediation)      | Short-lived JWT issued by Agent Service; scoped to specific capabilities | Short-lived (≤15 min)       |
+| **Integration Identity** | GitHub App, Slack, Jira, etc.                         | OAuth2 or App-signed JWT (per provider)                                  | Provider-managed, rotated   |
+| **API Key Holder**       | Programmatic external access (read-only)              | Static API key + HMAC signature                                          | Long-lived, revocable       |
 
 ### 3.2 Identity Storage
 
@@ -118,16 +120,17 @@ The shorter [security-model.md](./security-model.md) is the **onboarding-friendl
 
 ### 4.1 Access Token (JWT)
 
-| Property | Value |
-|----------|-------|
-| Algorithm | **RS256** (asymmetric) — allows public-key verification by services |
-| Key rotation | Every 90 days; JWKS endpoint advertises current + next key |
-| Lifetime | **15 minutes** (human) / **5 minutes** (agent) |
-| Claims | `iss`, `sub`, `aud`, `exp`, `iat`, `nbf`, `jti`, `tenant_id`, `roles`, `scopes`, `sid` |
-| Storage (client) | **Memory only** (never `localStorage`) |
-| Transport | `Authorization: Bearer <jwt>` header — required over HTTPS |
+| Property         | Value                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| Algorithm        | **RS256** (asymmetric) — allows public-key verification by services                    |
+| Key rotation     | Every 90 days; JWKS endpoint advertises current + next key                             |
+| Lifetime         | **15 minutes** (human) / **5 minutes** (agent)                                         |
+| Claims           | `iss`, `sub`, `aud`, `exp`, `iat`, `nbf`, `jti`, `tenant_id`, `roles`, `scopes`, `sid` |
+| Storage (client) | **Memory only** (never `localStorage`)                                                 |
+| Transport        | `Authorization: Bearer <jwt>` header — required over HTTPS                             |
 
 **Critical claim meanings:**
+
 - `tenant_id` — required; rejected if missing or malformed
 - `roles` — array of role names resolved from RBAC
 - `scopes` — fine-grained permission strings
@@ -168,17 +171,17 @@ The shorter [security-model.md](./security-model.md) is the **onboarding-friendl
 
 ### 5.2 System Roles
 
-| Role | Purpose | Key Permissions |
-|------|---------|-----------------|
-| `owner` | Tenant owner, billing | `*` (all permissions within their tenant) |
-| `admin` | Tenant administration | All except billing and ownership transfer |
-| `security_admin` | Manage security configuration, policies, integrations | `*` on `policy`, `integration`, `vulnerability`, `incident` |
-| `security_analyst` | Triage vulnerabilities and incidents | `read:*`, `write:incident`, `write:vulnerability` (status/comment only) |
-| `developer` | View findings on their repos, acknowledge | `read:asset`, `read:vulnerability`, `read:sbom`, `ack:vulnerability` |
-| `compliance_officer` | Read-only audit, evidence collection | `read:compliance`, `read:audit_log`, `export:report` |
-| `viewer` | Read-only across tenant | `read:*` |
-| `agent` | Reserved for AI agents (system-issued) | Scoped per agent (see §5.4) |
-| `service` | Reserved for service accounts | Scoped per service |
+| Role                 | Purpose                                               | Key Permissions                                                         |
+| -------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| `owner`              | Tenant owner, billing                                 | `*` (all permissions within their tenant)                               |
+| `admin`              | Tenant administration                                 | All except billing and ownership transfer                               |
+| `security_admin`     | Manage security configuration, policies, integrations | `*` on `policy`, `integration`, `vulnerability`, `incident`             |
+| `security_analyst`   | Triage vulnerabilities and incidents                  | `read:*`, `write:incident`, `write:vulnerability` (status/comment only) |
+| `developer`          | View findings on their repos, acknowledge             | `read:asset`, `read:vulnerability`, `read:sbom`, `ack:vulnerability`    |
+| `compliance_officer` | Read-only audit, evidence collection                  | `read:compliance`, `read:audit_log`, `export:report`                    |
+| `viewer`             | Read-only across tenant                               | `read:*`                                                                |
+| `agent`              | Reserved for AI agents (system-issued)                | Scoped per agent (see §5.4)                                             |
+| `service`            | Reserved for service accounts                         | Scoped per service                                                      |
 
 ### 5.3 Permission Resolution Algorithm
 
@@ -205,11 +208,7 @@ AI agents receive **capability tokens** rather than roles:
 ```json
 {
   "sub": "agent:scanner-7f3a",
-  "scopes": [
-    "scan:asset:read",
-    "scan:asset:execute",
-    "scan:result:write"
-  ],
+  "scopes": ["scan:asset:read", "scan:asset:execute", "scan:result:write"],
   "tenant_id": "tenant-acme",
   "exp": 1735689600
 }
@@ -223,12 +222,12 @@ AI agents receive **capability tokens** rather than roles:
 
 For sensitive actions, additional attributes are checked:
 
-| Action | ABAC Conditions |
-|--------|-----------------|
-| `delete:asset` | Tenant must not be in `read_only` mode (e.g., during legal hold) |
-| `export:sbom` | User must have MFA verified in last 24h; export is logged with reason |
-| `apply:remediation` | Requires second-person approval for high/critical CVEs |
-| `manage:tenant` | Caller IP must be in tenant-allowed IP allowlist (optional, tenant-configurable) |
+| Action              | ABAC Conditions                                                                  |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `delete:asset`      | Tenant must not be in `read_only` mode (e.g., during legal hold)                 |
+| `export:sbom`       | User must have MFA verified in last 24h; export is logged with reason            |
+| `apply:remediation` | Requires second-person approval for high/critical CVEs                           |
+| `manage:tenant`     | Caller IP must be in tenant-allowed IP allowlist (optional, tenant-configurable) |
 
 ---
 
@@ -256,28 +255,28 @@ For sensitive actions, additional attributes are checked:
 
 ### 6.2 Session Table
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `sid` | UUID v7 (PK) | Session id; embedded in JWT |
-| `identity_id` | UUID FK | Owner of the session |
-| `tenant_id` | UUID | Active tenant (multi-tenant users) |
-| `ip` | INET | Originating IP (for binding) |
-| `user_agent_hash` | BYTEA | SHA-256 of UA (for binding) |
-| `created_at` | TIMESTAMPTZ | Session start |
-| `last_active_at` | TIMESTAMPTZ | For idle timeout |
-| `expires_at` | TIMESTAMPTZ | Hard expiry |
-| `revoked_at` | TIMESTAMPTZ NULL | Revocation marker |
-| `mfa_verified_at` | TIMESTAMPTZ NULL | Required for sensitive actions |
+| Field             | Type             | Purpose                            |
+| ----------------- | ---------------- | ---------------------------------- |
+| `sid`             | UUID v7 (PK)     | Session id; embedded in JWT        |
+| `identity_id`     | UUID FK          | Owner of the session               |
+| `tenant_id`       | UUID             | Active tenant (multi-tenant users) |
+| `ip`              | INET             | Originating IP (for binding)       |
+| `user_agent_hash` | BYTEA            | SHA-256 of UA (for binding)        |
+| `created_at`      | TIMESTAMPTZ      | Session start                      |
+| `last_active_at`  | TIMESTAMPTZ      | For idle timeout                   |
+| `expires_at`      | TIMESTAMPTZ      | Hard expiry                        |
+| `revoked_at`      | TIMESTAMPTZ NULL | Revocation marker                  |
+| `mfa_verified_at` | TIMESTAMPTZ NULL | Required for sensitive actions     |
 
 ### 6.3 Session Policies
 
-| Setting | Value | Override |
-|---------|-------|----------|
-| Idle timeout | 30 minutes | Tenant-configurable (5 min – 8 h) |
-| Absolute lifetime | 14 days | Fixed |
-| Concurrent sessions | 10 per user | Tenant-configurable (1 – 100) |
-| Step-up MFA re-prompt | Every 12 hours | Tenant-configurable |
-| New device login | Re-prompt MFA + email notify | Required |
+| Setting               | Value                        | Override                          |
+| --------------------- | ---------------------------- | --------------------------------- |
+| Idle timeout          | 30 minutes                   | Tenant-configurable (5 min – 8 h) |
+| Absolute lifetime     | 14 days                      | Fixed                             |
+| Concurrent sessions   | 10 per user                  | Tenant-configurable (1 – 100)     |
+| Step-up MFA re-prompt | Every 12 hours               | Tenant-configurable               |
+| New device login      | Re-prompt MFA + email notify | Required                          |
 
 ### 6.4 Concurrent Session Handling
 
@@ -414,12 +413,12 @@ CSP is per-frontend; report-only in dev, enforce in prod.
 
 ### 9.1 Where Secrets Live
 
-| Environment | Store | Examples |
-|-------------|-------|----------|
-| Local dev | `.env.local` (git-ignored) + OS keychain fallback | DB passwords, API keys |
-| CI / build | Vault Agent sidecar injects env vars | Sign keys, container registry creds |
-| Production | **HashiCorp Vault** (or cloud KMS-backed secret store) | DB creds, JWT signing keys, webhook secrets, third-party API keys |
-| Container runtime | Env vars populated by Vault Agent; never baked into image | Same as prod |
+| Environment       | Store                                                     | Examples                                                          |
+| ----------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| Local dev         | `.env.local` (git-ignored) + OS keychain fallback         | DB passwords, API keys                                            |
+| CI / build        | Vault Agent sidecar injects env vars                      | Sign keys, container registry creds                               |
+| Production        | **HashiCorp Vault** (or cloud KMS-backed secret store)    | DB creds, JWT signing keys, webhook secrets, third-party API keys |
+| Container runtime | Env vars populated by Vault Agent; never baked into image | Same as prod                                                      |
 
 ### 9.2 Secret Rotation
 
@@ -440,17 +439,17 @@ CSP is per-frontend; report-only in dev, enforce in prod.
 
 ### 10.1 Algorithms
 
-| Purpose | Algorithm | Notes |
-|---------|-----------|-------|
-| Password hashing | Argon2id (m=64MB, t=3, p=1) | OWASP 2025 |
-| Token signing | RS256 (2048-bit RSA) | Rotated quarterly |
-| Token encryption (refresh) | AES-256-GCM | Envelope with per-tenant KEK |
-| Data at rest (DB) | AES-256-GCM | Cloud-provider managed keys (KMS), per-tenant DEK |
-| Data at rest (object storage) | AES-256 | Server-side encryption, SSE-KMS |
-| TLS | TLS 1.3 | AEAD suites only (AES-GCM, ChaCha20-Poly1305) |
-| Hashing (file integrity) | SHA-256 | For SBOM and artifact integrity |
-| HMAC (webhook signing) | HMAC-SHA-256 | With constant-time compare |
-| Random | `crypto.randomBytes` / `crypto.randomUUID` | Cryptographically secure |
+| Purpose                       | Algorithm                                  | Notes                                             |
+| ----------------------------- | ------------------------------------------ | ------------------------------------------------- |
+| Password hashing              | Argon2id (m=64MB, t=3, p=1)                | OWASP 2025                                        |
+| Token signing                 | RS256 (2048-bit RSA)                       | Rotated quarterly                                 |
+| Token encryption (refresh)    | AES-256-GCM                                | Envelope with per-tenant KEK                      |
+| Data at rest (DB)             | AES-256-GCM                                | Cloud-provider managed keys (KMS), per-tenant DEK |
+| Data at rest (object storage) | AES-256                                    | Server-side encryption, SSE-KMS                   |
+| TLS                           | TLS 1.3                                    | AEAD suites only (AES-GCM, ChaCha20-Poly1305)     |
+| Hashing (file integrity)      | SHA-256                                    | For SBOM and artifact integrity                   |
+| HMAC (webhook signing)        | HMAC-SHA-256                               | With constant-time compare                        |
+| Random                        | `crypto.randomBytes` / `crypto.randomUUID` | Cryptographically secure                          |
 
 ### 10.2 Key Management
 
@@ -470,19 +469,19 @@ CSP is per-frontend; report-only in dev, enforce in prod.
 
 ### 11.1 Threats Considered
 
-| Category | Threat | Mitigation |
-|----------|--------|------------|
-| **Spoofing** | Stolen JWT used from attacker IP | Short token lifetime, IP binding (optional), anomaly detection |
-| **Spoofing** | Forged GitHub webhook | HMAC signature verification with constant-time compare |
-| **Tampering** | SQL injection | Parameterized queries, RLS, input validation |
-| **Tampering** | SBOM tampering in transit | SHA-256 hash + signature, signed URLs only |
-| **Repudiation** | User denies performing an action | Append-only audit log with cryptographic chaining |
-| **Information Disclosure** | Cross-tenant data leak | RLS on every table, tenant_id in JWT, integration tests |
-| **Information Disclosure** | Secret in log | Log scrubber, pre-commit secret scanning |
-| **Denial of Service** | Auth endpoint flooding | Rate limit, CAPTCHA on login after threshold |
-| **Denial of Service** | Large SBOM upload | Size limit, streaming parser, async processing |
-| **Elevation of Privilege** | RBAC bypass attempt | Centralized authz library, deny-by-default, fuzz tests |
-| **Elevation of Privilege** | Agent acting outside capability | Short-lived, narrowly-scoped capability tokens, post-hoc audit |
+| Category                   | Threat                           | Mitigation                                                     |
+| -------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| **Spoofing**               | Stolen JWT used from attacker IP | Short token lifetime, IP binding (optional), anomaly detection |
+| **Spoofing**               | Forged GitHub webhook            | HMAC signature verification with constant-time compare         |
+| **Tampering**              | SQL injection                    | Parameterized queries, RLS, input validation                   |
+| **Tampering**              | SBOM tampering in transit        | SHA-256 hash + signature, signed URLs only                     |
+| **Repudiation**            | User denies performing an action | Append-only audit log with cryptographic chaining              |
+| **Information Disclosure** | Cross-tenant data leak           | RLS on every table, tenant_id in JWT, integration tests        |
+| **Information Disclosure** | Secret in log                    | Log scrubber, pre-commit secret scanning                       |
+| **Denial of Service**      | Auth endpoint flooding           | Rate limit, CAPTCHA on login after threshold                   |
+| **Denial of Service**      | Large SBOM upload                | Size limit, streaming parser, async processing                 |
+| **Elevation of Privilege** | RBAC bypass attempt              | Centralized authz library, deny-by-default, fuzz tests         |
+| **Elevation of Privilege** | Agent acting outside capability  | Short-lived, narrowly-scoped capability tokens, post-hoc audit |
 
 ### 11.2 Out-of-Scope Threats (handled by other layers)
 
@@ -519,16 +518,16 @@ Every arrow is a trust boundary; every boundary is a control point.
 
 ### 12.1 What is Logged
 
-| Event Class | Examples |
-|-------------|----------|
-| **Auth events** | login success/fail, logout, MFA enroll, password change, SSO link |
-| **Authz decisions** | denied actions (always), allowed sensitive actions |
-| **Identity changes** | user created, role granted/revoked, MFA disabled |
-| **Tenant events** | tenant created, member added, settings changed |
-| **Data access** | SBOM exported, evidence downloaded, audit log viewed |
-| **Integration events** | GitHub App installed, webhook received, scanner task launched |
-| **Agent events** | agent task issued, capability granted, anomaly flagged |
-| **Admin events** | policy changed, integration enabled/disabled, secret rotated |
+| Event Class            | Examples                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| **Auth events**        | login success/fail, logout, MFA enroll, password change, SSO link |
+| **Authz decisions**    | denied actions (always), allowed sensitive actions                |
+| **Identity changes**   | user created, role granted/revoked, MFA disabled                  |
+| **Tenant events**      | tenant created, member added, settings changed                    |
+| **Data access**        | SBOM exported, evidence downloaded, audit log viewed              |
+| **Integration events** | GitHub App installed, webhook received, scanner task launched     |
+| **Agent events**       | agent task issued, capability granted, anomaly flagged            |
+| **Admin events**       | policy changed, integration enabled/disabled, secret rotated      |
 
 ### 12.2 Audit Record Schema
 
@@ -615,29 +614,29 @@ Every arrow is a trust boundary; every boundary is a control point.
 
 ## 15. Frontend Security
 
-| Control | Implementation |
-|---------|----------------|
-| XSS | React escaping by default; no `dangerouslySetInnerHTML`; CSP enforced |
-| Token storage | Access token in memory; refresh token in HttpOnly cookie |
-| Clickjacking | `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` |
-| Open redirect | Login redirect URIs are validated against a per-tenant allowlist |
-| Dependency security | `npm audit` on every PR; Renovate keeps deps current; SBOM published per release |
-| Subresource integrity | Static assets loaded with SRI hashes |
-| Form validation | Client-side validation mirrors server JSON Schema |
+| Control               | Implementation                                                                   |
+| --------------------- | -------------------------------------------------------------------------------- |
+| XSS                   | React escaping by default; no `dangerouslySetInnerHTML`; CSP enforced            |
+| Token storage         | Access token in memory; refresh token in HttpOnly cookie                         |
+| Clickjacking          | `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'`                           |
+| Open redirect         | Login redirect URIs are validated against a per-tenant allowlist                 |
+| Dependency security   | `npm audit` on every PR; Renovate keeps deps current; SBOM published per release |
+| Subresource integrity | Static assets loaded with SRI hashes                                             |
+| Form validation       | Client-side validation mirrors server JSON Schema                                |
 
 ---
 
 ## 16. CI/CD & Deployment Security
 
-| Stage | Control |
-|-------|---------|
-| Source | Branch protection, required reviews, signed commits (recommended) |
-| Build | Reproducible builds, SBOM generated, image signed (cosign) |
-| Scan | SAST, dependency scan, secret scan, IaC scan in pipeline |
-| Stage | Auto-deploy to staging; smoke + security regression tests |
-| Prod | Manual approval for prod; blue/green or canary deploy; auto-rollback on SLO breach |
-| Runtime | Admission controller enforces: no `:latest`, no privileged containers, resource limits set, read-only root FS preferred |
-| Post-deploy | Continuous vulnerability scan of running images; auto-PR for patches |
+| Stage       | Control                                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Source      | Branch protection, required reviews, signed commits (recommended)                                                       |
+| Build       | Reproducible builds, SBOM generated, image signed (cosign)                                                              |
+| Scan        | SAST, dependency scan, secret scan, IaC scan in pipeline                                                                |
+| Stage       | Auto-deploy to staging; smoke + security regression tests                                                               |
+| Prod        | Manual approval for prod; blue/green or canary deploy; auto-rollback on SLO breach                                      |
+| Runtime     | Admission controller enforces: no `:latest`, no privileged containers, resource limits set, read-only root FS preferred |
+| Post-deploy | Continuous vulnerability scan of running images; auto-PR for patches                                                    |
 
 ---
 
@@ -645,12 +644,12 @@ Every arrow is a trust boundary; every boundary is a control point.
 
 ### 17.1 Data Classification
 
-| Class | Examples | Controls |
-|-------|----------|----------|
-| **Public** | Marketing docs, public SBOMs | None special |
-| **Internal** | Most operational data | Auth required, tenant scoped |
-| **Confidential** | Vulnerability details, PII | Encrypted at rest, access logged |
-| **Restricted** | Auth secrets, signing keys, customer PII at scale | HSM/KMS, dual-control access |
+| Class            | Examples                                          | Controls                         |
+| ---------------- | ------------------------------------------------- | -------------------------------- |
+| **Public**       | Marketing docs, public SBOMs                      | None special                     |
+| **Internal**     | Most operational data                             | Auth required, tenant scoped     |
+| **Confidential** | Vulnerability details, PII                        | Encrypted at rest, access logged |
+| **Restricted**   | Auth secrets, signing keys, customer PII at scale | HSM/KMS, dual-control access     |
 
 ### 17.2 PII Handling
 
@@ -712,14 +711,14 @@ Each backend service **must** implement, in order:
 
 ## 21. Open Questions / Future Work
 
-| Topic | Owner | Status |
-|-------|-------|--------|
-| FIPS 140-3 enforcement for regulated tenants | SecurityArchitect + SRE | To scope |
-| SCIM provisioning for enterprise IdPs | PlatformArchitect | Backlog |
-| Customer-managed encryption keys (BYOK) | SecurityArchitect | Design in Q3 |
-| Continuous access evaluation (CAE) for OAuth2 | SecurityArchitect | Research |
-| Risk-based authentication (device fingerprint, behavior) | SecurityArchitect | Roadmap |
-| Tenant-configurable session policies (already supported; needs UI) | UIUXEngineer | Backlog |
+| Topic                                                              | Owner                   | Status       |
+| ------------------------------------------------------------------ | ----------------------- | ------------ |
+| FIPS 140-3 enforcement for regulated tenants                       | SecurityArchitect + SRE | To scope     |
+| SCIM provisioning for enterprise IdPs                              | PlatformArchitect       | Backlog      |
+| Customer-managed encryption keys (BYOK)                            | SecurityArchitect       | Design in Q3 |
+| Continuous access evaluation (CAE) for OAuth2                      | SecurityArchitect       | Research     |
+| Risk-based authentication (device fingerprint, behavior)           | SecurityArchitect       | Roadmap      |
+| Tenant-configurable session policies (already supported; needs UI) | UIUXEngineer            | Backlog      |
 
 ---
 
@@ -737,4 +736,4 @@ Each backend service **must** implement, in order:
 
 ---
 
-*End of Authentication & Security Design.*
+_End of Authentication & Security Design._

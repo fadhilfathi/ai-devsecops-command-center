@@ -2,7 +2,12 @@
 // Run with: vitest run (pnpm --filter @aicc/compliance-service test)
 
 import { test, expect } from 'vitest';
-import { evaluatePredicate, MappingEngine, type MappingInput, type Predicate } from '../src/control-mapper/index.js';
+import {
+  evaluatePredicate,
+  MappingEngine,
+  type MappingInput,
+  type Predicate,
+} from '../src/control-mapper/index.js';
 import mappingRules from '../src/control-mapper/mapping-rules.json' with { type: 'json' };
 
 const NOW = new Date('2026-06-12T00:00:00Z');
@@ -45,8 +50,12 @@ test('kev: matches the requested boolean value', () => {
 
 test('introduced_within_days: true for recent, false for old', () => {
   const pred: Predicate = { type: 'introduced_within_days', value: 30 };
-  const recent = makeInput({ introducedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() });
-  const old = makeInput({ introducedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString() });
+  const recent = makeInput({
+    introducedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  const old = makeInput({
+    introducedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+  });
   expect(evaluatePredicate(pred, recent)).toBe(true);
   expect(evaluatePredicate(pred, old)).toBe(false);
 });
@@ -60,7 +69,10 @@ test('cve_pattern: regex on cveId', () => {
 test('and: all children must match', () => {
   const pred: Predicate = {
     type: 'and',
-    clauses: [{ type: 'severity_gte', value: 'high' }, { type: 'kev', value: true }],
+    clauses: [
+      { type: 'severity_gte', value: 'high' },
+      { type: 'kev', value: true },
+    ],
   };
   expect(evaluatePredicate(pred, makeInput({ severity: 'high', kev: true }))).toBe(true);
   expect(evaluatePredicate(pred, makeInput({ severity: 'high', kev: false }))).toBe(false);
@@ -69,7 +81,10 @@ test('and: all children must match', () => {
 test('or: any child may match', () => {
   const pred: Predicate = {
     type: 'or',
-    clauses: [{ type: 'severity_gte', value: 'critical' }, { type: 'kev', value: true }],
+    clauses: [
+      { type: 'severity_gte', value: 'critical' },
+      { type: 'kev', value: true },
+    ],
   };
   expect(evaluatePredicate(pred, makeInput({ severity: 'medium', kev: true }))).toBe(true);
   expect(evaluatePredicate(pred, makeInput({ severity: 'low', kev: false }))).toBe(false);
@@ -101,7 +116,10 @@ test('low-severity non-SCA finding still hits the always-on catch-all rules', ()
 });
 
 test('disabled rules are excluded from the engine', () => {
-  const rules = { ...mappingRules, rules: mappingRules.rules.map((r) => ({ ...r, enabled: false })) };
+  const rules = {
+    ...mappingRules,
+    rules: mappingRules.rules.map((r) => ({ ...r, enabled: false })),
+  };
   const engine = new MappingEngine({ rules: rules as never, now: () => NOW.getTime() });
   const evaluation = engine.evaluate(makeInput({ severity: 'critical', kev: true }));
   expect(evaluation.matches).toEqual([]);

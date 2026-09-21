@@ -7,8 +7,8 @@
 // /readyz performs deep dependency checks with per-check timeouts.
 // =============================================================================
 
-import Fastify, { type FastifyInstance } from "fastify";
-import { setTimeout as sleep } from "node:timers/promises";
+import Fastify, { type FastifyInstance } from 'fastify';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 export interface HealthCheck {
   /** Stable identifier of the dependency. Becomes a key in the response. */
@@ -36,20 +36,20 @@ export function buildHealthServer(opts: HealthCheckOptions): FastifyInstance {
   const startCompleted = { value: false };
 
   // ---------- Liveness: shallow, never checks dependencies ----------
-  app.get("/livez", async () => {
-    return { status: "ok", service: opts.service, version: opts.version };
+  app.get('/livez', async () => {
+    return { status: 'ok', service: opts.service, version: opts.version };
   });
 
   // ---------- Startup: returns ok after the first successful /readyz ----------
-  app.get("/startz", async (_req, reply) => {
+  app.get('/startz', async (_req, reply) => {
     if (!startCompleted.value) {
-      return reply.code(503).send({ status: "starting" });
+      return reply.code(503).send({ status: 'starting' });
     }
-    return { status: "ok" };
+    return { status: 'ok' };
   });
 
   // ---------- Readiness: deep check of all dependencies ----------
-  app.get("/readyz", async (_req, reply) => {
+  app.get('/readyz', async (_req, reply) => {
     const results: Record<string, unknown> = {};
     let allOk = true;
     let anyRequiredFailed = false;
@@ -66,7 +66,7 @@ export function buildHealthServer(opts: HealthCheckOptions): FastifyInstance {
             }),
           ]);
           const entry = {
-            status: result.ok ? "ok" : "fail",
+            status: result.ok ? 'ok' : 'fail',
             latency_ms: result.latencyMs ?? Date.now() - started,
             ...(result.detail ? { detail: result.detail } : {}),
           };
@@ -77,7 +77,7 @@ export function buildHealthServer(opts: HealthCheckOptions): FastifyInstance {
           return [check.name, entry] as const;
         } catch (err) {
           const entry = {
-            status: "fail",
+            status: 'fail',
             latency_ms: Date.now() - started,
             detail: err instanceof Error ? err.message : String(err),
           };
@@ -85,7 +85,7 @@ export function buildHealthServer(opts: HealthCheckOptions): FastifyInstance {
           if (check.required) anyRequiredFailed = true;
           return [check.name, entry] as const;
         }
-      })
+      }),
     );
 
     for (const [name, entry] of checks) {
@@ -94,58 +94,56 @@ export function buildHealthServer(opts: HealthCheckOptions): FastifyInstance {
 
     if (allOk) startCompleted.value = true;
 
-    return reply
-      .code(anyRequiredFailed ? 503 : 200)
-      .send({
-        status: anyRequiredFailed ? "fail" : "ok",
-        checks: results,
-        version: opts.version,
-        uptime_s: Math.floor((Date.now() - opts.startedAt.getTime()) / 1000),
-      });
+    return reply.code(anyRequiredFailed ? 503 : 200).send({
+      status: anyRequiredFailed ? 'fail' : 'ok',
+      checks: results,
+      version: opts.version,
+      uptime_s: Math.floor((Date.now() - opts.startedAt.getTime()) / 1000),
+    });
   });
 
   return app;
 }
 
 // ---------- Example: dependency check builders ----------
-import pg from "pg";
-import { createClient as createRedisClient } from "redis";
-import { connect as connectNats } from "nats";
+import pg from 'pg';
+import { createClient as createRedisClient } from 'redis';
+import { connect as connectNats } from 'nats';
 
 export const postgresCheck = (pool: pg.Pool, required = true): HealthCheck => ({
-  name: "postgres",
+  name: 'postgres',
   required,
   run: async () => {
     const started = Date.now();
-    const r = await pool.query("SELECT 1");
+    const r = await pool.query('SELECT 1');
     return { ok: r.rowCount === 1, latencyMs: Date.now() - started };
   },
 });
 
 export const redisCheck = (
   client: ReturnType<typeof createRedisClient>,
-  required = true
+  required = true,
 ): HealthCheck => ({
-  name: "redis",
+  name: 'redis',
   required,
   run: async () => {
     const started = Date.now();
     const pong = await client.ping();
-    return { ok: pong === "PONG", latencyMs: Date.now() - started };
+    return { ok: pong === 'PONG', latencyMs: Date.now() - started };
   },
 });
 
 export const natsCheck = (
   nc: Awaited<ReturnType<typeof connectNats>>,
-  required = true
+  required = true,
 ): HealthCheck => ({
-  name: "nats",
+  name: 'nats',
   required,
   run: async () => {
     const started = Date.now();
-    if (nc.isClosed()) return { ok: false, latencyMs: 0, detail: "closed" };
+    if (nc.isClosed()) return { ok: false, latencyMs: 0, detail: 'closed' };
     // Round-trip ping with a short timeout is the canonical NATS health check.
-    await nc.request("health.ping", undefined, { timeout: 200 });
+    await nc.request('health.ping', undefined, { timeout: 200 });
     return { ok: true, latencyMs: Date.now() - started };
   },
 });

@@ -14,12 +14,12 @@ import { buildServer as buildCompliance } from '../services/compliance/src/index
 import { buildServer as buildIntegration } from '../services/integration/src/index.js';
 
 const services = [
-  { name: 'auth',         port: 4001, build: buildAuth },
-  { name: 'agent',        port: 4002, build: buildAgent },
-  { name: 'security',     port: 4003, build: buildSecurity },
-  { name: 'incident',     port: 4004, build: buildIncident },
-  { name: 'compliance',   port: 4005, build: buildCompliance },
-  { name: 'integration',  port: 4006, build: buildIntegration },
+  { name: 'auth', port: 4001, build: buildAuth },
+  { name: 'agent', port: 4002, build: buildAgent },
+  { name: 'security', port: 4003, build: buildSecurity },
+  { name: 'incident', port: 4004, build: buildIncident },
+  { name: 'compliance', port: 4005, build: buildCompliance },
+  { name: 'integration', port: 4006, build: buildIntegration },
 ];
 
 async function main() {

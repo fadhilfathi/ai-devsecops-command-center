@@ -18,15 +18,15 @@ and produces prioritised remediation recommendations.
 
 ## Endpoints
 
-| Method | Path                              | Description                          |
-| ------ | --------------------------------- | ------------------------------------ |
-| GET    | `/v1/health/clusters`             | Health rollup for every cluster      |
-| GET    | `/v1/health/namespaces`           | Health rollup for every namespace    |
-| GET    | `/v1/health/workloads`            | Health rollup for every workload     |
-| GET    | `/v1/health/pods`                 | Health rollup for every pod          |
-| GET    | `/v1/health/clusters/:id`         | Per-cluster detail                   |
-| GET    | `/v1/health/issues`               | Cross-cluster issue stream           |
-| GET    | `/v1/health/recommendations`      | Cross-cluster recommendation stream  |
+| Method | Path                         | Description                         |
+| ------ | ---------------------------- | ----------------------------------- |
+| GET    | `/v1/health/clusters`        | Health rollup for every cluster     |
+| GET    | `/v1/health/namespaces`      | Health rollup for every namespace   |
+| GET    | `/v1/health/workloads`       | Health rollup for every workload    |
+| GET    | `/v1/health/pods`            | Health rollup for every pod         |
+| GET    | `/v1/health/clusters/:id`    | Per-cluster detail                  |
+| GET    | `/v1/health/issues`          | Cross-cluster issue stream          |
+| GET    | `/v1/health/recommendations` | Cross-cluster recommendation stream |
 
 The health engine consumes inventory from the
 `@aicc/kubernetes-service` (port 4006) via HTTP in production; in

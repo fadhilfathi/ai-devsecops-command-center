@@ -2,6 +2,7 @@
 
 > **Owner:** GitOpsManager
 > **Workflows covered:**
+>
 > - [`.github/workflows/security.yml`](../.github/workflows/security.yml) — SBOM commit, vuln report, weekly digest, cleanup, SLA sync
 > - [`.github/workflows/security-issue.yml`](../.github/workflows/security-issue.yml) — Critical CVE issue opener
 > - [`.github/workflows/release.yml`](../.github/workflows/release.yml) (job `attach-sbom`) — SBOM release attachment
@@ -91,26 +92,26 @@ rollback when it misbehaves.
 
 ## Triggers reference
 
-| Workflow / Job                      | Trigger                                                              | Schedule                       |
-| ----------------------------------- | -------------------------------------------------------------------- | ------------------------------ |
-| `security.yml` / `sbom-commit`      | `push` to `main`, `workflow_dispatch`, `repository_dispatch:supported-version-released` | Daily 03:00 UTC               |
-| `security.yml` / `vuln-report`      | `repository_dispatch:vulnerability-detected`                         | event-driven                   |
-| `security.yml` / `weekly-digest`    | `workflow_dispatch`                                                  | Mondays 06:00 UTC              |
-| `security.yml` / `cleanup`          | `workflow_dispatch`                                                  | Daily 03:00 UTC                |
-| `security.yml` / `sync-sla`         | `push` to `main`, `workflow_dispatch`, `repository_dispatch:supported-version-released` | event-driven                   |
-| `security-issue.yml` / `open-issue` | `repository_dispatch:critical-cve-detected`, `workflow_dispatch`    | event-driven                   |
-| `release.yml` / `attach-sbom`       | tag push `refs/tags/v*`, `workflow_dispatch`                         | event-driven                   |
+| Workflow / Job                      | Trigger                                                                                 | Schedule          |
+| ----------------------------------- | --------------------------------------------------------------------------------------- | ----------------- |
+| `security.yml` / `sbom-commit`      | `push` to `main`, `workflow_dispatch`, `repository_dispatch:supported-version-released` | Daily 03:00 UTC   |
+| `security.yml` / `vuln-report`      | `repository_dispatch:vulnerability-detected`                                            | event-driven      |
+| `security.yml` / `weekly-digest`    | `workflow_dispatch`                                                                     | Mondays 06:00 UTC |
+| `security.yml` / `cleanup`          | `workflow_dispatch`                                                                     | Daily 03:00 UTC   |
+| `security.yml` / `sync-sla`         | `push` to `main`, `workflow_dispatch`, `repository_dispatch:supported-version-released` | event-driven      |
+| `security-issue.yml` / `open-issue` | `repository_dispatch:critical-cve-detected`, `workflow_dispatch`                        | event-driven      |
+| `release.yml` / `attach-sbom`       | tag push `refs/tags/v*`, `workflow_dispatch`                                            | event-driven      |
 
 ---
 
 ## Daily / weekly cadence
 
-| Time (UTC)  | Day    | What happens                                                                                  |
-| ----------- | ------ | --------------------------------------------------------------------------------------------- |
-| 03:00       | Daily  | `security.yml` runs: `sbom-commit` (CycloneDX + SPDX → `security/sboms/`), `cleanup` (90d prune) |
-| (event)     | Daily  | New CVEs trigger `vuln-report` (append to `security/vulns/<date>.json`); Critical → `security-issue.yml` |
-| 06:00       | Mon    | `weekly-digest` aggregates the prior 7 days into `security/vulns/weekly-<ISO-week>.md`        |
-| (event)     | Per release | `release.yml` runs `attach-sbom` to attach latest SBOM files to the GitHub Release             |
+| Time (UTC) | Day         | What happens                                                                                             |
+| ---------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| 03:00      | Daily       | `security.yml` runs: `sbom-commit` (CycloneDX + SPDX → `security/sboms/`), `cleanup` (90d prune)         |
+| (event)    | Daily       | New CVEs trigger `vuln-report` (append to `security/vulns/<date>.json`); Critical → `security-issue.yml` |
+| 06:00      | Mon         | `weekly-digest` aggregates the prior 7 days into `security/vulns/weekly-<ISO-week>.md`                   |
+| (event)    | Per release | `release.yml` runs `attach-sbom` to attach latest SBOM files to the GitHub Release                       |
 
 ---
 
@@ -161,13 +162,13 @@ labelled `security/automated`. To **override**:
 
 ### Manually trigger
 
-| Want to…                                   | Do this                                                                                              |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| Force a fresh SBOM right now               | Actions → `security` → Run workflow → leave defaults                                                 |
-| Re-emit a Critical CVE issue for testing   | Actions → `security-issue` → Run workflow → enter `cve_id` (e.g. `GHSA-test-test-test`)             |
-| Re-build the weekly digest                 | Actions → `security` → Run workflow → `weekly-digest` job will run on dispatch (gated by `if`)       |
-| Manually upload a SBOM to a Release        | `gh release upload v0.1.0 security/sboms/<sbom_id>/*`                                               |
-| Disable Dependabot alerts in the meantime  | Settings → Code security and analysis → Dependabot alerts → Disable (not recommended)                |
+| Want to…                                  | Do this                                                                                        |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Force a fresh SBOM right now              | Actions → `security` → Run workflow → leave defaults                                           |
+| Re-emit a Critical CVE issue for testing  | Actions → `security-issue` → Run workflow → enter `cve_id` (e.g. `GHSA-test-test-test`)        |
+| Re-build the weekly digest                | Actions → `security` → Run workflow → `weekly-digest` job will run on dispatch (gated by `if`) |
+| Manually upload a SBOM to a Release       | `gh release upload v0.1.0 security/sboms/<sbom_id>/*`                                          |
+| Disable Dependabot alerts in the meantime | Settings → Code security and analysis → Dependabot alerts → Disable (not recommended)          |
 
 ### Roll back a bot PR
 
@@ -215,7 +216,7 @@ automation:
   `contents: write` or `pull-requests: write` to the upstream
   repo** by design. The auto-PR jobs (`sbom-commit`, `vuln-report`,
   `weekly-digest`, `cleanup`) will fail with `403 Resource not
-  accessible by integration`.
+accessible by integration`.
 - The `security.yml` workflow reads the env var
   `GH_PUSH_TOKEN_FALLBACK`, which resolves to
   `secrets.GH_PUSH_TOKEN || secrets.GITHUB_TOKEN`. To run the
@@ -239,17 +240,17 @@ automation:
 
 ## Common failure modes
 
-| Symptom                                                                 | Likely cause                                          | Fix                                                                                |
-| ----------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| No `security/vulns/<date>.json` created                                 | `repository_dispatch` payload malformed               | Check `Actions` → `security` → run log; verify `client_payload.id` and `severity` |
-| Daily NDJSON has duplicate lines                                        | Dedup not running                                     | Verify `jq` is installed in the runner (it is by default) and re-run              |
-| `security-issue.yml` opens the same issue repeatedly                    | Dedup search misses the issue                         | Check the title includes the `id` (e.g. `CVE-2024-1234`); titles are matched on substring |
-| SBOM commit job fails with `permission denied`                         | `permissions: contents: write` missing                | Restore the `permissions:` block in the job                                        |
-| `attach-sbom` job finds no SBOMs                                        | No `sbom-commit` run yet, or `security/sboms/` empty  | Manually trigger `security.yml` → `sbom-commit`                                    |
-| `anchore/sbom-action` fails with OOM                                    | Monorepo too large                                    | Add `--fetch-license-info: false` and split into per-service SBOMs               |
-| Critical CVE issue never opens                                          | `auto_actionable` field missing from payload         | Verify `vuln-report` step `parse` includes `auto_actionable` from the event       |
-| Bot PRs are stuck in a rebase loop                                      | Force-push on a shared branch                         | Ensure bot only pushes to `security/automated/*` branches                          |
-| Weekly digest has wrong date range                                      | Cron runs in wrong timezone                           | Cron is UTC; confirm via `date -u` in the run log                                  |
+| Symptom                                                                                       | Likely cause                                                                      | Fix                                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No `security/vulns/<date>.json` created                                                       | `repository_dispatch` payload malformed                                           | Check `Actions` → `security` → run log; verify `client_payload.id` and `severity`                                                                                                              |
+| Daily NDJSON has duplicate lines                                                              | Dedup not running                                                                 | Verify `jq` is installed in the runner (it is by default) and re-run                                                                                                                           |
+| `security-issue.yml` opens the same issue repeatedly                                          | Dedup search misses the issue                                                     | Check the title includes the `id` (e.g. `CVE-2024-1234`); titles are matched on substring                                                                                                      |
+| SBOM commit job fails with `permission denied`                                                | `permissions: contents: write` missing                                            | Restore the `permissions:` block in the job                                                                                                                                                    |
+| `attach-sbom` job finds no SBOMs                                                              | No `sbom-commit` run yet, or `security/sboms/` empty                              | Manually trigger `security.yml` → `sbom-commit`                                                                                                                                                |
+| `anchore/sbom-action` fails with OOM                                                          | Monorepo too large                                                                | Add `--fetch-license-info: false` and split into per-service SBOMs                                                                                                                             |
+| Critical CVE issue never opens                                                                | `auto_actionable` field missing from payload                                      | Verify `vuln-report` step `parse` includes `auto_actionable` from the event                                                                                                                    |
+| Bot PRs are stuck in a rebase loop                                                            | Force-push on a shared branch                                                     | Ensure bot only pushes to `security/automated/*` branches                                                                                                                                      |
+| Weekly digest has wrong date range                                                            | Cron runs in wrong timezone                                                       | Cron is UTC; confirm via `date -u` in the run log                                                                                                                                              |
 | A `__CANARY__` marker appears in `security/vulns/<date>.json` or in any security API response | **P0 SECURITY INCIDENT** — SecurityArchitect T-09 canary test fired in production | See [Canary tests (T-09)](#canary-tests-t-09--treat-canary-matches-as-p0) below. Page `@security-architect` and `@gitops-manager` immediately. **Do not** attempt to silently remove the line. |
 
 ---
@@ -270,14 +271,14 @@ The S2.10 auto-committer and security-service :4003 projection are
 **expected** to see the canary land in the following locations **only
 when the canary test itself is running**:
 
-| Location                                                                                            | Expected if canary fired                                                                                              | Page as P0?                                          |
-| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `security/vulns/<YYYY-MM-DD>.json` (NDJSON) — any line whose `id` or `summary` contains `__CANARY__` | **YES** — this is what the canary test does (DC-01). The bot WILL commit a line that matches the canary regex.        | **Yes** — unless the canary owner (`@security-architect`) posted a `#sec-canary-armed` notice in `#sec-automation` within the last 6 hours. |
-| `.github/issues` (Critical CVE issue body) — title or body contains `__CANARY__`                    | **YES** — `security-issue.yml` opens issues for every `auto_actionable && severity == 'critical'`. The canary deliberately triggers this (DC-02). | **Yes** — same gating rule. |
-| Security-service :4003 REST response bodies — any field containing `__CANARY__`                     | **NO** — the canary asserts this string never reaches an API consumer (DC-03).                                         | **Yes — P0 always.**                                |
-| `security/sboms/<sbom_id>.<format>` (CycloneDX / SPDX JSON) — any component or property contains `__CANARY__` | **NO** — the canary asserts the SBOM bytes are sanitized before commit (DC-04).                                       | **Yes — P0 always.**                                |
-| `docs/SECURITY.md` rendered HTML — any occurrence of `__CANARY__`                                   | **NO** — the sync-sla job redacts the canary marker, but if you see it on `main`, the redaction step regressed.        | **Yes — P0 always.**                                |
-| `CHANGELOG.md` security changelog section — any occurrence                                          | **NO** — the changelog generator must skip records whose `id` or `summary` matches the canary regex.                   | **Yes — P0 always.**                                |
+| Location                                                                                                      | Expected if canary fired                                                                                                                          | Page as P0?                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `security/vulns/<YYYY-MM-DD>.json` (NDJSON) — any line whose `id` or `summary` contains `__CANARY__`          | **YES** — this is what the canary test does (DC-01). The bot WILL commit a line that matches the canary regex.                                    | **Yes** — unless the canary owner (`@security-architect`) posted a `#sec-canary-armed` notice in `#sec-automation` within the last 6 hours. |
+| `.github/issues` (Critical CVE issue body) — title or body contains `__CANARY__`                              | **YES** — `security-issue.yml` opens issues for every `auto_actionable && severity == 'critical'`. The canary deliberately triggers this (DC-02). | **Yes** — same gating rule.                                                                                                                 |
+| Security-service :4003 REST response bodies — any field containing `__CANARY__`                               | **NO** — the canary asserts this string never reaches an API consumer (DC-03).                                                                    | **Yes — P0 always.**                                                                                                                        |
+| `security/sboms/<sbom_id>.<format>` (CycloneDX / SPDX JSON) — any component or property contains `__CANARY__` | **NO** — the canary asserts the SBOM bytes are sanitized before commit (DC-04).                                                                   | **Yes — P0 always.**                                                                                                                        |
+| `docs/SECURITY.md` rendered HTML — any occurrence of `__CANARY__`                                             | **NO** — the sync-sla job redacts the canary marker, but if you see it on `main`, the redaction step regressed.                                   | **Yes — P0 always.**                                                                                                                        |
+| `CHANGELOG.md` security changelog section — any occurrence                                                    | **NO** — the changelog generator must skip records whose `id` or `summary` matches the canary regex.                                              | **Yes — P0 always.**                                                                                                                        |
 
 ### Triage procedure
 
@@ -297,7 +298,7 @@ when the canary test itself is running**:
 3. **Snapshot, do not delete.** If the canary owner confirms it was
    theirs, **do not** `git reset` or `git revert` the canary
    artifacts in place. Take a tarball of the affected files and the
-   `Actions` run log first — the canary test asserts on the *committed*
+   `Actions` run log first — the canary test asserts on the _committed_
    state, and rolling back will re-trigger the canary.
 4. **Notify the canary owner.** Page `@security-architect` in
    `#sec-automation` with: (a) the canary marker, (b) the file path
@@ -429,11 +430,11 @@ The 4-condition `auto_actionable` gate determines which downstream
 consumer processes a finding. The 3 routing paths are MUTUALLY
 EXCLUSIVE based on `(auto_actionable, severity)`:
 
-| `auto_actionable` | `severity`     | Downstream consumer                                          | Output                                                                              | Status flag      |
-| ----------------- | -------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ---------------- |
-| `true`            | `critical`     | `.github/workflows/security-issue.yml` (via security.yml dispatch) | GitHub issue with labels `security`, `automated`, `cve`, `severity:critical`         | `auto_actioned`  |
-| `false`           | `critical` or `high` | **ComplianceOfficer S2.9 POA&M auto-mapping** (via `scan-listener.ts` subscription to `security.vulnerability.detected.v1`) | POA&M item with `status: 'verification-pending'`                                    | `tracked`        |
-| any               | any            | security-service :4003 NDJSON appender                      | `security/vulns/<YYYY-MM-DD>.json` line                                             | `recorded`       |
+| `auto_actionable` | `severity`           | Downstream consumer                                                                                                         | Output                                                                       | Status flag     |
+| ----------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------- |
+| `true`            | `critical`           | `.github/workflows/security-issue.yml` (via security.yml dispatch)                                                          | GitHub issue with labels `security`, `automated`, `cve`, `severity:critical` | `auto_actioned` |
+| `false`           | `critical` or `high` | **ComplianceOfficer S2.9 POA&M auto-mapping** (via `scan-listener.ts` subscription to `security.vulnerability.detected.v1`) | POA&M item with `status: 'verification-pending'`                             | `tracked`       |
+| any               | any                  | security-service :4003 NDJSON appender                                                                                      | `security/vulns/<YYYY-MM-DD>.json` line                                      | `recorded`      |
 
 The second row is the POA&M cross-ref. Without it, a HIGH/CRITICAL
 that fails the 4-condition gate (e.g. consensus of 1, no fix, or not
@@ -487,8 +488,8 @@ Page `@compliance-officer` immediately.
 - It is not a fix for the 4-condition gate. If `auto_actionable` is
   `false` because the gate failed (e.g. consensus of 1), the correct
   remediation is to investigate why consensus is low — the POA&M
-  cross-ref only ensures the failure is *tracked*, not that it is
-  *fixed*.
+  cross-ref only ensures the failure is _tracked_, not that it is
+  _fixed_.
 - It is not authorization to bypass the GitOps critical-CVE issue
   opener. `auto_actionable == true && severity == 'critical'` ALWAYS
   opens an issue, regardless of POA&M status. The two paths run in

@@ -11,18 +11,23 @@ export interface CreateIncidentInput {
 }
 
 export interface IncidentRepository {
-  list(tenantId: UUID, opts?: { status?: IncidentStatus; severity?: IncidentSeverity }): Promise<Incident[]>;
+  list(
+    tenantId: UUID,
+    opts?: { status?: IncidentStatus; severity?: IncidentSeverity },
+  ): Promise<Incident[]>;
   findById(id: UUID, tenantId: UUID): Promise<Incident | undefined>;
   create(input: CreateIncidentInput): Promise<Incident>;
   update(id: UUID, tenantId: UUID, patch: Partial<Incident>): Promise<Incident | undefined>;
 }
 
 function newId(): UUID {
-  return globalThis.crypto?.randomUUID?.() ??
+  return (
+    globalThis.crypto?.randomUUID?.() ??
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    })
+  );
 }
 
 export function buildIncidentRepository(): IncidentRepository {

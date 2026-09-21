@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20.18.0"
-  PNPM_VERSION: "9.12.0"
+  NODE_VERSION: '22.12.0'
+  PNPM_VERSION: '9.12.0'
 
 permissions:
   contents: read
@@ -83,6 +83,7 @@ jobs:
           - backend/packages/shared
           - backend/models
           - frontend
+          - tests/contracts
     steps:
       - uses: actions/checkout@v4
         with:

@@ -119,12 +119,16 @@ export const RuntimeSecurityReportSchema = z.object({
   categoryCounts: z.record(z.string(), z.number().int().nonnegative()).default({}),
   findings: z.array(RuntimeRiskSchema),
   /** Top remediation recommendations. */
-  recommendations: z.array(z.object({
-    title: z.string().min(1),
-    detail: z.string().min(1),
-    level: RiskLevelSchema,
-    affectedCount: z.number().int().nonnegative(),
-  })).default([]),
+  recommendations: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        detail: z.string().min(1),
+        level: RiskLevelSchema,
+        affectedCount: z.number().int().nonnegative(),
+      }),
+    )
+    .default([]),
   generatedAt: z.string().datetime({ offset: true }),
 });
 export type RuntimeSecurityReport = z.infer<typeof RuntimeSecurityReportSchema>;

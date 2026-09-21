@@ -138,13 +138,15 @@ function detectPodIssues(pod: Pod): HealthIssue[] {
   // Per-container termination reasons.
   for (const c of pod.containers) {
     if (c.lastTerminationReason === 'crash_loop_back_off') {
-      issues.push(makeIssue(
-        'crash_loop_back_off',
-        'critical',
-        `Container ${c.name} is in CrashLoopBackOff (restarts: ${c.restartCount})`,
-        subject,
-        `Inspect logs: kubectl logs ${pod.name} -n ${pod.namespace} --previous`,
-      ));
+      issues.push(
+        makeIssue(
+          'crash_loop_back_off',
+          'critical',
+          `Container ${c.name} is in CrashLoopBackOff (restarts: ${c.restartCount})`,
+          subject,
+          `Inspect logs: kubectl logs ${pod.name} -n ${pod.namespace} --previous`,
+        ),
+      );
     } else if (
       c.lastTerminationReason === 'image_pull_back_off' ||
       c.lastTerminationReason === 'err_image_pull' ||
@@ -152,54 +154,64 @@ function detectPodIssues(pod: Pod): HealthIssue[] {
       c.lastTerminationReason === 'create_container_config_error' ||
       c.lastTerminationReason === 'invalid_image_name'
     ) {
-      issues.push(makeIssue(
-        'image_pull_back_off',
-        'high',
-        `Container ${c.name} failed to pull image (${c.image})`,
-        subject,
-        `Verify image and pull secrets: kubectl describe pod ${pod.name} -n ${pod.namespace}`,
-      ));
+      issues.push(
+        makeIssue(
+          'image_pull_back_off',
+          'high',
+          `Container ${c.name} failed to pull image (${c.image})`,
+          subject,
+          `Verify image and pull secrets: kubectl describe pod ${pod.name} -n ${pod.namespace}`,
+        ),
+      );
     } else if (c.lastTerminationReason === 'oom_killed') {
-      issues.push(makeIssue(
-        'oom_killed',
-        'high',
-        `Container ${c.name} was OOMKilled`,
-        subject,
-        `Increase memory limits or profile memory use`,
-      ));
+      issues.push(
+        makeIssue(
+          'oom_killed',
+          'high',
+          `Container ${c.name} was OOMKilled`,
+          subject,
+          `Increase memory limits or profile memory use`,
+        ),
+      );
     }
   }
 
   // Pod-level restart storm.
   const totalRestarts = pod.containers.reduce((s, c) => s + c.restartCount, 0);
   if (totalRestarts >= 5) {
-    issues.push(makeIssue(
-      'restart_storm',
-      'critical',
-      `Pod has restarted ${totalRestarts} times`,
-      subject,
-      `kubectl rollout restart deploy -n ${pod.namespace} ${pod.ownerName ?? ''}`.trim(),
-    ));
+    issues.push(
+      makeIssue(
+        'restart_storm',
+        'critical',
+        `Pod has restarted ${totalRestarts} times`,
+        subject,
+        `kubectl rollout restart deploy -n ${pod.namespace} ${pod.ownerName ?? ''}`.trim(),
+      ),
+    );
   }
 
   // Phase checks.
   if (pod.phase === 'pending') {
-    issues.push(makeIssue(
-      'pending_pod',
-      'high',
-      'Pod is pending — likely unschedulable',
-      subject,
-      `kubectl describe pod ${pod.name} -n ${pod.namespace} for scheduling events`,
-    ));
+    issues.push(
+      makeIssue(
+        'pending_pod',
+        'high',
+        'Pod is pending — likely unschedulable',
+        subject,
+        `kubectl describe pod ${pod.name} -n ${pod.namespace} for scheduling events`,
+      ),
+    );
   }
   if (pod.phase === 'failed') {
-    issues.push(makeIssue(
-      'failed_pod',
-      'critical',
-      'Pod is in Failed phase',
-      subject,
-      'Inspect `kubectl describe pod` and `kubectl logs --previous`',
-    ));
+    issues.push(
+      makeIssue(
+        'failed_pod',
+        'critical',
+        'Pod is in Failed phase',
+        subject,
+        'Inspect `kubectl describe pod` and `kubectl logs --previous`',
+      ),
+    );
   }
 
   return issues;
@@ -215,13 +227,15 @@ function detectWorkloadIssues(workload: Workload, pods: Pod[]): HealthIssue[] {
   };
   const { desired, ready, available } = workload.replicas;
   if (desired > 0 && ready < desired) {
-    issues.push(makeIssue(
-      'unschedulable_workload',
-      ready === 0 ? 'critical' : 'high',
-      `Workload has ${ready}/${desired} ready replicas`,
-      subject,
-      `kubectl rollout status deploy -n ${workload.namespace} ${workload.name}`,
-    ));
+    issues.push(
+      makeIssue(
+        'unschedulable_workload',
+        ready === 0 ? 'critical' : 'high',
+        `Workload has ${ready}/${desired} ready replicas`,
+        subject,
+        `kubectl rollout status deploy -n ${workload.namespace} ${workload.name}`,
+      ),
+    );
   }
   void available;
   void pods;
@@ -232,25 +246,29 @@ function detectNodeIssues(cluster: Cluster): HealthIssue[] {
   const issues: HealthIssue[] = [];
   for (const node of cluster.nodes) {
     if (node.unschedulable) {
-      issues.push(makeIssue(
-        'node_pressure',
-        'high',
-        `Node ${node.name} is unschedulable`,
-        { kind: 'Node', name: node.name, clusterId: cluster.id },
-        `kubectl uncordon ${node.name}`,
-      ));
+      issues.push(
+        makeIssue(
+          'node_pressure',
+          'high',
+          `Node ${node.name} is unschedulable`,
+          { kind: 'Node', name: node.name, clusterId: cluster.id },
+          `kubectl uncordon ${node.name}`,
+        ),
+      );
       continue;
     }
     for (const cond of node.conditions) {
       if (cond === 'ready') continue;
       const sev: HealthIssueSeverity = cond === 'network_unavailable' ? 'critical' : 'high';
-      issues.push(makeIssue(
-        'node_pressure',
-        sev,
-        `Node ${node.name} reports condition: ${cond}`,
-        { kind: 'Node', name: node.name, clusterId: cluster.id },
-        `kubectl describe node ${node.name}`,
-      ));
+      issues.push(
+        makeIssue(
+          'node_pressure',
+          sev,
+          `Node ${node.name} reports condition: ${cond}`,
+          { kind: 'Node', name: node.name, clusterId: cluster.id },
+          `kubectl describe node ${node.name}`,
+        ),
+      );
     }
   }
   return issues;
@@ -261,7 +279,14 @@ function buildRecommendations(issues: HealthIssue[]): HealthRecommendation[] {
   const seen = new Set<string>();
 
   // Helper to push a recommendation if not already present.
-  function push(priority: 'p0' | 'p1' | 'p2' | 'p3', title: string, detail: string, action: string, ruleIds: string[], affected: number) {
+  function push(
+    priority: 'p0' | 'p1' | 'p2' | 'p3',
+    title: string,
+    detail: string,
+    action: string,
+    ruleIds: string[],
+    affected: number,
+  ) {
     const key = `${title}::${action}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -289,7 +314,9 @@ function buildRecommendations(issues: HealthIssue[]): HealthRecommendation[] {
     );
   }
 
-  const pendingCount = issues.filter((i) => i.kind === 'pending_pod' || i.kind === 'unschedulable_workload').length;
+  const pendingCount = issues.filter(
+    (i) => i.kind === 'pending_pod' || i.kind === 'unschedulable_workload',
+  ).length;
   if (pendingCount > 0) {
     push(
       'p1',
@@ -362,7 +389,9 @@ export function buildHealthEngine(deps: HealthEngineDeps): HealthEngine {
         return this.scoreCluster(c, pods, workloads);
       });
       const namespaceHealth = input.namespaces.map((n) => {
-        const pods = input.pods.filter((p) => p.clusterId === n.clusterId && p.namespace === n.name);
+        const pods = input.pods.filter(
+          (p) => p.clusterId === n.clusterId && p.namespace === n.name,
+        );
         const workloads = input.workloads.filter(
           (w) => w.clusterId === n.clusterId && w.namespace === n.name,
         );
@@ -370,7 +399,8 @@ export function buildHealthEngine(deps: HealthEngineDeps): HealthEngine {
       });
       const workloadHealth = input.workloads.map((w) => {
         const pods = input.pods.filter(
-          (p) => p.clusterId === w.clusterId && p.namespace === w.namespace && p.ownerName === w.name,
+          (p) =>
+            p.clusterId === w.clusterId && p.namespace === w.namespace && p.ownerName === w.name,
         );
         return this.scoreWorkload(w, pods);
       });
@@ -380,7 +410,12 @@ export function buildHealthEngine(deps: HealthEngineDeps): HealthEngine {
 
     scoreCluster(cluster, pods, workloads) {
       const podIssues = pods.flatMap(detectPodIssues);
-      const wlIssues = workloads.flatMap((w) => detectWorkloadIssues(w, pods.filter((p) => p.ownerName === w.name)));
+      const wlIssues = workloads.flatMap((w) =>
+        detectWorkloadIssues(
+          w,
+          pods.filter((p) => p.ownerName === w.name),
+        ),
+      );
       const nodeIssues = detectNodeIssues(cluster);
       const issues = [...podIssues, ...wlIssues, ...nodeIssues];
       const score = buildScore(issues);
@@ -398,7 +433,12 @@ export function buildHealthEngine(deps: HealthEngineDeps): HealthEngine {
 
     scoreNamespace(ns, pods, workloads) {
       const podIssues = pods.flatMap(detectPodIssues);
-      const wlIssues = workloads.flatMap((w) => detectWorkloadIssues(w, pods.filter((p) => p.ownerName === w.name)));
+      const wlIssues = workloads.flatMap((w) =>
+        detectWorkloadIssues(
+          w,
+          pods.filter((p) => p.ownerName === w.name),
+        ),
+      );
       const issues = [...podIssues, ...wlIssues];
       const score = buildScore(issues);
       return {

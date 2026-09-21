@@ -2,11 +2,20 @@
 // Run with: vitest run (pnpm --filter @aicc/compliance-service test)
 
 import { test, expect } from 'vitest';
-import { buildPoamRepository, PoamService, POAM_SLA_DAYS, type PoamRepository } from '../src/poam/index.js';
+import {
+  buildPoamRepository,
+  PoamService,
+  POAM_SLA_DAYS,
+  type PoamRepository,
+} from '../src/poam/index.js';
 import type { ControlVulnTuple } from '../src/control-mapper/index.js';
 import { EventTypes } from '@aicc/shared/events';
 
-interface CapturedEvent { type: string; tenantId?: string; data?: unknown }
+interface CapturedEvent {
+  type: string;
+  tenantId?: string;
+  data?: unknown;
+}
 
 function makeBus() {
   const events: CapturedEvent[] = [];
@@ -40,10 +49,20 @@ function makeTuple(overrides: Partial<ControlVulnTuple> = {}): ControlVulnTuple 
 test('repo: create + getById round-trips, scoped by tenant', async () => {
   const repo: PoamRepository = buildPoamRepository();
   const created = await repo.create({
-    poamId: 'p-1', tenantId: 't-1', controlId: '7', framework: 'cis_v8',
-    title: 'x', description: 'x', severity: 'critical', status: 'open', source: 'manual',
-    createdAt: new Date().toISOString(), createdBy: 'u-1', dueAt: new Date().toISOString(),
-    evidenceRefs: [], metadata: {},
+    poamId: 'p-1',
+    tenantId: 't-1',
+    controlId: '7',
+    framework: 'cis_v8',
+    title: 'x',
+    description: 'x',
+    severity: 'critical',
+    status: 'open',
+    source: 'manual',
+    createdAt: new Date().toISOString(),
+    createdBy: 'u-1',
+    dueAt: new Date().toISOString(),
+    evidenceRefs: [],
+    metadata: {},
   });
   expect(await repo.getById('t-1', created.poamId)).toMatchObject({ poamId: 'p-1' });
   expect(await repo.getById('t-2', created.poamId)).toBe(null);
@@ -52,10 +71,21 @@ test('repo: create + getById round-trips, scoped by tenant', async () => {
 test('repo: findOpenForControlVuln ignores closed/risk_accepted items', async () => {
   const repo = buildPoamRepository();
   await repo.create({
-    poamId: 'p-1', tenantId: 't-1', controlId: '7', framework: 'cis_v8', vulnId: 'v-1',
-    title: 'x', description: 'x', severity: 'critical', status: 'closed', source: 'manual',
-    createdAt: new Date().toISOString(), createdBy: 'u-1', dueAt: new Date().toISOString(),
-    evidenceRefs: [], metadata: {},
+    poamId: 'p-1',
+    tenantId: 't-1',
+    controlId: '7',
+    framework: 'cis_v8',
+    vulnId: 'v-1',
+    title: 'x',
+    description: 'x',
+    severity: 'critical',
+    status: 'closed',
+    source: 'manual',
+    createdAt: new Date().toISOString(),
+    createdBy: 'u-1',
+    dueAt: new Date().toISOString(),
+    evidenceRefs: [],
+    metadata: {},
   });
   expect(await repo.findOpenForControlVuln('t-1', '7', 'v-1')).toBe(null);
 });
@@ -130,7 +160,9 @@ test('service: risk acceptance short-circuits the lifecycle', async () => {
   const svc = new PoamService({ repo: buildPoamRepository(), bus: bus as never });
   const { poam } = await svc.createFromTuple('t-1', makeTuple());
   const accepted = await svc.acceptRisk(
-    't-1', poam.poamId, 'u-1',
+    't-1',
+    poam.poamId,
+    'u-1',
     'business-acceptable per CAB-2026-06-12',
     new Date('2027-06-12T00:00:00Z').toISOString(),
   );

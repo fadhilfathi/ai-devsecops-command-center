@@ -32,7 +32,7 @@ sprawls. The graph has 100k–1M nodes; transitive chains can be 20+ deep.
    is 1Gi, swap is the cause. Bump to 4Gi via Helm values.
 5. **CPU.** If CPU is saturated across all replicas, horizontal scale
    is the only short-term fix. `kubectl scale deploy/dependency-intel
-   --replicas=6` (default is 3) and re-evaluate.
+--replicas=6` (default is 3) and re-evaluate.
 
 ## Mitigation
 

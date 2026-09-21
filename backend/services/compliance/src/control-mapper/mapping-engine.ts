@@ -9,7 +9,11 @@
 // The engine is pure: no I/O, no event emission. Callers wire the
 // engine to persistence, event bus, and POA&M creation.
 
-import type { VulnerabilityFinding, ComplianceControlStatus, Framework } from '@aicc/shared/types/domain';
+import type {
+  VulnerabilityFinding,
+  ComplianceControlStatus,
+  Framework,
+} from '@aicc/shared/types/domain';
 import type {
   ControlMapping,
   ControlVulnTuple,
@@ -32,7 +36,8 @@ import { evaluatePredicate } from './predicates.js';
  * Tolerates missing optional fields and applies sensible defaults.
  */
 export function toMappingInput(finding: VulnerabilityFinding): MappingInput {
-  const enriched = finding as VulnerabilityFinding & Partial<Omit<MappingInput, 'vulnId' | 'tenantId' | 'severity'>>;
+  const enriched = finding as VulnerabilityFinding &
+    Partial<Omit<MappingInput, 'vulnId' | 'tenantId' | 'severity'>>;
 
   return {
     vulnId: finding.id,
@@ -149,7 +154,12 @@ export class MappingEngine {
     const tuples: ControlVulnTuple[] = [];
     const tupleDedupe = new Set<string>();
     const SEVERITY_RANK: Record<VulnSeverity, number> = {
-      critical: 4, high: 3, medium: 2, low: 1, info: 0, unknown: -1,
+      critical: 4,
+      high: 3,
+      medium: 2,
+      low: 1,
+      info: 0,
+      unknown: -1,
     };
 
     for (const ev of evaluations) {

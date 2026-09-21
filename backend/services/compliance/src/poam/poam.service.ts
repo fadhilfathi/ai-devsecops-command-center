@@ -57,10 +57,7 @@ export class PoamService {
    *
    * Returns the list of newly created POA&M items (excluding dedup'd).
    */
-  async createFromTuples(
-    tenantId: string,
-    tuples: ControlVulnTuple[],
-  ): Promise<PoamItem[]> {
+  async createFromTuples(tenantId: string, tuples: ControlVulnTuple[]): Promise<PoamItem[]> {
     const created: PoamItem[] = [];
     for (const t of tuples) {
       const result = await this.createFromTuple(tenantId, t);
@@ -70,10 +67,7 @@ export class PoamService {
   }
 
   /** Create a POA&M from a single (controlId, vulnId) tuple. Deduplicates. */
-  async createFromTuple(
-    tenantId: string,
-    tuple: ControlVulnTuple,
-  ): Promise<CreatePoamResult> {
+  async createFromTuple(tenantId: string, tuple: ControlVulnTuple): Promise<CreatePoamResult> {
     const existing = await this.repo.findOpenForControlVuln(
       tenantId,
       tuple.controlId,
@@ -119,11 +113,7 @@ export class PoamService {
   // Manual creation
   // -------------------------------------------------------------------------
 
-  async createManual(
-    tenantId: string,
-    input: CreatePoamInput,
-    userId: string,
-  ): Promise<PoamItem> {
+  async createManual(tenantId: string, input: CreatePoamInput, userId: string): Promise<PoamItem> {
     const severity = input.severity;
     const slaDays = input.slaDays ?? POAM_SLA_DAYS[severity];
     const now = this.now();
@@ -174,7 +164,13 @@ export class PoamService {
     return this.transition(tenantId, poamId, 'awaiting_evidence', userId, {});
   }
 
-  async close(tenantId: string, poamId: string, userId: string, resolutionNotes: string, evidenceRefs: string[]): Promise<PoamItem> {
+  async close(
+    tenantId: string,
+    poamId: string,
+    userId: string,
+    resolutionNotes: string,
+    evidenceRefs: string[],
+  ): Promise<PoamItem> {
     if (evidenceRefs.length === 0) {
       throw new Error('POA&M closure requires at least one evidence record reference');
     }
@@ -294,7 +290,12 @@ export class PoamService {
       severity: severityFromPoam(poam.severity),
     };
     await withAudit(
-      { tenantId: poam.tenantId, auditKind: 'poam.created', subjectId: poam.poamId, detail: { controlId: poam.controlId, severity: poam.severity, source: poam.source } },
+      {
+        tenantId: poam.tenantId,
+        auditKind: 'poam.created',
+        subjectId: poam.poamId,
+        detail: { controlId: poam.controlId, severity: poam.severity, source: poam.source },
+      },
       () => this.bus.publish(envelope),
     );
   }
@@ -317,7 +318,16 @@ export class PoamService {
       severity: 'info',
     };
     await withAudit(
-      { tenantId: poam.tenantId, auditKind: 'poam.closed', subjectId: poam.poamId, detail: { controlId: poam.controlId, closedBy: userId, evidenceCount: poam.evidenceRefs.length } },
+      {
+        tenantId: poam.tenantId,
+        auditKind: 'poam.closed',
+        subjectId: poam.poamId,
+        detail: {
+          controlId: poam.controlId,
+          closedBy: userId,
+          evidenceCount: poam.evidenceRefs.length,
+        },
+      },
       () => this.bus.publish(envelope),
     );
   }
@@ -339,7 +349,16 @@ export class PoamService {
       severity: severityFromPoam(poam.severity),
     };
     await withAudit(
-      { tenantId: poam.tenantId, auditKind: 'poam.overdue', subjectId: poam.poamId, detail: { controlId: poam.controlId, severity: poam.severity, daysOverdue: Math.floor((this.now().getTime() - Date.parse(poam.dueAt)) / DAY_MS) } },
+      {
+        tenantId: poam.tenantId,
+        auditKind: 'poam.overdue',
+        subjectId: poam.poamId,
+        detail: {
+          controlId: poam.controlId,
+          severity: poam.severity,
+          daysOverdue: Math.floor((this.now().getTime() - Date.parse(poam.dueAt)) / DAY_MS),
+        },
+      },
       () => this.bus.publish(envelope),
     );
   }
@@ -351,10 +370,14 @@ export class PoamService {
 
 function severityFromPoam(severity: PoamSeverity): Severity {
   switch (severity) {
-    case 'critical': return 'critical';
-    case 'high': return 'high';
-    case 'medium': return 'medium';
-    case 'low': return 'low';
+    case 'critical':
+      return 'critical';
+    case 'high':
+      return 'high';
+    case 'medium':
+      return 'medium';
+    case 'low':
+      return 'low';
   }
 }
 
@@ -364,10 +387,34 @@ function mapSeverity(s: 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unkno
 }
 
 const VALID_TRANSITIONS: Record<PoamStatus, ReadonlySet<PoamStatus>> = {
-  open: new Set<PoamStatus>(['in_progress', 'awaiting_evidence', 'closed', 'risk_accepted', 'overdue']),
-  in_progress: new Set<PoamStatus>(['open', 'awaiting_evidence', 'closed', 'risk_accepted', 'overdue']),
-  awaiting_evidence: new Set<PoamStatus>(['open', 'in_progress', 'closed', 'risk_accepted', 'overdue']),
-  overdue: new Set<PoamStatus>(['in_progress', 'awaiting_evidence', 'closed', 'risk_accepted', 'open']),
+  open: new Set<PoamStatus>([
+    'in_progress',
+    'awaiting_evidence',
+    'closed',
+    'risk_accepted',
+    'overdue',
+  ]),
+  in_progress: new Set<PoamStatus>([
+    'open',
+    'awaiting_evidence',
+    'closed',
+    'risk_accepted',
+    'overdue',
+  ]),
+  awaiting_evidence: new Set<PoamStatus>([
+    'open',
+    'in_progress',
+    'closed',
+    'risk_accepted',
+    'overdue',
+  ]),
+  overdue: new Set<PoamStatus>([
+    'in_progress',
+    'awaiting_evidence',
+    'closed',
+    'risk_accepted',
+    'open',
+  ]),
   closed: new Set<PoamStatus>(['open']),
   risk_accepted: new Set<PoamStatus>(['open', 'closed']),
 };
@@ -385,13 +432,17 @@ function mapPoamStatusToAuditKind(
   status: PoamStatus,
 ): import('../observability/audit.js').AuditKind | null {
   switch (status) {
-    case 'in_progress':         return 'poam.in_progress';
-    case 'awaiting_evidence':   return 'poam.pending_verification';
-    case 'risk_accepted':       return 'poam.risk_accepted';
+    case 'in_progress':
+      return 'poam.in_progress';
+    case 'awaiting_evidence':
+      return 'poam.pending_verification';
+    case 'risk_accepted':
+      return 'poam.risk_accepted';
     // 'created' is handled by emitPoamCreated
     // 'closed' is handled by emitPoamClosed
     // 'overdue' is handled by emitPoamOverdue
     // 'open' is not a real transition (only the initial state)
-    default:                    return null;
+    default:
+      return null;
   }
 }

@@ -14,7 +14,10 @@ import {
   type Logger,
   type UUID,
 } from '@aicc/shared';
-import { buildCorrelationEngine, type CorrelationEvent } from '../correlation/correlation-engine.js';
+import {
+  buildCorrelationEngine,
+  type CorrelationEvent,
+} from '../correlation/correlation-engine.js';
 import type { ChainRepository } from '../correlation/chain.repository.js';
 
 interface Deps {
@@ -52,7 +55,9 @@ const SUBSCRIBE_TOPICS: string[] = [
   'health.recommendation',
 ];
 
-export async function buildCorrelationListener(deps: Deps): Promise<{ engine: ReturnType<typeof buildCorrelationEngine>; buffer: CorrelationEvent[]; }> {
+export async function buildCorrelationListener(
+  deps: Deps,
+): Promise<{ engine: ReturnType<typeof buildCorrelationEngine>; buffer: CorrelationEvent[] }> {
   const engine = buildCorrelationEngine();
   const buffer: CorrelationEvent[] = [];
   const flush = async () => {
@@ -64,7 +69,10 @@ export async function buildCorrelationListener(deps: Deps): Promise<{ engine: Re
         await deps.chains.add(chains[i]!, edges);
       }
       if (chains.length > 0) {
-        deps.logger.info({ chains: chains.length, events: drained.length }, 'correlation: built chains');
+        deps.logger.info(
+          { chains: chains.length, events: drained.length },
+          'correlation: built chains',
+        );
       }
     } catch (err) {
       deps.logger.error({ err, count: drained.length }, 'correlation: failed to build chains');
@@ -81,7 +89,9 @@ export async function buildCorrelationListener(deps: Deps): Promise<{ engine: Re
           await flush();
         } else {
           // Also flush on a small delay so chains are visible quickly.
-          setTimeout(() => { void flush(); }, 250).unref();
+          setTimeout(() => {
+            void flush();
+          }, 250).unref();
         }
       } catch (err) {
         deps.logger.error({ err, topic }, 'correlation: failed to normalise event');

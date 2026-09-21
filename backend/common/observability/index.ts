@@ -12,20 +12,10 @@
 // =============================================================================
 
 // ---------- OpenTelemetry bootstrap ----------
-export {
-  startOtel,
-  shutdownOtel,
-  type OtelBootstrapOptions,
-} from './otel.js';
+export { startOtel, shutdownOtel, type OtelBootstrapOptions } from './otel.js';
 
 // ---------- Structured logging ----------
-export {
-  createLogger,
-  withTenant,
-  withUser,
-  LogEntrySchema,
-  type LoggerConfig,
-} from './logger.js';
+export { createLogger, withTenant, withUser, LogEntrySchema, type LoggerConfig } from './logger.js';
 
 // ---------- Health checks ----------
 export {

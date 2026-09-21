@@ -79,12 +79,19 @@ export type SbomLicenseExpression = z.infer<typeof SbomLicenseExpressionSchema>;
 
 export const SbomLicenseSchema = z.union([
   z.object({
-    license: z.object({
-      id: z.string().optional(),
-      name: z.string().optional(),
-      text: z.union([z.object({ contentType: z.string(), encoding: z.string(), content: z.string() }), z.string()]).optional(),
-      url: z.string().url().optional(),
-    }).optional(),
+    license: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+        text: z
+          .union([
+            z.object({ contentType: z.string(), encoding: z.string(), content: z.string() }),
+            z.string(),
+          ])
+          .optional(),
+        url: z.string().url().optional(),
+      })
+      .optional(),
     expression: SbomLicenseExpressionSchema.optional(),
     choice: SbomLicenseChoiceSchema.optional(),
   }),
@@ -116,27 +123,78 @@ export const SbomComponentSchema: z.ZodType<any> = z.object({
   scope: z.enum(['required', 'optional', 'excluded']).optional(),
   licenses: z.array(SbomLicenseSchema).optional(),
   hashes: z.array(SbomHashSchema).optional(),
-  supplier: z.union([
-    z.object({ name: z.string(), url: z.string().url().optional(), contact: z.array(z.object({ name: z.string().optional(), email: z.string().email().optional(), phone: z.string().optional() })).optional() }),
-    z.string(),
-  ]).optional(),
-  manufacturer: z.union([
-    z.object({ name: z.string(), url: z.string().url().optional(), contact: z.array(z.object({ name: z.string().optional(), email: z.string().email().optional(), phone: z.string().optional() })).optional() }),
-    z.string(),
-  ]).optional(),
+  supplier: z
+    .union([
+      z.object({
+        name: z.string(),
+        url: z.string().url().optional(),
+        contact: z
+          .array(
+            z.object({
+              name: z.string().optional(),
+              email: z.string().email().optional(),
+              phone: z.string().optional(),
+            }),
+          )
+          .optional(),
+      }),
+      z.string(),
+    ])
+    .optional(),
+  manufacturer: z
+    .union([
+      z.object({
+        name: z.string(),
+        url: z.string().url().optional(),
+        contact: z
+          .array(
+            z.object({
+              name: z.string().optional(),
+              email: z.string().email().optional(),
+              phone: z.string().optional(),
+            }),
+          )
+          .optional(),
+      }),
+      z.string(),
+    ])
+    .optional(),
   copyright: z.array(z.object({ text: z.string() })).optional(),
   /** Pedigree: ancestors, descendants, variants */
-  pedigree: z.object({
-    ancestors: z.array(z.lazy(() => SbomComponentSchema)).optional(),
-    descendants: z.array(z.lazy(() => SbomComponentSchema)).optional(),
-    variants: z.array(z.lazy(() => SbomComponentSchema)).optional(),
-  }).optional(),
+  pedigree: z
+    .object({
+      ancestors: z.array(z.lazy(() => SbomComponentSchema)).optional(),
+      descendants: z.array(z.lazy(() => SbomComponentSchema)).optional(),
+      variants: z.array(z.lazy(() => SbomComponentSchema)).optional(),
+    })
+    .optional(),
   /** External reference (e.g. vcs, issue-tracker, documentation) */
-  externalReferences: z.array(z.object({
-    type: z.enum(['vcs', 'issue-tracker', 'website', 'advisories', 'bom', 'mailing-list', 'social', 'chat', 'documentation', 'support', 'distribution', 'license', 'build-meta', 'release-notes', 'security-contact', 'other']),
-    url: z.string().url(),
-    comment: z.string().optional(),
-  })).optional(),
+  externalReferences: z
+    .array(
+      z.object({
+        type: z.enum([
+          'vcs',
+          'issue-tracker',
+          'website',
+          'advisories',
+          'bom',
+          'mailing-list',
+          'social',
+          'chat',
+          'documentation',
+          'support',
+          'distribution',
+          'license',
+          'build-meta',
+          'release-notes',
+          'security-contact',
+          'other',
+        ]),
+        url: z.string().url(),
+        comment: z.string().optional(),
+      }),
+    )
+    .optional(),
   /** Properties (key/value tags) */
   properties: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
 });
@@ -175,8 +233,12 @@ export const SbomMetadataSchema = z.object({
   authors: z.array(SbomAuthorSchema).optional(),
   /** The root component this SBOM describes */
   component: SbomComponentSchema.optional(),
-  manufacture: z.union([z.object({ name: z.string(), url: z.string().url().optional() }), z.string()]).optional(),
-  supplier: z.union([z.object({ name: z.string(), url: z.string().url().optional() }), z.string()]).optional(),
+  manufacture: z
+    .union([z.object({ name: z.string(), url: z.string().url().optional() }), z.string()])
+    .optional(),
+  supplier: z
+    .union([z.object({ name: z.string(), url: z.string().url().optional() }), z.string()])
+    .optional(),
   /** CycloneDX licenses — global scope */
   licenses: z.array(SbomLicenseSchema).optional(),
   /** Properties (top-level metadata) */
@@ -186,16 +248,21 @@ export type SbomMetadata = z.infer<typeof SbomMetadataSchema>;
 
 // ---------- top-level SBOM ----------
 
-export const SbomSchema = z.object({
-  bomFormat: z.literal('CycloneDX'),
-  specVersion: z.string().regex(/^\d+\.\d+$/),
-  version: z.number().int().min(1),
-  /** urn:uuid — globally unique SBOM serial number */
-  serialNumber: z.string().regex(/^urn:uuid:[0-9a-f-]{36}$/i).optional(),
-  metadata: SbomMetadataSchema,
-  components: z.array(SbomComponentSchema).default([]),
-  dependencies: z.array(SbomDependencySchema).default([]),
-}).passthrough();
+export const SbomSchema = z
+  .object({
+    bomFormat: z.literal('CycloneDX'),
+    specVersion: z.string().regex(/^\d+\.\d+$/),
+    version: z.number().int().min(1),
+    /** urn:uuid — globally unique SBOM serial number */
+    serialNumber: z
+      .string()
+      .regex(/^urn:uuid:[0-9a-f-]{36}$/i)
+      .optional(),
+    metadata: SbomMetadataSchema,
+    components: z.array(SbomComponentSchema).default([]),
+    dependencies: z.array(SbomDependencySchema).default([]),
+  })
+  .passthrough();
 export type Sbom = z.infer<typeof SbomSchema>;
 
 // ---------- service I/O shapes (used by S2.5 security-service proxy) ----------
@@ -207,8 +274,17 @@ export type Sbom = z.infer<typeof SbomSchema>;
 export const SbomGenerateRequestSchema = z.object({
   /** Source to scan */
   source: z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('container'), image: z.string().min(1), pullSecret: z.string().optional() }),
-    z.object({ kind: z.literal('git'), url: z.string().url(), ref: z.string().optional(), depth: z.number().int().positive().optional() }),
+    z.object({
+      kind: z.literal('container'),
+      image: z.string().min(1),
+      pullSecret: z.string().optional(),
+    }),
+    z.object({
+      kind: z.literal('git'),
+      url: z.string().url(),
+      ref: z.string().optional(),
+      depth: z.number().int().positive().optional(),
+    }),
     z.object({ kind: z.literal('filesystem'), path: z.string().min(1) }),
     z.object({ kind: z.literal('sbom'), existing: SbomSchema }),
   ]),
@@ -219,7 +295,10 @@ export const SbomGenerateRequestSchema = z.object({
   /** Preferred output format (CycloneDX default; SPDX is a future option) */
   format: z.enum(['cyclonedx']).default('cyclonedx'),
   /** CycloneDX spec version (default 1.5) */
-  specVersion: z.string().regex(/^\d+\.\d+$/).default('1.5'),
+  specVersion: z
+    .string()
+    .regex(/^\d+\.\d+$/)
+    .default('1.5'),
 });
 export type SbomGenerateRequest = z.infer<typeof SbomGenerateRequestSchema>;
 
@@ -257,11 +336,15 @@ export const SbomAnalysisReportSchema = z.object({
   generatedAt: z.string().datetime({ offset: true }),
   totalComponents: z.number().int().nonnegative(),
   outdatedCount: z.number().int().nonnegative().default(0),
-  licenseConflicts: z.array(z.object({
-    bomRef: z.string(),
-    licenses: z.array(z.string()),
-    reason: z.string(),
-  })).default([]),
+  licenseConflicts: z
+    .array(
+      z.object({
+        bomRef: z.string(),
+        licenses: z.array(z.string()),
+        reason: z.string(),
+      }),
+    )
+    .default([]),
   components: z.array(SbomAnalysisComponentSchema),
 });
 export type SbomAnalysisReport = z.infer<typeof SbomAnalysisReportSchema>;

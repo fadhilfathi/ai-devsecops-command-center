@@ -22,7 +22,11 @@ export interface AgentTask {
 }
 
 export interface TaskQueue {
-  enqueue(input: { kind: string; tenantId: UUID; payload: Record<string, unknown> }): Promise<AgentTask>;
+  enqueue(input: {
+    kind: string;
+    tenantId: UUID;
+    payload: Record<string, unknown>;
+  }): Promise<AgentTask>;
   dequeue(): Promise<AgentTask | undefined>;
   complete(id: UUID, result: unknown): Promise<AgentTask | undefined>;
   fail(id: UUID, error: string): Promise<AgentTask | undefined>;
@@ -32,11 +36,13 @@ export interface TaskQueue {
 }
 
 function newId(): UUID {
-  return globalThis.crypto?.randomUUID?.() ??
+  return (
+    globalThis.crypto?.randomUUID?.() ??
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    })
+  );
 }
 
 export function buildTaskQueue(): TaskQueue {

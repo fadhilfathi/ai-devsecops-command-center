@@ -13,34 +13,29 @@
  * the Zod schemas in `backend/models/infrastructure/`.
  */
 
-import type { Severity } from "./index";
+import type { Severity } from './index';
 
 // ---- Common ---------------------------------------------------------
 
 export type ClusterProvider =
-  | "eks"
-  | "gke"
-  | "aks"
-  | "oke"
-  | "openshift"
-  | "rancher"
-  | "kind"
-  | "k3s"
-  | "self_managed"
-  | "unknown";
+  | 'eks'
+  | 'gke'
+  | 'aks'
+  | 'oke'
+  | 'openshift'
+  | 'rancher'
+  | 'kind'
+  | 'k3s'
+  | 'self_managed'
+  | 'unknown';
 
-export type ClusterPhase =
-  | "provisioning"
-  | "active"
-  | "degraded"
-  | "draining"
-  | "archived";
+export type ClusterPhase = 'provisioning' | 'active' | 'degraded' | 'draining' | 'archived';
 
-export type HealthBand = "A" | "B" | "C" | "D" | "F";
+export type HealthBand = 'A' | 'B' | 'C' | 'D' | 'F';
 
-export type HealthStatus = "healthy" | "degraded" | "unhealthy" | "unknown";
+export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
-export type RiskLevel = "critical" | "high" | "medium" | "low";
+export type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
 
 // ---- Cluster / Namespace / Workload / Pod / Service / Deployment ----
 
@@ -61,7 +56,7 @@ export interface Cluster {
   provider: ClusterProvider;
   k8sVersion?: string;
   region?: string;
-  environment: "prod" | "staging" | "dev" | "sandbox";
+  environment: 'prod' | 'staging' | 'dev' | 'sandbox';
   phase: ClusterPhase;
   nodeCount: number;
   readyNodes: number;
@@ -78,7 +73,7 @@ export interface Namespace {
   clusterId: string;
   clusterName: string;
   name: string;
-  phase: "active" | "terminating";
+  phase: 'active' | 'terminating';
   workloadCount: number;
   podCount: number;
   runningPods: number;
@@ -91,15 +86,9 @@ export interface Namespace {
 }
 
 export type WorkloadKind =
-  | "deployment"
-  | "statefulset"
-  | "daemonset"
-  | "replicaset"
-  | "cronjob"
-  | "job"
-  | "pod";
+  'deployment' | 'statefulset' | 'daemonset' | 'replicaset' | 'cronjob' | 'job' | 'pod';
 
-export type WorkloadHealth = "healthy" | "degraded" | "unhealthy" | "unknown";
+export type WorkloadHealth = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
 export interface Workload {
   id: string;
@@ -121,7 +110,7 @@ export interface Workload {
   health: WorkloadHealth;
   conditions: Array<{
     type: string;
-    status: "true" | "false" | "unknown";
+    status: 'true' | 'false' | 'unknown';
     message?: string;
     lastTransitionTime?: string;
   }>;
@@ -142,7 +131,7 @@ export interface Pod {
   clusterName: string;
   namespace: string;
   name: string;
-  phase: "pending" | "running" | "succeeded" | "failed" | "unknown";
+  phase: 'pending' | 'running' | 'succeeded' | 'failed' | 'unknown';
   node?: string;
   podIp?: string;
   ownerKind?: string;
@@ -151,7 +140,7 @@ export interface Pod {
   containers: Array<{
     name: string;
     image: string;
-    state: "waiting" | "running" | "terminated";
+    state: 'waiting' | 'running' | 'terminated';
     ready: boolean;
     restartCount: number;
     lastTerminationReason: string;
@@ -172,12 +161,12 @@ export interface K8sService {
   clusterName: string;
   namespace: string;
   name: string;
-  type: "cluster_ip" | "node_port" | "load_balancer" | "external_name";
+  type: 'cluster_ip' | 'node_port' | 'load_balancer' | 'external_name';
   clusterIp?: string;
   selector: Record<string, string>;
   ports: Array<{
     name?: string;
-    protocol: "TCP" | "UDP" | "SCTP";
+    protocol: 'TCP' | 'UDP' | 'SCTP';
     port: number;
     targetPort?: number | string;
     nodePort?: number;
@@ -197,8 +186,8 @@ export interface Deployment {
   image?: string;
   replicas: { desired: number; ready: number; updated: number; available: number };
   health: WorkloadHealth;
-  strategy: "rolling_update" | "recreate" | "in_place";
-  rollout: "complete" | "progressing" | "paused" | "failed" | "unknown";
+  strategy: 'rolling_update' | 'recreate' | 'in_place';
+  rollout: 'complete' | 'progressing' | 'paused' | 'failed' | 'unknown';
   paused: boolean;
   changeCause?: string;
   lastSyncedAt?: string;
@@ -215,7 +204,7 @@ export interface Ingress {
   rules: Array<{
     host?: string;
     path: string;
-    pathType: "Exact" | "Prefix" | "ImplementationSpecific";
+    pathType: 'Exact' | 'Prefix' | 'ImplementationSpecific';
     serviceName: string;
     servicePort: number | string;
   }>;
@@ -227,18 +216,18 @@ export interface Ingress {
 export interface HealthIssue {
   id: string;
   kind:
-    | "crash_loop_back_off"
-    | "image_pull_back_off"
-    | "oom_killed"
-    | "pending_pod"
-    | "failed_pod"
-    | "restart_storm"
-    | "node_pressure"
-    | "unschedulable_workload"
-    | "runtime_risk"
-    | "cost_anomaly"
-    | "unknown";
-  severity: "critical" | "high" | "medium" | "low" | "info";
+    | 'crash_loop_back_off'
+    | 'image_pull_back_off'
+    | 'oom_killed'
+    | 'pending_pod'
+    | 'failed_pod'
+    | 'restart_storm'
+    | 'node_pressure'
+    | 'unschedulable_workload'
+    | 'runtime_risk'
+    | 'cost_anomaly'
+    | 'unknown';
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
   message: string;
   subject: { kind: string; name: string; namespace?: string; clusterId?: string };
   detectedAt: string;
@@ -255,7 +244,7 @@ export interface HealthScore {
 
 export interface HealthRecommendation {
   id: string;
-  priority: "p0" | "p1" | "p2" | "p3";
+  priority: 'p0' | 'p1' | 'p2' | 'p3';
   title: string;
   detail: string;
   action?: string;
@@ -266,7 +255,7 @@ export interface HealthRecommendation {
 export interface InfrastructureHealth {
   id: string;
   tenantId: string;
-  scope: "cluster" | "namespace" | "workload" | "pod";
+  scope: 'cluster' | 'namespace' | 'workload' | 'pod';
   subject: { kind: string; name: string; namespace?: string; clusterId?: string };
   score: HealthScore;
   issues: HealthIssue[];
@@ -277,22 +266,22 @@ export interface InfrastructureHealth {
 // ---- Runtime security -----------------------------------------------
 
 export type RiskCategory =
-  | "privileged_container"
-  | "host_path_volume"
-  | "host_network"
-  | "host_pid"
-  | "host_ipc"
-  | "root_user"
-  | "dangerous_capability"
-  | "unsafe_security_context"
-  | "service_account_risk"
-  | "rbac_risk"
-  | "image_risk"
-  | "network_policy_missing"
-  | "resource_limits_missing"
-  | "secrets_in_env"
-  | "automount_service_account_token"
-  | "unknown";
+  | 'privileged_container'
+  | 'host_path_volume'
+  | 'host_network'
+  | 'host_pid'
+  | 'host_ipc'
+  | 'root_user'
+  | 'dangerous_capability'
+  | 'unsafe_security_context'
+  | 'service_account_risk'
+  | 'rbac_risk'
+  | 'image_risk'
+  | 'network_policy_missing'
+  | 'resource_limits_missing'
+  | 'secrets_in_env'
+  | 'automount_service_account_token'
+  | 'unknown';
 
 export interface RuntimeRisk {
   id: string;
@@ -301,16 +290,16 @@ export interface RuntimeRisk {
   clusterName: string;
   namespace: string;
   subject:
-    | "pod"
-    | "workload"
-    | "service"
-    | "service_account"
-    | "role_binding"
-    | "cluster_role_binding"
-    | "ingress"
-    | "config_map"
-    | "secret"
-    | "unknown";
+    | 'pod'
+    | 'workload'
+    | 'service'
+    | 'service_account'
+    | 'role_binding'
+    | 'cluster_role_binding'
+    | 'ingress'
+    | 'config_map'
+    | 'secret'
+    | 'unknown';
   subjectKind: string;
   subjectName: string;
   ruleId: string;
@@ -365,17 +354,17 @@ export interface WorkloadCost {
 export interface CostFinding {
   id: string;
   kind:
-    | "over_provisioned_cpu"
-    | "over_provisioned_memory"
-    | "under_utilized_cpu"
-    | "under_utilized_memory"
-    | "missing_requests"
-    | "missing_limits"
-    | "noisy_neighbour"
-    | "cold_workload";
+    | 'over_provisioned_cpu'
+    | 'over_provisioned_memory'
+    | 'under_utilized_cpu'
+    | 'under_utilized_memory'
+    | 'missing_requests'
+    | 'missing_limits'
+    | 'noisy_neighbour'
+    | 'cold_workload';
   severity: Severity;
   message: string;
-  dimension?: "cpu" | "memory";
+  dimension?: 'cpu' | 'memory';
   workloadId?: string;
   workloadName?: string;
   namespace?: string;
@@ -387,15 +376,15 @@ export interface CostFinding {
 export interface CostRecommendation {
   id: string;
   action:
-    | "right_size_requests"
-    | "right_size_limits"
-    | "add_limits"
-    | "add_requests"
-    | "remove_unused_workload"
-    | "consolidate_replicas"
-    | "use_spot_or_preemptible"
-    | "unknown";
-  priority: "p0" | "p1" | "p2" | "p3";
+    | 'right_size_requests'
+    | 'right_size_limits'
+    | 'add_limits'
+    | 'add_requests'
+    | 'remove_unused_workload'
+    | 'consolidate_replicas'
+    | 'use_spot_or_preemptible'
+    | 'unknown';
+  priority: 'p0' | 'p1' | 'p2' | 'p3';
   title: string;
   detail: string;
   workloadIds: string[];
@@ -423,23 +412,17 @@ export interface CostAnalysis {
 // ---- Topology -------------------------------------------------------
 
 export type TopologyNodeKind =
-  | "cluster"
-  | "namespace"
-  | "service"
-  | "workload"
-  | "pod"
-  | "ingress"
-  | "external";
+  'cluster' | 'namespace' | 'service' | 'workload' | 'pod' | 'ingress' | 'external';
 
 export type TopologyEdgeKind =
-  | "depends_on"
-  | "routes_to"
-  | "exposes"
-  | "owns"
-  | "calls"
-  | "selects"
-  | "in_namespace"
-  | "unknown";
+  | 'depends_on'
+  | 'routes_to'
+  | 'exposes'
+  | 'owns'
+  | 'calls'
+  | 'selects'
+  | 'in_namespace'
+  | 'unknown';
 
 export interface TopologyNode {
   id: string;
@@ -479,15 +462,15 @@ export interface TopologyGraph {
 // ---- Inventory ------------------------------------------------------
 
 export type AssetKind =
-  | "cluster"
-  | "namespace"
-  | "service"
-  | "deployment"
-  | "statefulset"
-  | "daemonset"
-  | "ingress"
-  | "workload"
-  | "pod";
+  | 'cluster'
+  | 'namespace'
+  | 'service'
+  | 'deployment'
+  | 'statefulset'
+  | 'daemonset'
+  | 'ingress'
+  | 'workload'
+  | 'pod';
 
 export interface Asset {
   id: string;

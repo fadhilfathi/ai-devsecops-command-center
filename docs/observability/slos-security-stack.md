@@ -23,23 +23,24 @@ the platform SLI doc (`docs/observability/metrics-spec.md`).
 
 **Per-`target_type` SLOs (95% of generations complete within the target):**
 
-| `target_type` | 95% SLO target | p99 expected (informational) | Rationale |
-|---|---|---:|---|
-| `image`       | 60 s   | ~120 s  | Image scans pull layers + do package detection; most are < 30s, p99 dominated by large/distroless images. |
-| `filesystem`  | 30 s   | ~60 s   | Local FS walk; fast path. |
-| `directory`   | 30 s   | ~60 s   | Same as `filesystem`; aliased for clarity. |
-| `archive`     | 60 s   | ~120 s  | tar/zip extract + parse; can be slow on large archives. |
-| `repo`        | 120 s  | ~240 s  | git clone + parse; network-bound. Worst case for SBOM gen. |
+| `target_type` | 95% SLO target | p99 expected (informational) | Rationale                                                                                                 |
+| ------------- | -------------- | ---------------------------: | --------------------------------------------------------------------------------------------------------- |
+| `image`       | 60 s           |                       ~120 s | Image scans pull layers + do package detection; most are < 30s, p99 dominated by large/distroless images. |
+| `filesystem`  | 30 s           |                        ~60 s | Local FS walk; fast path.                                                                                 |
+| `directory`   | 30 s           |                        ~60 s | Same as `filesystem`; aliased for clarity.                                                                |
+| `archive`     | 60 s           |                       ~120 s | tar/zip extract + parse; can be slow on large archives.                                                   |
+| `repo`        | 120 s          |                       ~240 s | git clone + parse; network-bound. Worst case for SBOM gen.                                                |
 
 **Aggregate SLO:** 95% of all generations, regardless of `target_type`, complete
 within **60 s** (the most common target). 99% within **180 s** (safety net for repos).
 
 **Burn alerts (derived from this SLO):**
+
 - **Fast burn (page):** 14.4× burn over 1h AND 6h windows.
 - **Slow burn (ticket):** 1× burn over 24h AND 3d windows.
 
 **Calibration note:** the existing `ScanQueueBacklog` alert (depth > 100, 15m)
-catches capacity problems; these new p99 alerts catch *per-request* performance
+catches capacity problems; these new p99 alerts catch _per-request_ performance
 regressions that may not surface as a backlog for several hours.
 
 ## 3. `devsecops_risk_calculation_duration_seconds` SLO targets
@@ -47,6 +48,7 @@ regressions that may not surface as a backlog for several hours.
 **Per-`sbom_size_bucket` SLOs (95% of calculations complete within the target; p99 is the 99th-percentile latency budget, ~2× of the 95% target).**
 
 > **Round 6 (2026-06-12) — D7 5-bucket scheme LOCKED.** SecurityArchitect's D7 amendment replaces the round-5 5-bucket scheme with a cap-driven version. The `xxlarge` bucket is **dropped** (former ≥50k workloads now flow into `xlarge`), and a new `xs` bucket is **added** (sub-10-component SBOMs should be sub-100ms in steady state). Bucket thresholds:
+>
 > - **xs:** < 10 components
 > - **small:** 10 – 99
 > - **medium:** 100 – 999
@@ -55,13 +57,13 @@ regressions that may not surface as a backlog for several hours.
 >
 > **Why the change (SecurityArchitect, S2.8 cap-driven):** the S2.8 cap on transitive-closure passes for the `full` algorithm makes ≥5k-component SBOMs the practical upper bound of the supported workload. A separate ≥50k bucket is operationally redundant (those SBOMs are now blocked upstream by the S2.8 cap) and would have created a dead alert path. The new `xs` bucket gives actionable signal on trivially-small SBOMs that should never exceed 100ms.
 
-| `sbom_size_bucket` | Component range        | 95% SLO target | p99 latency budget | Rationale |
-|---|---|---:|---:|---|
-| `xs`               | < 10                   | 0.5 s | **1 s**     | Trivial; sub-100ms steady state. Cold-start budget: 0.5s. |
-| `small`            | 10 – 99                | 1 s   | **2 s**     | Trivial graph traversal. |
-| `medium`           | 100 – 999              | 5 s   | **10 s**    | Sub-second in practice; budget is for cold cache / GC. |
-| `large`            | 1,000 – 4,999          | 15 s  | **30 s**    | Graph build + transitive risk propagation. |
-| `xlarge`           | ≥ 5,000                | 60 s  | **120 s**   | Risk propagation O(V+E); p99 dominated by deep transitive chains. Absorbs former xxlarge overshoots; SLO overshoot is acceptable. |
+| `sbom_size_bucket` | Component range | 95% SLO target | p99 latency budget | Rationale                                                                                                                         |
+| ------------------ | --------------- | -------------: | -----------------: | --------------------------------------------------------------------------------------------------------------------------------- |
+| `xs`               | < 10            |          0.5 s |            **1 s** | Trivial; sub-100ms steady state. Cold-start budget: 0.5s.                                                                         |
+| `small`            | 10 – 99         |            1 s |            **2 s** | Trivial graph traversal.                                                                                                          |
+| `medium`           | 100 – 999       |            5 s |           **10 s** | Sub-second in practice; budget is for cold cache / GC.                                                                            |
+| `large`            | 1,000 – 4,999   |           15 s |           **30 s** | Graph build + transitive risk propagation.                                                                                        |
+| `xlarge`           | ≥ 5,000         |           60 s |          **120 s** | Risk propagation O(V+E); p99 dominated by deep transitive chains. Absorbs former xxlarge overshoots; SLO overshoot is acceptable. |
 
 > **Callout — `full` algorithm budget:** the SLOs above are calibrated
 > against the `cvss_epss` algorithm. Teams running `full` for
@@ -72,11 +74,13 @@ regressions that may not surface as a backlog for several hours.
 > budget by 3×.
 
 **Per-`algorithm` notes (lower-effort algorithms, for context):**
+
 - `cvss_only` is the fastest (no external lookups).
 - `cvss_epss` adds a Redis lookup; expect +50–200 ms over `cvss_only`.
 - `cvss_epss_kev` adds a CISA KEV catalog lookup; expect +100–500 ms over `cvss_only`.
 
 **Per-bucket burn alerts (round 6, D7 5-bucket scheme):**
+
 - `RiskCalcHighLatencyXs` — p95 of `xs` bucket > 0.5 s for 5 min (NEW; sub-10-component SBOMs)
 - `RiskCalcHighLatencySmall` — p95 of `small` bucket > 1 s for 5 min
 - `RiskCalcHighLatencyMedium` — p95 of `medium` bucket > 5 s for 5 min
@@ -93,14 +97,15 @@ early-warning signal; per-bucket alerts give the actionable detail.
 
 **Target (SLO contract):** **5 s p99** (PlatformArchitect's proposal — **confirmed by SREEngineer**).
 
-| Threshold | Action |
-|---|---|
-| p99 lag < 5 s  for 10 min | OK (within SLO) |
-| p99 lag ≥ 5 s  for 10 min | **Page** (fast burn: SLO breached) |
-| p99 lag ≥ 30 s for 5 min  | **Critical page** (3× over SLO; consumers falling badly behind) |
-| p99 lag ≥ 60 s for 5 min  | **Page on-call lead** (4× over SLO; pipeline stalled) |
+| Threshold                | Action                                                          |
+| ------------------------ | --------------------------------------------------------------- |
+| p99 lag < 5 s for 10 min | OK (within SLO)                                                 |
+| p99 lag ≥ 5 s for 10 min | **Page** (fast burn: SLO breached)                              |
+| p99 lag ≥ 30 s for 5 min | **Critical page** (3× over SLO; consumers falling badly behind) |
+| p99 lag ≥ 60 s for 5 min | **Page on-call lead** (4× over SLO; pipeline stalled)           |
 
 **Per-`stream` SLOs:**
+
 - `security.events` — p99 < 5 s (critical security events must propagate fast)
 - `compliance.events` — p99 < 30 s (compliance is not real-time critical)
 - `audit.events` — p99 < 60 s (audit is asynchronous; high lag is acceptable for volume reasons)
@@ -114,10 +119,10 @@ These are the **expected operating ranges** in a healthy cluster, used
 for capacity planning and "is the system healthy" dashboards. They are
 deliberately tighter than the SLO contract to give 2–5× headroom:
 
-| Percentile | Steady-state target | SLO contract | Headroom |
-|---:|---:|---:|---:|
-| p50 (median) | **0.25 s** | — (not in SLO) | — |
-| p99 | **1 s** | **5 s** | 5× headroom to SLO |
+|   Percentile | Steady-state target |   SLO contract |           Headroom |
+| -----------: | ------------------: | -------------: | -----------------: |
+| p50 (median) |          **0.25 s** | — (not in SLO) |                  — |
+|          p99 |             **1 s** |        **5 s** | 5× headroom to SLO |
 
 - **0.25s p50** is achievable for a healthy Redis Streams + small consumer
   group with no contention.
@@ -142,10 +147,10 @@ deliberately tighter than the SLO contract to give 2–5× headroom:
 
 **Per-result 99% emission-success SLO:**
 
-| `result` | Emission success rate target | Window | Page threshold |
-|---|---|---|---|
-| `success` | **99%** of all audit_log emissions (i.e. error rate ≤ 1%) | 30d | error rate > 1% over 5m |
-| `error`   | (the inverse — should be ≤ 1%) | 30d | rate > 0.1/s for 5m → ticket; > 1/s for 5m → page |
+| `result`  | Emission success rate target                              | Window | Page threshold                                    |
+| --------- | --------------------------------------------------------- | ------ | ------------------------------------------------- |
+| `success` | **99%** of all audit_log emissions (i.e. error rate ≤ 1%) | 30d    | error rate > 1% over 5m                           |
+| `error`   | (the inverse — should be ≤ 1%)                            | 30d    | rate > 0.1/s for 5m → ticket; > 1/s for 5m → page |
 
 **Why 99% (not 95%):** the 1% error budget is for genuine record-keep
 failures (write contention, schema validation errors, bus-disconnected
@@ -166,6 +171,7 @@ with `compliance_service_` prefix). Well under the 50k cap.
 **Runbook:** `docs/runbooks/compliance-audit-log.md` (**created 2026-06-12** by ComplianceOfficer; alert annotation `{{ $labels.runbook_base_url }}/compliance-audit-log` resolves correctly via the standard runbook_base_url pattern). 130 lines; 3-step decision tree (bus connection → schema validation → structured log filter) with the `event.type` vs `audit_kind` confusion callout.
 
 **Related decisions:**
+
 - **F-14 (audit log store wiring, 2026-06-12, SREEngineer):** option B — direct `AUDIT_LOG_TOPIC` subscriber → PostgreSQL `audit_log` table (append-only role, 7-year retention, WORM-style backup). Rejected option A (OpenSearch) — wrong storage tier for transactional/regulator-readable records. Rejected option C (S3 → PG) — over-engineered, deferred. Rejected option D (Debezium CDC) — over-engineered, deferred. Action items: ComplianceOfficer files F-14 ADR (slot 0011 or 0012); SRE adds `AuditLogPostgresWriteError` + `AuditLogPostgresConnectionDrop` alerts in S3.1; GitOpsManager provisions PG schema + retention + WORM backup.
 - **S2.9 ↔ S2.7 ACK (2026-06-12, ComplianceOfficer):** both scopes closed end-to-end on the SRE side; metrics-spec v1.0.5 + SLO doc v1.3 Locked.
 
@@ -178,24 +184,24 @@ with the same PromQL and a different `service` label.
 
 ## 5. SLO summary table
 
-| Metric                                              | SLO (95% within) | Window  | Page threshold |
-|-----------------------------------------------------|------------------|---------|----------------|
-| `devsecops_sbom_generation_duration_seconds` (image) | 60 s            | 30d     | 14.4× burn, 1h & 6h |
-| `devsecops_sbom_generation_duration_seconds` (repo)  | 120 s           | 30d     | 14.4× burn, 1h & 6h |
-| `devsecops_sbom_generation_duration_seconds` (all)   | 60 s            | 30d     | 14.4× burn, 1h & 6h |
-| `devsecops_risk_calculation_duration_seconds` (xs)     | 0.5 s          | 30d     | p95 > 0.5 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (small)  | 1 s            | 30d     | p95 > 1 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (medium) | 5 s            | 30d     | p95 > 5 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (large)  | 15 s           | 30d     | p95 > 15 s, 5m |
-| `devsecops_risk_calculation_duration_seconds` (xlarge) | 60 s           | 30d     | p95 > 60 s, 5m |
-| ~~`devsecops_risk_calculation_duration_seconds` (xxlarge)~~ | ~~300 s~~   | ~~30d~~ | ~~p95 > 300 s, 10m~~ RETIRED round 6 |
-| `devsecops_eventbus_lag_seconds`                    | 5 s             | 30d     | p99 > 5 s, 10m |
-| `devsecops_eventbus_lag_seconds` (critical)         | 30 s            | 30d     | p99 > 30 s, 5m |
-| `devsecops_vulnerability_ingestion_lag_seconds` (nvd)  | 7,200 s (2h)  | 30d     | p95 > 2h, 5m |
-| `devsecops_vulnerability_ingestion_lag_seconds` (ghsa) | 900 s (15m)  | 30d     | p95 > 15m, 5m |
-| `devsecops_vulnerability_ingestion_lag_seconds` (osv)  | 3,600 s (1h)  | 30d     | p95 > 1h, 5m |
-| `devsecops_vulnerability_ingestion_lag_seconds` (all)   | 3,600 s (1h)  | 30d     | p95 > 1h, 5m |
-| `devsecops_audit_log_emission_total{result="error"}`     | ≤ 1% of all emissions | 30d     | rate > 0.1/s for 5m (ticket), > 1/s for 5m (page) |
+| Metric                                                      | SLO (95% within)      | Window  | Page threshold                                    |
+| ----------------------------------------------------------- | --------------------- | ------- | ------------------------------------------------- |
+| `devsecops_sbom_generation_duration_seconds` (image)        | 60 s                  | 30d     | 14.4× burn, 1h & 6h                               |
+| `devsecops_sbom_generation_duration_seconds` (repo)         | 120 s                 | 30d     | 14.4× burn, 1h & 6h                               |
+| `devsecops_sbom_generation_duration_seconds` (all)          | 60 s                  | 30d     | 14.4× burn, 1h & 6h                               |
+| `devsecops_risk_calculation_duration_seconds` (xs)          | 0.5 s                 | 30d     | p95 > 0.5 s, 5m                                   |
+| `devsecops_risk_calculation_duration_seconds` (small)       | 1 s                   | 30d     | p95 > 1 s, 5m                                     |
+| `devsecops_risk_calculation_duration_seconds` (medium)      | 5 s                   | 30d     | p95 > 5 s, 5m                                     |
+| `devsecops_risk_calculation_duration_seconds` (large)       | 15 s                  | 30d     | p95 > 15 s, 5m                                    |
+| `devsecops_risk_calculation_duration_seconds` (xlarge)      | 60 s                  | 30d     | p95 > 60 s, 5m                                    |
+| ~~`devsecops_risk_calculation_duration_seconds` (xxlarge)~~ | ~~300 s~~             | ~~30d~~ | ~~p95 > 300 s, 10m~~ RETIRED round 6              |
+| `devsecops_eventbus_lag_seconds`                            | 5 s                   | 30d     | p99 > 5 s, 10m                                    |
+| `devsecops_eventbus_lag_seconds` (critical)                 | 30 s                  | 30d     | p99 > 30 s, 5m                                    |
+| `devsecops_vulnerability_ingestion_lag_seconds` (nvd)       | 7,200 s (2h)          | 30d     | p95 > 2h, 5m                                      |
+| `devsecops_vulnerability_ingestion_lag_seconds` (ghsa)      | 900 s (15m)           | 30d     | p95 > 15m, 5m                                     |
+| `devsecops_vulnerability_ingestion_lag_seconds` (osv)       | 3,600 s (1h)          | 30d     | p95 > 1h, 5m                                      |
+| `devsecops_vulnerability_ingestion_lag_seconds` (all)       | 3,600 s (1h)          | 30d     | p95 > 1h, 5m                                      |
+| `devsecops_audit_log_emission_total{result="error"}`        | ≤ 1% of all emissions | 30d     | rate > 0.1/s for 5m (ticket), > 1/s for 5m (page) |
 
 ### 5.6 `devsecops_vulnerability_ingestion_lag_seconds` targets (B2)
 
@@ -220,14 +226,14 @@ with the same PromQL and a different `service` label.
 
 **Per-source 95% lag SLOs (headroom-anchored):**
 
-| Source  | Polling cadence | 95% SLO target | Headroom | p99 expected (informational) | Rationale |
-|---------|----------------:|---------------:|---------:|----------------------------:|-----------|
-| `nvd`   | 60 min          | **2 h** (7,200 s)   | 2×  | ~4 h                | NVD updates roughly every 2h; 95% of CVEs should land within one cycle. |
-| `ghsa`  | 15 min (webhook)| **15 min** (900 s)  | 1×  | ~30 min             | GitHub Security Advisories are webhook-driven; near real-time. |
-| `osv`   | 30 min          | **1 h** (3,600 s)   | 2×  | ~2 h                | OSV.dev API polling; depends on cadence. |
-| `epss`  | 6 h             | (informational)     | —    | —                    | EPSS scores shift slowly; lag is not security-critical. |
-| `kev`   | 6 h             | (informational)     | —    | —                    | CISA KEV catalog; lag is not security-critical. |
-| **Aggregate** | —         | **1 h** (3,600 s) | —     | ~2 h                | 95% of all CVEs ingested within 1h of upstream publication. |
+| Source        |  Polling cadence |     95% SLO target | Headroom | p99 expected (informational) | Rationale                                                               |
+| ------------- | ---------------: | -----------------: | -------: | ---------------------------: | ----------------------------------------------------------------------- |
+| `nvd`         |           60 min |  **2 h** (7,200 s) |       2× |                         ~4 h | NVD updates roughly every 2h; 95% of CVEs should land within one cycle. |
+| `ghsa`        | 15 min (webhook) | **15 min** (900 s) |       1× |                      ~30 min | GitHub Security Advisories are webhook-driven; near real-time.          |
+| `osv`         |           30 min |  **1 h** (3,600 s) |       2× |                         ~2 h | OSV.dev API polling; depends on cadence.                                |
+| `epss`        |              6 h |    (informational) |        — |                            — | EPSS scores shift slowly; lag is not security-critical.                 |
+| `kev`         |              6 h |    (informational) |        — |                            — | CISA KEV catalog; lag is not security-critical.                         |
+| **Aggregate** |                — |  **1 h** (3,600 s) |        — |                         ~2 h | 95% of all CVEs ingested within 1h of upstream publication.             |
 
 > **GHSA-headroom note (round 6):** GHSA's 15min SLO has 1× headroom
 > over the 15min polling cadence, which is **tighter than NVD/OSV**.
@@ -238,7 +244,7 @@ with the same PromQL and a different `service` label.
 > the webhook is broken or the ingestion service is degraded.
 
 **Why a histogram (not a gauge) for lag:** a gauge is point-in-time and
-can be missed by scrapes; a histogram captures the *distribution* over
+can be missed by scrapes; a histogram captures the _distribution_ over
 the scrape window and is the right primitive for `histogram_quantile()`
 p95 math. Implementation: vuln-intel records one observation per CVE on
 successful ingestion, with lag = `now - source.published_at`.
@@ -268,25 +274,25 @@ are re-validated.
 
 **Per-control SLOs:**
 
-| Control | Metric | SLO target | Severity | Alert |
-|---|---|---|---|---|
-| **T-05** (tamper detection) | `devsecops_risk_score_audit_chain_verified{ok=1}` | **MUST equal fleet service count** (i.e. `ok=0` count MUST be 0) | P0 (page) | `RiskScoreAuditChainBroken` — `sum by (service)(...{ok="0"}) > 0` for 1m |
-| **T-09** (data-exfil canary) | `devsecops_canary_test_failures_total` | **MUST stay 0** (any increment is a signal) | P0 (page) | `CanaryTestFailure` — `increase(...[1m]) > 0` for 1m |
-| **T-02** (CVE feed integrity) | `devsecops_cve_feed_records_rejected_total{reason="integrity"}` | rejection rate < 0.1/s per feed over 5m | P2 (ticket) | `CveFeedIntegrityRejected` — `sum by (feed)(rate(...[5m])) > 0.1` for 5m |
-| **T-04** (supply-chain verify) | `devsecops_cosign_verify_duration_seconds{result="success"}` | p95 < 30s over 5m | P3 (ticket) | `CosignVerifySlow` — `histogram_quantile(0.95, ...) > 30` for 10m |
-| **T-08** (input validation) | `devsecops_sbom_validation_errors_total` / `devsecops_proxy_request_total` | ratio < 1% over 5m (i.e. 99% of requests pass validation) | P3 (ticket) | `SbomValidationErrorRate` — `sum(rate(errors)) / sum(rate(requests)) > 0.01` for 5m |
-| **T-03** (LLM cost guardrail) | `devsecops_llm_token_budget_remaining` | gauge ≥ 20% (i.e. budget is 80% consumed) | P3 (ticket) | `LlmTokenBudgetLow` — gauge < 0.20 for 5m |
+| Control                        | Metric                                                                     | SLO target                                                       | Severity    | Alert                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
+| **T-05** (tamper detection)    | `devsecops_risk_score_audit_chain_verified{ok=1}`                          | **MUST equal fleet service count** (i.e. `ok=0` count MUST be 0) | P0 (page)   | `RiskScoreAuditChainBroken` — `sum by (service)(...{ok="0"}) > 0` for 1m            |
+| **T-09** (data-exfil canary)   | `devsecops_canary_test_failures_total`                                     | **MUST stay 0** (any increment is a signal)                      | P0 (page)   | `CanaryTestFailure` — `increase(...[1m]) > 0` for 1m                                |
+| **T-02** (CVE feed integrity)  | `devsecops_cve_feed_records_rejected_total{reason="integrity"}`            | rejection rate < 0.1/s per feed over 5m                          | P2 (ticket) | `CveFeedIntegrityRejected` — `sum by (feed)(rate(...[5m])) > 0.1` for 5m            |
+| **T-04** (supply-chain verify) | `devsecops_cosign_verify_duration_seconds{result="success"}`               | p95 < 30s over 5m                                                | P3 (ticket) | `CosignVerifySlow` — `histogram_quantile(0.95, ...) > 30` for 10m                   |
+| **T-08** (input validation)    | `devsecops_sbom_validation_errors_total` / `devsecops_proxy_request_total` | ratio < 1% over 5m (i.e. 99% of requests pass validation)        | P3 (ticket) | `SbomValidationErrorRate` — `sum(rate(errors)) / sum(rate(requests)) > 0.01` for 5m |
+| **T-03** (LLM cost guardrail)  | `devsecops_llm_token_budget_remaining`                                     | gauge ≥ 20% (i.e. budget is 80% consumed)                        | P3 (ticket) | `LlmTokenBudgetLow` — gauge < 0.20 for 5m                                           |
 
 **SLO summary table update (extending §5):**
 
-| Metric | SLO (95% within) | Window | Page threshold |
-|---|---|---|---|
-| `devsecops_sbom_validation_errors_total` / total | < 1% | 30d | ratio > 1% over 5m |
-| `devsecops_cosign_verify_duration_seconds` (success) | 30s p95 | 30d | p95 > 30s, 10m |
-| `devsecops_cve_feed_records_rejected_total` (integrity) | < 0.1/s per feed | 30d | rate > 0.1/s, 5m |
-| `devsecops_risk_score_audit_chain_verified{ok=0}` | 0 (MUST equal fleet) | 30d | > 0, 1m |
-| `devsecops_canary_test_failures_total` | 0 (MUST be 0) | 30d | increment > 0, 1m |
-| `devsecops_llm_token_budget_remaining` | ≥ 20% | 30d | < 20%, 5m |
+| Metric                                                  | SLO (95% within)     | Window | Page threshold     |
+| ------------------------------------------------------- | -------------------- | ------ | ------------------ |
+| `devsecops_sbom_validation_errors_total` / total        | < 1%                 | 30d    | ratio > 1% over 5m |
+| `devsecops_cosign_verify_duration_seconds` (success)    | 30s p95              | 30d    | p95 > 30s, 10m     |
+| `devsecops_cve_feed_records_rejected_total` (integrity) | < 0.1/s per feed     | 30d    | rate > 0.1/s, 5m   |
+| `devsecops_risk_score_audit_chain_verified{ok=0}`       | 0 (MUST equal fleet) | 30d    | > 0, 1m            |
+| `devsecops_canary_test_failures_total`                  | 0 (MUST be 0)        | 30d    | increment > 0, 1m  |
+| `devsecops_llm_token_budget_remaining`                  | ≥ 20%                | 30d    | < 20%, 5m          |
 
 **Naming status:** provisionally added to `metrics-spec.md` §3.10 and
 `alert-rules.yml` `security_stack.s2_8_controls` group (2026-06-12).
@@ -318,7 +324,7 @@ final lock when those resolve.
   All 9 S2.7 alerts in `alert-rules.yml` now have `runbook_url`
   annotations. The 5 per-bucket `RiskCalcHighLatency*` alerts have their
   own runbook files: `docs/runbooks/RiskCalcHighLatency{Small,Medium,
-  Large,Xlarge,Xxlarge}.md`.
+Large,Xlarge,Xxlarge}.md`.
 - **F3 — `histogram_quantile()` aggregation safety note.** Added below in
   §7. Reminder: always `sum by (le, ...)` (rate of histogram buckets)
   **before** applying `histogram_quantile()`; never call it on a single-
@@ -348,7 +354,7 @@ final lock when those resolve.
 
 - **D6 — `target_type` final values + `tenant_tier` addition** 🔒 LOCKED
   (partial). `target_type` final values: `image|filesystem|repo|archive|
-  directory|sbom` (SecurityArchitect-confirmed). `tenant_tier` (free/pro/
+directory|sbom` (SecurityArchitect-confirmed). `tenant_tier` (free/pro/
   enterprise) added to `devsecops_sbom_generation_duration_seconds`,
   **pending PlatformArchitect final verdict on the ~230k per-service
   cardinality cost** (3× of D2's ~78k). Conditional acceptance from
@@ -390,17 +396,17 @@ final lock when those resolve.
 - **D2 — `target_type` vs `repo_shape`** ✅ SEPARATE LABELS.
   `target_type` keeps PlatformArchitect's 5 values (image/filesystem/
   repo/archive/directory); a NEW label `repo_shape ∈ {monorepo, service,
-  package}` added to `devsecops_sbom_generation_duration_seconds`,
+package}` added to `devsecops_sbom_generation_duration_seconds`,
   populated only when `target_type="repo"` (empty string for others).
   Cardinality: +3. Pushed GitOpsManager to use `repo_shape`.
 - **D3 — `format` label on sbom_gen** ⏸️ DEFERRED to Sprint 3. 4× cardinality
   jump (17,920 → ~72,000) is too close to the 50k soft cap. Pushed
   SBOMPipelineAgent to defer.
 - **D4 — `result` label 4-value set** 🔒 LOCKED (`success, failure, timeout,
-  cancelled`). Pushed GitOpsManager to align; `cancelled` is the "users
+cancelled`). Pushed GitOpsManager to align; `cancelled` is the "users
   rage-quitting" signal distinct from `failure`.
 - **D5 — `severity` label 5-value set** 🔒 LOCKED (`critical, high, medium,
-  low, unknown`). Pushed GitOpsManager to align; `unknown` is the early
+low, unknown`). Pushed GitOpsManager to align; `unknown` is the early
   signal for partial feed population.
 
 ## 7. Safety note: `histogram_quantile` aggregation
@@ -431,119 +437,119 @@ don't regress it.
 ## 8. Sign-off block
 
 - [x] **PlatformArchitect** — SLO targets approved 2026-06-12; F1–F3 queued.
-  Round 2 sign-off (B1 99p per-bucket, B2 VulnIngestionLag new metric,
-  B3 SBOM-gen xxlarge rejected, B4 steady-state 0.25s p50 / 1s p99, C1–C3
-  doc fixes) — all accepted 2026-06-12. Round 3 sign-off (D1–D5
-  divergences + Q3 Node.js service-label gap + §3.7 VulnIngestionLag
-  metric + §5.1.1 Node.js helper footnote) — all accepted 2026-06-12.
-  **Round 6 sign-off (D6 `tenant_tier` FINAL VERDICT, D7 5-bucket
-  `sbom_size_bucket`, §3.8.4 merge, §3.8 cardinality over-cap resolution,
-  §3.11 vuln_feed gauge) — all accepted 2026-06-12.** **D6 `tenant_tier`
-  APPROVED (option 1) — 230k per-service is within Prometheus's actual
-  capacity, Sprint 3 recording-rule pre-agg on `(target_type, tenant_tier,
-  result)` is the planned fix path.** **Sprint 3.2 ADR 0009 cardinality
-  governance co-authored (PlatformArchitect lead, SRE co-author) —
-  filed on team board as `019ebc0f-ab33`.**
+      Round 2 sign-off (B1 99p per-bucket, B2 VulnIngestionLag new metric,
+      B3 SBOM-gen xxlarge rejected, B4 steady-state 0.25s p50 / 1s p99, C1–C3
+      doc fixes) — all accepted 2026-06-12. Round 3 sign-off (D1–D5
+      divergences + Q3 Node.js service-label gap + §3.7 VulnIngestionLag
+      metric + §5.1.1 Node.js helper footnote) — all accepted 2026-06-12.
+      **Round 6 sign-off (D6 `tenant_tier` FINAL VERDICT, D7 5-bucket
+      `sbom_size_bucket`, §3.8.4 merge, §3.8 cardinality over-cap resolution,
+      §3.11 vuln_feed gauge) — all accepted 2026-06-12.** **D6 `tenant_tier`
+      APPROVED (option 1) — 230k per-service is within Prometheus's actual
+      capacity, Sprint 3 recording-rule pre-agg on `(target_type, tenant_tier,
+result)` is the planned fix path.** **Sprint 3.2 ADR 0009 cardinality
+      governance co-authored (PlatformArchitect lead, SRE co-author) —
+      filed on team board as `019ebc0f-ab33`.**
 - [x] **SREEngineer** (me) — locked targets; per-bucket burn alerts in
-  `alert-rules.yml`; per-bucket runbook stubs created; `histogram_quantile`
-  safety note added; §2/§3 column headers fixed; B4 steady-state
-  sub-section added; C2 `full` algorithm callout promoted; B1 99p
-  per-bucket table updated; D1–D5 resolved with redirect messages to
-  GitOpsManager and SBOMPipelineAgent; §3.7 VulnIngestionLag metric
-  added to metrics-spec.md; §5.6 VulnIngestionLag SLO targets added
-  (provisional, S2.11 re-validation queued); §5.1.1 Node.js helper
-  footnote added; `repo_shape` label added to spec §3.1.
-  **Round 8:** §3.8.1/3.8.2/3.8.4/3.8.5/3.8.6 spec body rewritten to
-  match the LANDED runtime refactor (spec-vs-runtime drift correction —
-  `tenant_id_hash` removed from labels on all 5 tenant-bearing metrics,
-  §3.8.4 renamed + new `route,bucket` labels, ~109,400 → ~3,717 active
-  series for security-service :4003, no Sprint 3 recording-rule
-  pre-aggregation needed for §3.8). `metrics-spec.md` bumped to v1.0.5.
-  §5.6 env var contract (`VULN_INTEL_INGEST_SCHEDULE_<SOURCE>_MINUTES`)
-  added to lock cadence + SLO burn math. GHSA headroom prose corrected
-  (60× → 1×) to match the §5.6 table.
+      `alert-rules.yml`; per-bucket runbook stubs created; `histogram_quantile`
+      safety note added; §2/§3 column headers fixed; B4 steady-state
+      sub-section added; C2 `full` algorithm callout promoted; B1 99p
+      per-bucket table updated; D1–D5 resolved with redirect messages to
+      GitOpsManager and SBOMPipelineAgent; §3.7 VulnIngestionLag metric
+      added to metrics-spec.md; §5.6 VulnIngestionLag SLO targets added
+      (provisional, S2.11 re-validation queued); §5.1.1 Node.js helper
+      footnote added; `repo_shape` label added to spec §3.1.
+      **Round 8:** §3.8.1/3.8.2/3.8.4/3.8.5/3.8.6 spec body rewritten to
+      match the LANDED runtime refactor (spec-vs-runtime drift correction —
+      `tenant_id_hash` removed from labels on all 5 tenant-bearing metrics,
+      §3.8.4 renamed + new `route,bucket` labels, ~109,400 → ~3,717 active
+      series for security-service :4003, no Sprint 3 recording-rule
+      pre-aggregation needed for §3.8). `metrics-spec.md` bumped to v1.0.5.
+      §5.6 env var contract (`VULN_INTEL_INGEST_SCHEDULE_<SOURCE>_MINUTES`)
+      added to lock cadence + SLO burn math. GHSA headroom prose corrected
+      (60× → 1×) to match the §5.6 table.
 - [x] **FullstackEngineer** — `metrics.ts` helper LANDED at
-  `backend/common/observability/metrics.ts` (sets `service` label from
-  `OTEL_SERVICE_NAME`). **Round 6:** `tenant_id_hash` label DROPPED from
-  all 6 proxy metrics — this **resolves the §3.8 cardinality over-cap
-  automatically** (security-service :4003 drops from ~109,400 to ~560
-  series per-service, well under the 50k soft cap). **Sprint 3
-  recording-rule pre-aggregation for §3.8 is NO LONGER NEEDED.** §3.8.4
-  metric renamed to `devsecops_rate_limit_rejections_total` with `route` +
-  `bucket` labels (D7 5-bucket scheme). 4 other Node services pending
-  adoption. /readyz SLO payload is still optional (nice-to-have).
+      `backend/common/observability/metrics.ts` (sets `service` label from
+      `OTEL_SERVICE_NAME`). **Round 6:** `tenant_id_hash` label DROPPED from
+      all 6 proxy metrics — this **resolves the §3.8 cardinality over-cap
+      automatically** (security-service :4003 drops from ~109,400 to ~560
+      series per-service, well under the 50k soft cap). **Sprint 3
+      recording-rule pre-aggregation for §3.8 is NO LONGER NEEDED.** §3.8.4
+      metric renamed to `devsecops_rate_limit_rejections_total` with `route` +
+      `bucket` labels (D7 5-bucket scheme). 4 other Node services pending
+      adoption. /readyz SLO payload is still optional (nice-to-have).
 - [x] **SecurityArchitect** (S2.8 owner) — D6/D7/§3.8.4 verdicts confirmed
-  2026-06-12 (round 6): D6 `target_type` final values LOCKED
-  (`image|filesystem|repo|archive|directory|sbom`), D7 5-bucket
-  `sbom_size_bucket` scheme LOCKED (xs/small/medium/large/xlarge, drop
-  xxlarge, xs added), §3.8.4 merge LOCKED with `route` label retained.
-  Per-bucket risk-calc SLOs in §3 are calibrated against the new scheme.
-  ~~**Conditional acceptance on D6 `tenant_tier` addition** — pending
-  PlatformArchitect final verdict on the cost-benefit (~230k per-service
-  vs current ~78k).~~ **D6 `tenant_tier` FINAL VERDICT 2026-06-12
-  (PlatformArchitect): APPROVE option 1.** `tenant_tier` is added to
-  `devsecops_sbom_generation_duration_seconds`; Sprint 3 recording-rule
-  pre-aggregation on `(target_type, tenant_tier, result)` is the planned
-  fix path. 230k per-service is within Prometheus's actual capacity;
-  recording rule drops alert-path series to ~30k.
+      2026-06-12 (round 6): D6 `target_type` final values LOCKED
+      (`image|filesystem|repo|archive|directory|sbom`), D7 5-bucket
+      `sbom_size_bucket` scheme LOCKED (xs/small/medium/large/xlarge, drop
+      xxlarge, xs added), §3.8.4 merge LOCKED with `route` label retained.
+      Per-bucket risk-calc SLOs in §3 are calibrated against the new scheme.
+      ~~**Conditional acceptance on D6 `tenant_tier` addition** — pending
+      PlatformArchitect final verdict on the cost-benefit (~230k per-service
+      vs current ~78k).~~ **D6 `tenant_tier` FINAL VERDICT 2026-06-12
+      (PlatformArchitect): APPROVE option 1.** `tenant_tier` is added to
+      `devsecops_sbom_generation_duration_seconds`; Sprint 3 recording-rule
+      pre-aggregation on `(target_type, tenant_tier, result)` is the planned
+      fix path. 230k per-service is within Prometheus's actual capacity;
+      recording rule drops alert-path series to ~30k.
 - [x] **VulnerabilityIntelligenceAgent** — polling cadence confirmed 2026-06-12
-  (round 6): NVD=60min, GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h.
-  SLO targets in §5.6 are now **anchored to the real cadence** (NVD/OSV
-  have 2× headroom; GHSA has 1× headroom — intentional, security-driven).
-  `vuln_feed_last_refresh_timestamp_seconds{source}` gauge spec added to
-  `metrics-spec.md` §3.11. **Round 8: emission DELIVERED from
-  `vulnerability-service` (port 4008)** — 5 source labels
-  (nvd|ghsa|osv|epss|kev) → ~5 active series, 82/82 unit tests pass.
-  5 other metrics shipped (sliding-window dedup counters, batch-size
-  histograms, KEV-event total). **Polling cadence env var contract
-  (`VULN_INTEL_INGEST_SCHEDULE_<SOURCE>_MINUTES`) added to SLO doc
-  §5.6 in round 8** so the cadence + SLO burn math stay in lockstep
-  and a re-anchor note is appended here on any future cadence change.
+      (round 6): NVD=60min, GHSA=15min (webhook), OSV=30min, EPSS=6h, KEV=6h.
+      SLO targets in §5.6 are now **anchored to the real cadence** (NVD/OSV
+      have 2× headroom; GHSA has 1× headroom — intentional, security-driven).
+      `vuln_feed_last_refresh_timestamp_seconds{source}` gauge spec added to
+      `metrics-spec.md` §3.11. **Round 8: emission DELIVERED from
+      `vulnerability-service` (port 4008)** — 5 source labels
+      (nvd|ghsa|osv|epss|kev) → ~5 active series, 82/82 unit tests pass.
+      5 other metrics shipped (sliding-window dedup counters, batch-size
+      histograms, KEV-event total). **Polling cadence env var contract
+      (`VULN_INTEL_INGEST_SCHEDULE_<SOURCE>_MINUTES`) added to SLO doc
+      §5.6 in round 8** so the cadence + SLO burn math stay in lockstep
+      and a re-anchor note is appended here on any future cadence change.
 - [x] **ComplianceOfficer (S2.9 owner) + SREEngineer (Sprint 2.5/2.11)** —
-  ✅ **DONE 2026-06-12.** ComplianceOfficer shipped path (b) audit
-  emission in compliance-service (4 files modified, 1 new `audit.ts` at
-  `backend/services/compliance/src/observability/audit.ts`). Counter
-  name: `audit_log_emission_total{service, result}` (2 series per
-  service; 11 `AuditKind` values enumerated). SREEngineer added §4.2
-  (99% emission-success SLO over 30d) and 2 alerts to
-  `alert-rules.yml` (`AuditLogEmissionErrorRate` ticket at error rate
-  >1% over 5m, `AuditLogEmissionErrorRatePage` page at error rate
-  >1/s for 5m). 30 rules total, lint exit 0. Cardinality well under
-  cap (~22 series for compliance-service). ComplianceOfficer created
-  the runbook `docs/runbooks/compliance-audit-log.md` (130 lines,
-  3-step decision tree, `event.type` vs `audit_kind` confusion callout).
-  Task `019ebc0f-ab38` completed. **F-14 decision (SRE, 2026-06-12):**
-  audit log store wiring = **option B (direct `AUDIT_LOG_TOPIC`
-  subscriber)** — durable PG persistence via bus subscriber, not
-  Loki→Promtail→PG. P5 task `019ebc1a-3468` is the implementation
-  owner (ComplianceOfficer, ~120 LOC).
-  deferred work.
+      ✅ **DONE 2026-06-12.** ComplianceOfficer shipped path (b) audit
+      emission in compliance-service (4 files modified, 1 new `audit.ts` at
+      `backend/services/compliance/src/observability/audit.ts`). Counter
+      name: `audit_log_emission_total{service, result}` (2 series per
+      service; 11 `AuditKind` values enumerated). SREEngineer added §4.2
+      (99% emission-success SLO over 30d) and 2 alerts to
+      `alert-rules.yml` (`AuditLogEmissionErrorRate` ticket at error rate
+  > 1% over 5m, `AuditLogEmissionErrorRatePage` page at error rate
+  > 1/s for 5m). 30 rules total, lint exit 0. Cardinality well under
+  > cap (~22 series for compliance-service). ComplianceOfficer created
+  > the runbook `docs/runbooks/compliance-audit-log.md` (130 lines,
+  > 3-step decision tree, `event.type` vs `audit_kind` confusion callout).
+  > Task `019ebc0f-ab38` completed. **F-14 decision (SRE, 2026-06-12):**
+  > audit log store wiring = **option B (direct `AUDIT_LOG_TOPIC`
+  > subscriber)** — durable PG persistence via bus subscriber, not
+  > Loki→Promtail→PG. P5 task `019ebc1a-3468` is the implementation
+  > owner (ComplianceOfficer, ~120 LOC).
+  > deferred work.
 - [ ] **Lead / S2.11 E2E validation owner** — confirm the SLOs are achievable
-  in production over the 30d baseline; tune targets if real telemetry shows
-  the p99 budgets are systematically missed (don't tighten on a single
-  bad day; relax only if 4+ weeks of data shows consistent overshoot).
-  Add the alert for `devsecops_vulnerability_ingestion_lag_seconds` to
-  `alert-rules.yml` once the cadence is confirmed. **Add 4 alerts**
-  (one per source + aggregate) to `security_stack.runtime` group.
+      in production over the 30d baseline; tune targets if real telemetry shows
+      the p99 budgets are systematically missed (don't tighten on a single
+      bad day; relax only if 4+ weeks of data shows consistent overshoot).
+      Add the alert for `devsecops_vulnerability_ingestion_lag_seconds` to
+      `alert-rules.yml` once the cadence is confirmed. **Add 4 alerts**
+      (one per source + aggregate) to `security_stack.runtime` group.
 - [ ] **SREEngineer (Sprint 3, D2 only)** — implement **recording-rule
-  pre-aggregation** for `devsecops_sbom_generation_duration_seconds` to
-  address the cardinality over-cap from D2 (per-service total ~78,000,
-  over the 50,000 soft cap). Per PlatformArchitect 2026-06-12 ACK: default
-  option 1, pre-aggregate on `(target_type, result)` for the alert path
-  while keeping raw series for dashboards. Expected drop: 78k → ~25k
-  active series per service. Switch the 9 S2.7 alerts to use the
-  recording rule. Tracked in `infra/observability/prometheus/
-  recording-rules.yml` (new file) and `docs/observability/metrics-spec.md`
-  §3.1 callout.
+      pre-aggregation** for `devsecops_sbom_generation_duration_seconds` to
+      address the cardinality over-cap from D2 (per-service total ~78,000,
+      over the 50,000 soft cap). Per PlatformArchitect 2026-06-12 ACK: default
+      option 1, pre-aggregate on `(target_type, result)` for the alert path
+      while keeping raw series for dashboards. Expected drop: 78k → ~25k
+      active series per service. Switch the 9 S2.7 alerts to use the
+      recording rule. Tracked in `infra/observability/prometheus/
+recording-rules.yml` (new file) and `docs/observability/metrics-spec.md`
+      §3.1 callout.
 - [ ] **SREEngineer (Sprint 3, §3.8) — NO LONGER NEEDED (round 6).**
-  Recording-rule pre-aggregation for `devsecops_proxy_request_duration_seconds`
-  was queued to address the §3.8 cardinality over-cap (security-service
-  :4003 per-service total ~109,400 at N=50 × 4 replicas). **Resolved
-  2026-06-12** by FullstackEngineer dropping `tenant_id_hash` from all
-  6 proxy metrics in the LANDED `metrics.ts` helper. Per-service total
-  is now ~560, **well under the 50k soft cap**. **REMOVED from Sprint 3
-  queue** — replaced by the (much smaller) D2 work.
+      Recording-rule pre-aggregation for `devsecops_proxy_request_duration_seconds`
+      was queued to address the §3.8 cardinality over-cap (security-service
+      :4003 per-service total ~109,400 at N=50 × 4 replicas). **Resolved
+      2026-06-12** by FullstackEngineer dropping `tenant_id_hash` from all
+      6 proxy metrics in the LANDED `metrics.ts` helper. Per-service total
+      is now ~560, **well under the 50k soft cap**. **REMOVED from Sprint 3
+      queue** — replaced by the (much smaller) D2 work.
 
 ---
 
-*End of SLO Targets — Security Stack v1.2 (Locked)*
+_End of SLO Targets — Security Stack v1.2 (Locked)_

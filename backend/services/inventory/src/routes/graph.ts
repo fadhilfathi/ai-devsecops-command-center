@@ -36,11 +36,21 @@ function requireTenant(tenantId: string): UUID {
   return tenantId as UUID;
 }
 
-async function snapshot(inventory: InventoryClient, tenantId: string, clusterId?: string): Promise<InventoryEngineInput> {
+async function snapshot(
+  inventory: InventoryClient,
+  tenantId: string,
+  clusterId?: string,
+): Promise<InventoryEngineInput> {
   return inventory.fetch(tenantId, clusterId);
 }
 
-function buildGraph(tenantId: string, name: string, clusterId: string | undefined, namespace: string | undefined, graph: { nodes: any[]; edges: any[] }): TopologyGraph {
+function buildGraph(
+  tenantId: string,
+  name: string,
+  clusterId: string | undefined,
+  namespace: string | undefined,
+  graph: { nodes: any[]; edges: any[] },
+): TopologyGraph {
   return {
     id: randomUUID(),
     tenantId,
@@ -64,9 +74,15 @@ export const buildGraphRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
       const snap = await snapshot(inventory, tenantId, q.clusterId);
       const graph = buildGraph(tenantId, 'unified-asset', q.clusterId, q.namespace, {
         nodes: engine.catalog(snap).map((a) => ({
-          id: a.id, label: a.name, kind: a.kind, namespace: a.namespace,
-          clusterId: a.clusterId, clusterName: a.clusterName, tags: Object.entries(a.labels).map(([k, v]) => `${k}=${v}`),
-          metadata: a.metadata, riskScore: 0,
+          id: a.id,
+          label: a.name,
+          kind: a.kind,
+          namespace: a.namespace,
+          clusterId: a.clusterId,
+          clusterName: a.clusterName,
+          tags: Object.entries(a.labels).map(([k, v]) => `${k}=${v}`),
+          metadata: a.metadata,
+          riskScore: 0,
         })),
         edges: [],
       });

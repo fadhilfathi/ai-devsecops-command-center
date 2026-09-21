@@ -16,7 +16,12 @@ import type { ReportEngine, ReportEngineInput } from '../engine/report.engine.js
 import type { InventoryClient } from '../inventory/client.js';
 import { toJson, toMarkdown, toPdf, type ReportFormat } from '../formatters/format.js';
 
-interface Deps { logger: Logger; inventory: InventoryClient; engine: ReportEngine; bus: EventBus; }
+interface Deps {
+  logger: Logger;
+  inventory: InventoryClient;
+  engine: ReportEngine;
+  bus: EventBus;
+}
 
 const QuerySchema = z.object({
   format: z.enum(['json', 'md', 'pdf']).default('json'),
@@ -53,7 +58,10 @@ function sendReport(reply: any, report: Report, format: ReportFormat, filename: 
   return reply.send(toPdf(report));
 }
 
-export const buildReportRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildReportRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, inventory, engine, bus } = opts;
 
   async function loadInput(tenantId: string, clusterId?: string): Promise<ReportEngineInput> {
@@ -86,12 +94,30 @@ export const buildReportRoutes: FastifyPluginAsync<Deps> = async (server: Fastif
     };
   }
 
-  server.get('/v1/reports/cluster-health', makeHandler((i) => engine.clusterHealth(i), 'cluster-health'));
-  server.get('/v1/reports/infrastructure-risk', makeHandler((i) => engine.infrastructureRisk(i), 'infrastructure-risk'));
-  server.get('/v1/reports/runtime-security', makeHandler((i) => engine.runtimeSecurity(i), 'runtime-security'));
-  server.get('/v1/reports/cost-optimization', makeHandler((i) => engine.costOptimization(i), 'cost-optimization'));
-  server.get('/v1/reports/topology', makeHandler((i) => engine.topology(i), 'topology'));
-  server.get('/v1/reports/executive-summary', makeHandler((i) => engine.executiveSummary(i), 'executive-summary'));
+  server.get(
+    '/v1/reports/cluster-health',
+    makeHandler((i) => engine.clusterHealth(i), 'cluster-health'),
+  );
+  server.get(
+    '/v1/reports/infrastructure-risk',
+    makeHandler((i) => engine.infrastructureRisk(i), 'infrastructure-risk'),
+  );
+  server.get(
+    '/v1/reports/runtime-security',
+    makeHandler((i) => engine.runtimeSecurity(i), 'runtime-security'),
+  );
+  server.get(
+    '/v1/reports/cost-optimization',
+    makeHandler((i) => engine.costOptimization(i), 'cost-optimization'),
+  );
+  server.get(
+    '/v1/reports/topology',
+    makeHandler((i) => engine.topology(i), 'topology'),
+  );
+  server.get(
+    '/v1/reports/executive-summary',
+    makeHandler((i) => engine.executiveSummary(i), 'executive-summary'),
+  );
 
   // Catalogue endpoint (Sprint 5 will add a report-schedule UI here).
   server.get('/v1/reports', async () => ({

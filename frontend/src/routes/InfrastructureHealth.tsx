@@ -1,12 +1,16 @@
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { KpiGrid, KpiTile } from "@/components/ui/KpiTile";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { titleCase, fmtRel } from "@/lib/format";
-import type { InfrastructureHealth, HealthIssue, HealthRecommendation } from "@/types/infrastructure";
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { KpiGrid, KpiTile } from '@/components/ui/KpiTile';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { titleCase, fmtRel } from '@/lib/format';
+import type {
+  InfrastructureHealth,
+  HealthIssue,
+  HealthRecommendation,
+} from '@/types/infrastructure';
 
 /**
  * Infrastructure Health — health rollup across the tenant's
@@ -21,41 +25,69 @@ export function InfrastructureHealthPage() {
   const { data: recsData } = useFetch(api.healthRecommendations, { items: [], total: 0 });
 
   const all = [...clusters.items, ...namespaces.items, ...workloads.items, ...pods.items];
-  const avg = all.length === 0 ? 0 : Math.round(all.reduce((a, h) => a + h.score.score, 0) / all.length);
+  const avg =
+    all.length === 0 ? 0 : Math.round(all.reduce((a, h) => a + h.score.score, 0) / all.length);
 
   const healthColumns: Column<InfrastructureHealth & { key: string }>[] = [
-    { key: "scope", header: "Scope", cell: (h) => <Badge variant="neutral">{h.scope}</Badge> },
-    { key: "name", header: "Subject", cell: (h) => h.subject.name },
-    { key: "score", header: "Score", cell: (h) => `${h.score.score} (${h.score.band})` },
-    { key: "status", header: "Status", cell: (h) => (
-      <Badge variant={
-        h.score.status === "healthy" ? "ok"
-        : h.score.status === "degraded" ? "warn"
-        : h.score.status === "unhealthy" ? "danger"
-        : "neutral"
-      }>{titleCase(h.score.status)}</Badge>
-    ) },
-    { key: "crit", header: "Crit", cell: (h) => h.score.counts.critical },
-    { key: "high", header: "High", cell: (h) => h.score.counts.high },
+    { key: 'scope', header: 'Scope', cell: (h) => <Badge variant="neutral">{h.scope}</Badge> },
+    { key: 'name', header: 'Subject', cell: (h) => h.subject.name },
+    { key: 'score', header: 'Score', cell: (h) => `${h.score.score} (${h.score.band})` },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (h) => (
+        <Badge
+          variant={
+            h.score.status === 'healthy'
+              ? 'ok'
+              : h.score.status === 'degraded'
+                ? 'warn'
+                : h.score.status === 'unhealthy'
+                  ? 'danger'
+                  : 'neutral'
+          }
+        >
+          {titleCase(h.score.status)}
+        </Badge>
+      ),
+    },
+    { key: 'crit', header: 'Crit', cell: (h) => h.score.counts.critical },
+    { key: 'high', header: 'High', cell: (h) => h.score.counts.high },
   ];
 
   const issueColumns: Column<HealthIssue & { key: string }>[] = [
-    { key: "kind", header: "Kind", cell: (i) => <Badge variant="neutral">{i.kind}</Badge> },
-    { key: "sev", header: "Severity", cell: (i) => <Badge variant="severity" severity={i.severity}>{titleCase(i.severity)}</Badge> },
-    { key: "subj", header: "Subject", cell: (i) => `${i.subject.kind}/${i.subject.name}` },
-    { key: "msg", header: "Message", cell: (i) => <span className="text-xs">{i.message}</span> },
-    { key: "det", header: "Detected", cell: (i) => fmtRel(i.detectedAt) },
+    { key: 'kind', header: 'Kind', cell: (i) => <Badge variant="neutral">{i.kind}</Badge> },
+    {
+      key: 'sev',
+      header: 'Severity',
+      cell: (i) => (
+        <Badge variant="severity" severity={i.severity}>
+          {titleCase(i.severity)}
+        </Badge>
+      ),
+    },
+    { key: 'subj', header: 'Subject', cell: (i) => `${i.subject.kind}/${i.subject.name}` },
+    { key: 'msg', header: 'Message', cell: (i) => <span className="text-xs">{i.message}</span> },
+    { key: 'det', header: 'Detected', cell: (i) => fmtRel(i.detectedAt) },
   ];
 
   const recColumns: Column<HealthRecommendation & { key: string }>[] = [
-    { key: "prio", header: "Priority", cell: (r) => (
-      <Badge variant={r.priority === "p0" ? "danger" : r.priority === "p1" ? "warn" : "neutral"}>
-        {r.priority.toUpperCase()}
-      </Badge>
-    ) },
-    { key: "title", header: "Title", cell: (r) => r.title },
-    { key: "action", header: "Action", cell: (r) => <code className="text-[11px] text-aion-muted">{r.action}</code> },
-    { key: "affected", header: "Affected", cell: (r) => r.affectedCount },
+    {
+      key: 'prio',
+      header: 'Priority',
+      cell: (r) => (
+        <Badge variant={r.priority === 'p0' ? 'danger' : r.priority === 'p1' ? 'warn' : 'neutral'}>
+          {r.priority.toUpperCase()}
+        </Badge>
+      ),
+    },
+    { key: 'title', header: 'Title', cell: (r) => r.title },
+    {
+      key: 'action',
+      header: 'Action',
+      cell: (r) => <code className="text-[11px] text-aion-muted">{r.action}</code>,
+    },
+    { key: 'affected', header: 'Affected', cell: (r) => r.affectedCount },
   ];
 
   return (
@@ -63,7 +95,7 @@ export function InfrastructureHealthPage() {
       <PageHeader
         title="Infrastructure Health"
         subtitle="Health rollup across clusters, namespaces, workloads, and pods."
-        breadcrumbs={[{ label: "Infrastructure" }, { label: "Health" }]}
+        breadcrumbs={[{ label: 'Infrastructure' }, { label: 'Health' }]}
       />
 
       <KpiGrid>

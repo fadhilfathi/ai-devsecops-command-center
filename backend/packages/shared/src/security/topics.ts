@@ -131,15 +131,7 @@ export interface SecurityScanCompletedEvent {
   /** The asset id that was scanned (image:tag, repo:branch, host:id). REQUIRED. */
   assetId: string;
   tenantId: string;
-  scanner:
-    | 'trivy'
-    | 'grype'
-    | 'syft'
-    | 'checkov'
-    | 'semgrep'
-    | 'codeql'
-    | 'falco'
-    | 'other';
+  scanner: 'trivy' | 'grype' | 'syft' | 'checkov' | 'semgrep' | 'codeql' | 'falco' | 'other';
   /** Vulnerabilities found, in canonical Vulnerability shape. */
   findings: import('@aicc/shared/security').Vulnerability[];
   /** Raw SBOM (CycloneDX JSON string) — when the scan produced one. */

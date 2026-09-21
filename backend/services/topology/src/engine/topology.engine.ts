@@ -32,10 +32,20 @@
  */
 import { randomUUID } from 'node:crypto';
 import type {
-  Cluster, Namespace, Workload, Pod, Service, Ingress,
-  Deployment, StatefulSet, DaemonSet,
-  TopologyGraph, TopologyNode, TopologyEdge,
-  TopologyNodeKind, TopologyEdgeKind,
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Ingress,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
+  TopologyGraph,
+  TopologyNode,
+  TopologyEdge,
+  TopologyNodeKind,
+  TopologyEdgeKind,
 } from '@aicc/models';
 
 export interface TopologyEngineInput {
@@ -54,33 +64,63 @@ export interface TopologyEngine {
   serviceMap(input: TopologyEngineInput, name: string, clusterId?: string): TopologyGraph;
   applicationGraph(input: TopologyEngineInput, name: string, clusterId?: string): TopologyGraph;
   fullGraph(input: TopologyEngineInput, name: string, clusterId?: string): TopologyGraph;
-  namespaceView(input: TopologyEngineInput, namespace: string, name: string, clusterId?: string): TopologyGraph;
-  namespaceRelationships(input: TopologyEngineInput, clusterId?: string): { items: TopologyEdge[]; total: number };
+  namespaceView(
+    input: TopologyEngineInput,
+    namespace: string,
+    name: string,
+    clusterId?: string,
+  ): TopologyGraph;
+  namespaceRelationships(
+    input: TopologyEngineInput,
+    clusterId?: string,
+  ): { items: TopologyEdge[]; total: number };
 }
 
-function nodeKindFor(kind: 'cluster' | 'namespace' | 'service' | 'workload' | 'ingress' | 'pod'): TopologyNodeKind {
+function nodeKindFor(
+  kind: 'cluster' | 'namespace' | 'service' | 'workload' | 'ingress' | 'pod',
+): TopologyNodeKind {
   return kind;
 }
 
 function makeNode(
-  id: string, label: string, kind: TopologyNodeKind,
-  namespace: string | undefined, clusterId: string | undefined, clusterName: string | undefined,
+  id: string,
+  label: string,
+  kind: TopologyNodeKind,
+  namespace: string | undefined,
+  clusterId: string | undefined,
+  clusterName: string | undefined,
   tags: string[] = [],
   riskScore = 0,
 ): TopologyNode {
   return {
-    id, label, kind, namespace, clusterId, clusterName,
-    tags, riskScore, metadata: {},
+    id,
+    label,
+    kind,
+    namespace,
+    clusterId,
+    clusterName,
+    tags,
+    riskScore,
+    metadata: {},
   };
 }
 
-function makeEdge(source: string, target: string, kind: TopologyEdgeKind, label?: string, weight = 1.0): TopologyEdge {
+function makeEdge(
+  source: string,
+  target: string,
+  kind: TopologyEdgeKind,
+  label?: string,
+  weight = 1.0,
+): TopologyEdge {
   return { id: randomUUID(), source, target, kind, label, weight, metadata: {} };
 }
 
 function wrapGraph(
-  tenantId: string, name: string, clusterId: string | undefined,
-  nodes: TopologyNode[], edges: TopologyEdge[],
+  tenantId: string,
+  name: string,
+  clusterId: string | undefined,
+  nodes: TopologyNode[],
+  edges: TopologyEdge[],
 ): TopologyGraph {
   return {
     id: randomUUID(),
@@ -112,13 +152,25 @@ export function buildTopologyEngine(): TopologyEngine {
       }
       for (const svc of input.services) {
         if (clusterId && svc.clusterId !== clusterId) continue;
-        nodes.push(makeNode(svc.id, svc.name, 'service', svc.namespace, svc.clusterId, svc.clusterName, Object.entries(svc.selector).map(([k, v]) => `${k}=${v}`)));
+        nodes.push(
+          makeNode(
+            svc.id,
+            svc.name,
+            'service',
+            svc.namespace,
+            svc.clusterId,
+            svc.clusterName,
+            Object.entries(svc.selector).map(([k, v]) => `${k}=${v}`),
+          ),
+        );
         for (const [k, v] of Object.entries(svc.selector)) {
           const matches = bySelector.get(sKey(svc.clusterId, svc.namespace, k, v)) ?? [];
           for (const w of matches) {
             const wk = workloadKey(w);
             if (!nodes.find((n) => n.id === w.id)) {
-              nodes.push(makeNode(w.id, w.name, 'workload', w.namespace, w.clusterId, w.clusterName, [wk]));
+              nodes.push(
+                makeNode(w.id, w.name, 'workload', w.namespace, w.clusterId, w.clusterName, [wk]),
+              );
             }
             edges.push(makeEdge(svc.id, w.id, 'selects', `${k}=${v}`));
           }
@@ -133,17 +185,35 @@ export function buildTopologyEngine(): TopologyEngine {
       const edges = [...serviceMap.edges];
       for (const ing of input.ingresses) {
         if (clusterId && ing.clusterId !== clusterId) continue;
-        nodes.push(makeNode(ing.id, ing.name, 'ingress', ing.namespace, ing.clusterId, ing.clusterName, [`class=${ing.className}`]));
+        nodes.push(
+          makeNode(ing.id, ing.name, 'ingress', ing.namespace, ing.clusterId, ing.clusterName, [
+            `class=${ing.className}`,
+          ]),
+        );
         for (const rule of ing.rules) {
           const target = input.services.find(
-            (s) => s.clusterId === ing.clusterId && s.namespace === ing.namespace && s.name === rule.serviceName,
+            (s) =>
+              s.clusterId === ing.clusterId &&
+              s.namespace === ing.namespace &&
+              s.name === rule.serviceName,
           );
           if (!target) continue;
           if (!nodes.find((n) => n.id === target.id)) {
-            nodes.push(makeNode(target.id, target.name, 'service', target.namespace, target.clusterId, target.clusterName));
+            nodes.push(
+              makeNode(
+                target.id,
+                target.name,
+                'service',
+                target.namespace,
+                target.clusterId,
+                target.clusterName,
+              ),
+            );
           }
           const port = typeof rule.servicePort === 'number' ? rule.servicePort : rule.servicePort;
-          edges.push(makeEdge(ing.id, target.id, 'routes_to', `${rule.host ?? '*'}${rule.path}→:${port}`));
+          edges.push(
+            makeEdge(ing.id, target.id, 'routes_to', `${rule.host ?? '*'}${rule.path}→:${port}`),
+          );
         }
       }
       return wrapGraph(input.clusters[0]?.tenantId ?? '', name, clusterId, nodes, edges);
@@ -157,7 +227,9 @@ export function buildTopologyEngine(): TopologyEngine {
       for (const c of input.clusters) {
         if (clusterId && c.id !== clusterId) continue;
         if (!nodes.find((n) => n.id === c.id)) {
-          nodes.push(makeNode(c.id, c.name, 'cluster', undefined, c.id, c.name, [`provider=${c.provider}`]));
+          nodes.push(
+            makeNode(c.id, c.name, 'cluster', undefined, c.id, c.name, [`provider=${c.provider}`]),
+          );
         }
       }
       for (const ns of input.namespaces) {

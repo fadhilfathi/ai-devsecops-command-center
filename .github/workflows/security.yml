@@ -50,14 +50,14 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 3 * * *"        # 03:00 UTC daily — sbom-commit + cleanup
-    - cron: "0 6 * * 1"        # 06:00 UTC Mondays — weekly-digest
+    - cron: '0 3 * * *' # 03:00 UTC daily — sbom-commit + cleanup
+    - cron: '0 6 * * 1' # 06:00 UTC Mondays — weekly-digest
   workflow_dispatch:
     inputs:
       force:
-        description: "Force re-run (skip dedup)"
+        description: 'Force re-run (skip dedup)'
         required: false
-        default: "false"
+        default: 'false'
   repository_dispatch:
     types: [vulnerability-detected, supported-version-released]
 
@@ -72,10 +72,10 @@ permissions:
   contents: read
 
 env:
-  SBOM_BOT_NAME: "github-actions[bot]"
-  SBOM_BOT_EMAIL: "github-actions[bot]@users.noreply.github.com"
-  SBOM_BRANCH_PREFIX: "security/automated"
-  RETENTION_DAYS: "90"
+  SBOM_BOT_NAME: 'github-actions[bot]'
+  SBOM_BOT_EMAIL: 'github-actions[bot]@users.noreply.github.com'
+  SBOM_BRANCH_PREFIX: 'security/automated'
+  RETENTION_DAYS: '90'
   # Fork-context support: when the workflow runs in a fork (e.g. a security
   # researcher fork), the default GITHUB_TOKEN lacks contents:write and
   # pull-requests:write on the upstream repo. Set `GH_PUSH_TOKEN` to a PAT
@@ -92,7 +92,7 @@ jobs:
   # Owned by GitOpsManager (S2.10 follow-up, per SREEngineer coordination).
   # ─────────────────────────────────────────────────────────────────────────
   create-labels:
-    name: "Ensure security + severity labels exist"
+    name: 'Ensure security + severity labels exist'
     if: github.event_name != 'repository_dispatch' || github.event.action == 'supported-version-released'
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -133,14 +133,14 @@ jobs:
   # Job 1: SBOM commit (CycloneDX + SPDX) → security/sboms/
   # ─────────────────────────────────────────────────────────────────────────
   sbom-commit:
-    name: "Generate and commit SBOMs"
+    name: 'Generate and commit SBOMs'
     needs: create-labels
     if: github.event_name != 'repository_dispatch' || github.event.action == 'supported-version-released'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write         # to open a PR
-      pull-requests: write    # to open a PR
+      contents: write # to open a PR
+      pull-requests: write # to open a PR
     outputs:
       sbom_id: ${{ steps.compute-id.outputs.sbom_id }}
       sbom_branch: ${{ steps.branch.outputs.name }}
@@ -153,7 +153,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20.18.0"
+          node-version: '22.12.0'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -306,7 +306,7 @@ jobs:
   # Job 2: Vulnerability report append → security/vulns/<date>.json
   # ─────────────────────────────────────────────────────────────────────────
   vuln-report:
-    name: "Append vulnerability finding to daily NDJSON"
+    name: 'Append vulnerability finding to daily NDJSON'
     needs: create-labels
     if: github.event_name == 'repository_dispatch' && github.event.action == 'vulnerability-detected'
     runs-on: ubuntu-latest
@@ -413,7 +413,7 @@ jobs:
         run: git push origin "${{ steps.branch.outputs.name }}"
 
       - name: Open pull request
-        if: steps.parse.outputs.is_critical == 'false'  # critical findings go through security-issue.yml
+        if: steps.parse.outputs.is_critical == 'false' # critical findings go through security-issue.yml
         uses: actions/github-script@v7
         with:
           script: |
@@ -467,7 +467,7 @@ jobs:
   # Job 3: Weekly digest → security/vulns/weekly-<YYYY-Www>.md
   # ─────────────────────────────────────────────────────────────────────────
   weekly-digest:
-    name: "Aggregate weekly vulnerability digest"
+    name: 'Aggregate weekly vulnerability digest'
     needs: create-labels
     if: github.event.schedule == '0 6 * * 1' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -604,7 +604,7 @@ jobs:
   # Job 4: Retention cleanup — prune security/vulns/*.json older than 90d
   # ─────────────────────────────────────────────────────────────────────────
   cleanup:
-    name: "Prune vulns older than ${RETENTION_DAYS} days"
+    name: 'Prune vulns older than ${RETENTION_DAYS} days'
     needs: create-labels
     if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -688,7 +688,7 @@ jobs:
   # Job 5: Sync SLA table + supported versions in SECURITY.md
   # ─────────────────────────────────────────────────────────────────────────
   sync-sla:
-    name: "Sync SECURITY.md auto-managed sections"
+    name: 'Sync SECURITY.md auto-managed sections'
     needs: create-labels
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'repository_dispatch' && github.event.action == 'supported-version-released')
     runs-on: ubuntu-latest

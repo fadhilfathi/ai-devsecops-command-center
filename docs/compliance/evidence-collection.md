@@ -22,9 +22,9 @@ and the audit log ([`audit-logging.md`](./audit-logging.md)).
 The platform's compliance posture rests on the principle that
 **evidence must be produced by automated systems, not humans filling
 out spreadsheets**. Every control in the framework mappings has at
-least one *evidence source* — typically a system that emits a
+least one _evidence source_ — typically a system that emits a
 machine-checkable artefact. A control without an evidence source is
-considered *Not Implemented* regardless of intent.
+considered _Not Implemented_ regardless of intent.
 
 ## 1. Evidence types
 
@@ -37,6 +37,7 @@ A snapshot of a system's configuration at a point in time, suitable
 for diffing against a baseline.
 
 Examples:
+
 - A rendered Kubernetes manifest from Terraform.
 - A rendered Auth service config.
 - A cloud IAM policy export.
@@ -51,6 +52,7 @@ Records of system activity that demonstrate the control is operating
 in production.
 
 Examples:
+
 - An audit log record showing a privileged access review.
 - A CI run log showing a security scan ran and passed.
 - A pen-test report attached to the control.
@@ -66,6 +68,7 @@ control is operating as designed. Used sparingly; the platform
 prefers CE and AE.
 
 Examples:
+
 - A quarterly self-attestation by the SecurityArchitect on a control.
 - An annual external pen-test attestation.
 
@@ -78,6 +81,7 @@ A reference to evidence produced by an external system (cloud
 provider, upstream service) that the platform relies on.
 
 Examples:
+
 - The cloud provider's SOC 2 report.
 - The cloud provider's ISO 27001 certificate.
 - An upstream library's SBOM.
@@ -91,23 +95,23 @@ Every evidence record has a **source** — the system that produced or
 collected it. Sources are versioned and authenticated; an unknown
 source is rejected.
 
-| Source | Type | Description | Authentication |
-|---|---|---|---|
-| `terraform` | CE | Exported from Terraform state | mTLS, signed manifest |
-| `ci-pipeline` | AE, CE | GitHub Actions / equivalent runs | OIDC + signed provenance (SLSA) |
-| `cd-pipeline` | AE, CE | ArgoCD / equivalent | OIDC + signed manifests |
-| `audit-log` | AE | Reference to audit log record | Hash chain |
-| `siem` | AE | Reference to SIEM event | Hash chain |
-| `k8s-api` | CE | Live K8s API read | mTLS + RBAC |
-| `cloud-iam` | CE | Cloud IAM policy export | Service identity |
-| `k8s-audit` | AE | K8s audit log | Hash chain |
-| `cloud-audit` | AE | Cloud audit log (CloudTrail, etc.) | Cloud-native integrity |
-| `image-registry` | CE | Container image config | Cosign signature |
-| `sbom` | CE, IN | CycloneDX SBOM | Provenance + signature |
-| `pentest` | AT | External pen-test report | Signed delivery |
-| `training-system` | AT | Training completion | SSO + signed record |
-| `manual-attestation` | AT | Human attestation | WebAuthn signature |
-| `compliance-service` | AE, CE | The Compliance service itself | Internal mTLS |
+| Source               | Type   | Description                        | Authentication                  |
+| -------------------- | ------ | ---------------------------------- | ------------------------------- |
+| `terraform`          | CE     | Exported from Terraform state      | mTLS, signed manifest           |
+| `ci-pipeline`        | AE, CE | GitHub Actions / equivalent runs   | OIDC + signed provenance (SLSA) |
+| `cd-pipeline`        | AE, CE | ArgoCD / equivalent                | OIDC + signed manifests         |
+| `audit-log`          | AE     | Reference to audit log record      | Hash chain                      |
+| `siem`               | AE     | Reference to SIEM event            | Hash chain                      |
+| `k8s-api`            | CE     | Live K8s API read                  | mTLS + RBAC                     |
+| `cloud-iam`          | CE     | Cloud IAM policy export            | Service identity                |
+| `k8s-audit`          | AE     | K8s audit log                      | Hash chain                      |
+| `cloud-audit`        | AE     | Cloud audit log (CloudTrail, etc.) | Cloud-native integrity          |
+| `image-registry`     | CE     | Container image config             | Cosign signature                |
+| `sbom`               | CE, IN | CycloneDX SBOM                     | Provenance + signature          |
+| `pentest`            | AT     | External pen-test report           | Signed delivery                 |
+| `training-system`    | AT     | Training completion                | SSO + signed record             |
+| `manual-attestation` | AT     | Human attestation                  | WebAuthn signature              |
+| `compliance-service` | AE, CE | The Compliance service itself      | Internal mTLS                   |
 
 ## 3. Evidence store
 
@@ -281,16 +285,16 @@ All customer-facing access is itself audit-logged.
 
 The platform tracks:
 
-| Evidence | Source | Cadence |
-|---|---|---|
-| Background check completion | HR system | On hire + per re-screen |
-| NDA / AUP signature | HR system | On hire + on change |
-| Security training completion | Training system | Annual + on role change |
-| Phishing sim results | Training system | Monthly |
-| Role-based training (engineer, admin) | Training system | Annual |
-| Incident response drill participation | IR service | Quarterly |
-| Termination workflow execution | HR system | On event |
-| Access review participation | Compliance service | Quarterly |
+| Evidence                              | Source             | Cadence                 |
+| ------------------------------------- | ------------------ | ----------------------- |
+| Background check completion           | HR system          | On hire + per re-screen |
+| NDA / AUP signature                   | HR system          | On hire + on change     |
+| Security training completion          | Training system    | Annual + on role change |
+| Phishing sim results                  | Training system    | Monthly                 |
+| Role-based training (engineer, admin) | Training system    | Annual                  |
+| Incident response drill participation | IR service         | Quarterly               |
+| Termination workflow execution        | HR system          | On event                |
+| Access review participation           | Compliance service | Quarterly               |
 
 These feed the AT and PS control families in [`nist-800-53.md`](./nist-800-53.md).
 
@@ -380,14 +384,14 @@ Evidence: training completion, periodic audits, exception register.
 
 ## 15. SLAs and timeliness
 
-| Evidence class | Maximum age | Consequence if stale |
-|---|---|---|
+| Evidence class     | Maximum age            | Consequence if stale                                                     |
+| ------------------ | ---------------------- | ------------------------------------------------------------------------ |
 | CE (configuration) | 1 × collection cadence | `compliance.evidence.stale` alert; non-compliant status after 2× cadence |
-| AE (activity) | 1 × collection cadence | Same |
-| AT (attestation) | 1 × required frequency | Same |
-| IN (inherited) | 1 year | Manual review triggered |
-| Pen-test | 1 year | Non-compliant; POA&M auto-opened |
-| Training | 1 year | Non-compliant; user access restrictions apply |
+| AE (activity)      | 1 × collection cadence | Same                                                                     |
+| AT (attestation)   | 1 × required frequency | Same                                                                     |
+| IN (inherited)     | 1 year                 | Manual review triggered                                                  |
+| Pen-test           | 1 year                 | Non-compliant; POA&M auto-opened                                         |
+| Training           | 1 year                 | Non-compliant; user access restrictions apply                            |
 
 ## 16. Audit of the audit (meta-controls)
 
@@ -460,14 +464,14 @@ service.
 
 Six rules ship in v1:
 
-| Rule | Framework | Control | Predicate | SLA |
-|---|---|---|---|---|
-| `cis-7-continuous-vuln-management` | cis_v8 | 7 | `severity_gte(medium)` | 30 d |
-| `cis-16-application-software-security` | cis_v8 | 16 | `kind_eq(sca)` | 30 d |
-| `nist-si-2-flaw-remediation` | nist_800_53 | SI-2 | `always` | 30 d |
-| `nist-ra-5-vuln-monitoring` | nist_800_53 | RA-5 | `always` | 30 d |
-| `nist-si-7-software-firmware-integrity` | nist_800_53 | SI-7 | `kev(true)` | 7 d |
-| `nist-sa-11-developer-testing` | nist_800_53 | SA-11 | `introduced_within_days(30)` | 14 d |
+| Rule                                    | Framework   | Control | Predicate                    | SLA  |
+| --------------------------------------- | ----------- | ------- | ---------------------------- | ---- |
+| `cis-7-continuous-vuln-management`      | cis_v8      | 7       | `severity_gte(medium)`       | 30 d |
+| `cis-16-application-software-security`  | cis_v8      | 16      | `kind_eq(sca)`               | 30 d |
+| `nist-si-2-flaw-remediation`            | nist_800_53 | SI-2    | `always`                     | 30 d |
+| `nist-ra-5-vuln-monitoring`             | nist_800_53 | RA-5    | `always`                     | 30 d |
+| `nist-si-7-software-firmware-integrity` | nist_800_53 | SI-7    | `kev(true)`                  | 7 d  |
+| `nist-sa-11-developer-testing`          | nist_800_53 | SA-11   | `introduced_within_days(30)` | 14 d |
 
 The rule DSL supports: `always`, `severity_gte`, `severity_eq`,
 `kind_eq`, `kev`, `introduced_within_days`, `cve_pattern`,
@@ -524,12 +528,12 @@ A POA&M item moves through this state machine:
 
 ### SLA table
 
-| Severity | Calendar days | Rationale |
-|---|---|---|
-| Critical | 7 | Active exploitation likely; per CIS 7 IG2 |
-| High | 30 | Standard remediation window |
-| Medium | 90 | Routine |
-| Low | 180 | Backlog |
+| Severity | Calendar days | Rationale                                 |
+| -------- | ------------- | ----------------------------------------- |
+| Critical | 7             | Active exploitation likely; per CIS 7 IG2 |
+| High     | 30            | Standard remediation window               |
+| Medium   | 90            | Routine                                   |
+| Low      | 180           | Backlog                                   |
 
 (Sprint 3 enhancement: business-day SLAs, customer-configurable per
 control.)
@@ -554,13 +558,13 @@ artifacts back to the repo.
 
 ## 18.5 Event taxonomy (compliance service)
 
-| Event | When | Severity | Consumers |
-|---|---|---|---|
-| `compliance.control.violated` | A control transitions to `fail` | inherits vuln severity | SRE SIEM, customer notifications |
-| `compliance.evidence.attached` | An evidence record is created | `info` | Audit log, GRC tool, customer dashboard |
-| `compliance.poam.created` | A POA&M is created (manual or auto) | inherits severity | SRE SIEM, customer notifications, GitOps automation |
-| `compliance.poam.closed` | A POA&M is closed with evidence | `notice` | SRE SIEM, customer dashboard |
-| `compliance.poam.overdue` | Hourly scanner marks a POA&M overdue | inherits severity | SRE SIEM, customer notifications, escalation |
+| Event                          | When                                 | Severity               | Consumers                                           |
+| ------------------------------ | ------------------------------------ | ---------------------- | --------------------------------------------------- |
+| `compliance.control.violated`  | A control transitions to `fail`      | inherits vuln severity | SRE SIEM, customer notifications                    |
+| `compliance.evidence.attached` | An evidence record is created        | `info`                 | Audit log, GRC tool, customer dashboard             |
+| `compliance.poam.created`      | A POA&M is created (manual or auto)  | inherits severity      | SRE SIEM, customer notifications, GitOps automation |
+| `compliance.poam.closed`       | A POA&M is closed with evidence      | `notice`               | SRE SIEM, customer dashboard                        |
+| `compliance.poam.overdue`      | Hourly scanner marks a POA&M overdue | inherits severity      | SRE SIEM, customer notifications, escalation        |
 
 ## 18.6 Open questions (Sprint 3+)
 
@@ -575,4 +579,3 @@ artifacts back to the repo.
    auto-escalated to a different team after N days? (Sprint 3.)
 4. **Customer-overridable SLAs** — should enterprise customers be
    able to set their own SLA per severity? (Sprint 3.)
-

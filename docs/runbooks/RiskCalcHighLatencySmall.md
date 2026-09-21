@@ -17,7 +17,7 @@ regression in dependency-intel itself, not in the data.
 ## Triage steps
 
 1. **Confirm scope.** In Grafana → Security Stack dashboard → Risk Calc
-   panel, filter `sbom_size_bucket="small"`. Is it *all* small SBOMs, or
+   panel, filter `sbom_size_bucket="small"`. Is it _all_ small SBOMs, or
    only one tenant / one source? If only one tenant, jump to step 4.
 2. **Check dependency-intel health.**
    - `curl http://dependency-intel:4009/readyz` — should return 200
@@ -37,7 +37,7 @@ regression in dependency-intel itself, not in the data.
 
 - **Short-term:** none required; this is a ticket, not a page. File an
   issue with the p95 graph attached.
-- **Long-term:** if p95 > 1s is the *steady state*, raise the bucket
+- **Long-term:** if p95 > 1s is the _steady state_, raise the bucket
   threshold in §3 of `docs/observability/slos-security-stack.md` (requires
   PlatformArchitect re-sign-off) and open a perf ticket against
   dependency-intel.

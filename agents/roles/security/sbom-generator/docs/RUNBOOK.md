@@ -5,15 +5,15 @@ generator service in production.
 
 ## Container image
 
-| Item          | Value                                              |
-|---------------|----------------------------------------------------|
-| Image         | `aionrs/sbom-generator`                            |
-| Tag pattern   | `<git-sha>` for prod, `dev` for local              |
-| Base          | `python:3.11-slim`                                 |
-| Syft binary   | Anchore Syft, pinned via `SYFT_VERSION` build arg  |
-| User          | `aionrs` (uid 1001)                                |
-| Port          | `4007`                                             |
-| Healthcheck   | `GET /healthz` every 30s                           |
+| Item        | Value                                             |
+| ----------- | ------------------------------------------------- |
+| Image       | `aionrs/sbom-generator`                           |
+| Tag pattern | `<git-sha>` for prod, `dev` for local             |
+| Base        | `python:3.11-slim`                                |
+| Syft binary | Anchore Syft, pinned via `SYFT_VERSION` build arg |
+| User        | `aionrs` (uid 1001)                               |
+| Port        | `4007`                                            |
+| Healthcheck | `GET /healthz` every 30s                          |
 
 ## Resource requests / limits (recommended)
 
@@ -83,8 +83,8 @@ Check `syft` exit code in the response details. Common causes:
 
 ## SLIs / SLOs (recommended starting points)
 
-| SLI                                              | SLO     |
-|--------------------------------------------------|---------|
-| `1 - (5xx / total)` (success rate)               | 99.5%   |
-| `/v1/sbom/generate` p99 latency                  | < 30s   |
-| `/healthz` uptime                                | 99.9%   |
+| SLI                                | SLO   |
+| ---------------------------------- | ----- |
+| `1 - (5xx / total)` (success rate) | 99.5% |
+| `/v1/sbom/generate` p99 latency    | < 30s |
+| `/healthz` uptime                  | 99.9% |

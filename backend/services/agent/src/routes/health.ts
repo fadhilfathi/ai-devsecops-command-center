@@ -8,7 +8,10 @@ interface Deps {
   registry: { agents(): Array<{ id: string; name: string; description: string }> };
 }
 
-export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, cfg, queue, registry } = opts;
   const startedAt = new Date();
 
@@ -21,6 +24,10 @@ export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (server: Fastif
     queueDepth: queue.size(),
     registeredAgents: registry.agents().length,
   }));
-  server.get('/version', async () => ({ service: cfg.name, version: cfg.version, startedAt: startedAt.toISOString() }));
+  server.get('/version', async () => ({
+    service: cfg.name,
+    version: cfg.version,
+    startedAt: startedAt.toISOString(),
+  }));
   logger.debug('agent-service health routes registered');
 };

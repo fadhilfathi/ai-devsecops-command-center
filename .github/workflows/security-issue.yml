@@ -16,22 +16,22 @@ on:
   workflow_dispatch:
     inputs:
       cve_id:
-        description: "CVE/GHSA id to test"
+        description: 'CVE/GHSA id to test'
         required: false
-        default: "GHSA-test-test-test"
+        default: 'GHSA-test-test-test'
 
 concurrency:
   group: security-issue-${{ github.event.client_payload.id }}
-  cancel-in-progress: false  # NEVER cancel a real issue open
+  cancel-in-progress: false # NEVER cancel a real issue open
 
 permissions:
   contents: read
   issues: write
-  pull-requests: read       # used to dedup against PRs as well (rare)
+  pull-requests: read # used to dedup against PRs as well (rare)
 
 jobs:
   open-issue:
-    name: "Open or update Critical CVE issue"
+    name: 'Open or update Critical CVE issue'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

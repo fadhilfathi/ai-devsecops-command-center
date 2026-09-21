@@ -20,12 +20,7 @@ export const WorkloadKindSchema = z.enum([
 ]);
 export type WorkloadKind = z.infer<typeof WorkloadKindSchema>;
 
-export const WorkloadHealthSchema = z.enum([
-  'healthy',
-  'degraded',
-  'unhealthy',
-  'unknown',
-]);
+export const WorkloadHealthSchema = z.enum(['healthy', 'degraded', 'unhealthy', 'unknown']);
 export type WorkloadHealth = z.infer<typeof WorkloadHealthSchema>;
 
 export const WorkloadSchema = z.object({
@@ -44,33 +39,41 @@ export const WorkloadSchema = z.object({
   image: z.string().optional(),
   /** Image digest (sha256:...) when present. */
   imageDigest: z.string().optional(),
-  replicas: z.object({
-    desired: z.number().int().nonnegative(),
-    ready: z.number().int().nonnegative(),
-    updated: z.number().int().nonnegative(),
-    available: z.number().int().nonnegative(),
-  }).default({ desired: 0, ready: 0, updated: 0, available: 0 }),
+  replicas: z
+    .object({
+      desired: z.number().int().nonnegative(),
+      ready: z.number().int().nonnegative(),
+      updated: z.number().int().nonnegative(),
+      available: z.number().int().nonnegative(),
+    })
+    .default({ desired: 0, ready: 0, updated: 0, available: 0 }),
   health: WorkloadHealthSchema.default('unknown'),
   /** Conditions surfaced from the workload's `status.conditions` array. */
-  conditions: z.array(z.object({
-    type: z.string(),
-    status: z.enum(['true', 'false', 'unknown']),
-    message: z.string().optional(),
-    lastTransitionTime: z.string().datetime({ offset: true }).optional(),
-  })).default([]),
+  conditions: z
+    .array(
+      z.object({
+        type: z.string(),
+        status: z.enum(['true', 'false', 'unknown']),
+        message: z.string().optional(),
+        lastTransitionTime: z.string().datetime({ offset: true }).optional(),
+      }),
+    )
+    .default([]),
   labels: z.record(z.string(), z.string()).default({}),
   /** Container resource requests & limits (merged across containers). */
-  resources: z.object({
-    cpuRequestsMillicores: z.number().int().nonnegative().default(0),
-    cpuLimitsMillicores: z.number().int().nonnegative().default(0),
-    memoryRequestsBytes: z.number().int().nonnegative().default(0),
-    memoryLimitsBytes: z.number().int().nonnegative().default(0),
-  }).default({
-    cpuRequestsMillicores: 0,
-    cpuLimitsMillicores: 0,
-    memoryRequestsBytes: 0,
-    memoryLimitsBytes: 0,
-  }),
+  resources: z
+    .object({
+      cpuRequestsMillicores: z.number().int().nonnegative().default(0),
+      cpuLimitsMillicores: z.number().int().nonnegative().default(0),
+      memoryRequestsBytes: z.number().int().nonnegative().default(0),
+      memoryLimitsBytes: z.number().int().nonnegative().default(0),
+    })
+    .default({
+      cpuRequestsMillicores: 0,
+      cpuLimitsMillicores: 0,
+      memoryRequestsBytes: 0,
+      memoryLimitsBytes: 0,
+    }),
   /** Latest image / config revision. */
   revision: z.string().optional(),
   /** Wall-clock uptime of the current generation. */

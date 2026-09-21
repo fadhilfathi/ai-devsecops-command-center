@@ -27,7 +27,10 @@ const EnvelopeSchema = z.object({
   payload: z.record(z.string(), z.unknown()).default({}),
 });
 
-export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, providers, integrations, syncs, bus } = opts;
 
   server.post<{ Params: { provider: string } }>(
@@ -43,7 +46,10 @@ export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
       }
       // Fastify exposes the raw body via (req as any).rawBody when config.rawBody=true.
       const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
-      if (raw && !provider.verifyWebhookSignature(raw, req.headers as Record<string, string | string[]>)) {
+      if (
+        raw &&
+        !provider.verifyWebhookSignature(raw, req.headers as Record<string, string | string[]>)
+      ) {
         throw new UnauthorizedError('Invalid webhook signature');
       }
       const body = EnvelopeSchema.parse(req.body);
@@ -57,7 +63,12 @@ export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (server: Fasti
         return;
       }
       await provider.handleEvent(
-        { type: body.type, tenantId: body.tenantId, integrationId: body.integrationId, payload: body.payload },
+        {
+          type: body.type,
+          tenantId: body.tenantId,
+          integrationId: body.integrationId,
+          payload: body.payload,
+        },
         { bus, logger, syncs },
       );
       await integrations.recordSync(body.integrationId, body.tenantId, new Date().toISOString());

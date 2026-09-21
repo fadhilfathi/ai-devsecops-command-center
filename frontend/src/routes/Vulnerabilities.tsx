@@ -1,21 +1,21 @@
-import { useSearchParams } from "react-router-dom";
-import { Activity, Bug, FileCode2 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import { VulnTimeline } from "@/components/security/VulnTimeline";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { fmtDate, titleCase } from "@/lib/format";
-import type { Severity, Vulnerability } from "@/types";
+import { useSearchParams } from 'react-router-dom';
+import { Activity, Bug, FileCode2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { VulnTimeline } from '@/components/security/VulnTimeline';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { fmtDate, titleCase } from '@/lib/format';
+import type { Severity, Vulnerability } from '@/types';
 
-type View = "list" | "timeline";
+type View = 'list' | 'timeline';
 
 const severityCols: Column<Vulnerability>[] = [
   {
-    key: "cve",
-    header: "CVE / ID",
+    key: 'cve',
+    header: 'CVE / ID',
     cell: (v) => (
       <div>
         <div className="aion-mono text-text">{v.cve ?? v.id}</div>
@@ -24,18 +24,18 @@ const severityCols: Column<Vulnerability>[] = [
     ),
   },
   {
-    key: "sev",
-    header: "Severity",
+    key: 'sev',
+    header: 'Severity',
     cell: (v) => <Badge severity={v.severity}>{titleCase(v.severity)}</Badge>,
   },
   {
-    key: "cvss",
-    header: "CVSS",
+    key: 'cvss',
+    header: 'CVSS',
     cell: (v) => <span className="aion-mono">{v.cvss.toFixed(1)}</span>,
   },
   {
-    key: "pkg",
-    header: "Package",
+    key: 'pkg',
+    header: 'Package',
     cell: (v) => (
       <div>
         <div className="font-medium text-text">{v.package}</div>
@@ -44,8 +44,8 @@ const severityCols: Column<Vulnerability>[] = [
     ),
   },
   {
-    key: "fix",
-    header: "Fixed in",
+    key: 'fix',
+    header: 'Fixed in',
     cell: (v) =>
       v.fixedIn ? (
         <span className="aion-mono">{v.fixedIn}</span>
@@ -54,18 +54,18 @@ const severityCols: Column<Vulnerability>[] = [
       ),
   },
   {
-    key: "status",
-    header: "Status",
+    key: 'status',
+    header: 'Status',
     cell: (v) => (
       <Badge
         variant={
-          v.status === "remediated"
-            ? "ok"
-            : v.status === "accepted"
-              ? "info"
-              : v.status === "in-progress"
-                ? "warn"
-                : "danger"
+          v.status === 'remediated'
+            ? 'ok'
+            : v.status === 'accepted'
+              ? 'info'
+              : v.status === 'in-progress'
+                ? 'warn'
+                : 'danger'
         }
       >
         {titleCase(v.status)}
@@ -73,8 +73,8 @@ const severityCols: Column<Vulnerability>[] = [
     ),
   },
   {
-    key: "detected",
-    header: "Detected",
+    key: 'detected',
+    header: 'Detected',
     cell: (v) => <span className="aion-mono">{fmtDate(v.detectedAt)}</span>,
   },
 ];
@@ -88,14 +88,14 @@ const severityCols: Column<Vulnerability>[] = [
  */
 export function Vulnerabilities() {
   const [params, setParams] = useSearchParams();
-  const view = (params.get("view") === "timeline" ? "timeline" : "list") as View;
-  const eco = params.get("ecosystem");
-  const sev = params.get("severity") as Severity | null;
+  const view = (params.get('view') === 'timeline' ? 'timeline' : 'list') as View;
+  const eco = params.get('ecosystem');
+  const sev = params.get('severity') as Severity | null;
 
   const setView = (v: View) => {
     const next = new URLSearchParams(params);
-    if (v === "list") next.delete("view");
-    else next.set("view", v);
+    if (v === 'list') next.delete('view');
+    else next.set('view', v);
     setParams(next, { replace: true });
   };
 
@@ -104,7 +104,7 @@ export function Vulnerabilities() {
       <PageHeader
         title="Vulnerabilities"
         subtitle="CVE feed, internal findings, and remediation status across the estate."
-        breadcrumbs={[{ label: "AionUi" }, { label: "Vulnerabilities" }]}
+        breadcrumbs={[{ label: 'AionUi' }, { label: 'Vulnerabilities' }]}
         actions={
           <div
             role="tablist"
@@ -112,15 +112,15 @@ export function Vulnerabilities() {
             className="inline-flex rounded-md border border-border bg-surface-2 p-0.5"
           >
             <TabButton
-              active={view === "list"}
-              onClick={() => setView("list")}
+              active={view === 'list'}
+              onClick={() => setView('list')}
               icon={<Bug className="h-3.5 w-3.5" />}
             >
               List
             </TabButton>
             <TabButton
-              active={view === "timeline"}
-              onClick={() => setView("timeline")}
+              active={view === 'timeline'}
+              onClick={() => setView('timeline')}
               icon={<Activity className="h-3.5 w-3.5" />}
             >
               Timeline
@@ -129,13 +129,13 @@ export function Vulnerabilities() {
         }
       />
 
-      {view === "timeline" ? (
+      {view === 'timeline' ? (
         <div className="space-y-3">
           <VulnTimeline />
           {eco && sev && (
             <div className="aion-mono text-[11px] text-muted">
-              showing context for ecosystem <span className="text-text">{eco}</span>,
-              severity <span className="text-text">{sev}</span>
+              showing context for ecosystem <span className="text-text">{eco}</span>, severity{' '}
+              <span className="text-text">{sev}</span>
             </div>
           )}
         </div>
@@ -164,7 +164,7 @@ function TabButton({
       aria-selected={active}
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-        active ? "bg-accent/15 text-accent" : "text-muted hover:text-text"
+        active ? 'bg-accent/15 text-accent' : 'text-muted hover:text-text'
       }`}
     >
       {icon}
@@ -201,7 +201,7 @@ function ListView({ eco, sev }: { eco: string | null; sev: Severity | null }) {
       )}
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-        {(["critical", "high", "medium", "low", "info"] as Severity[]).map((s) => {
+        {(['critical', 'high', 'medium', 'low', 'info'] as Severity[]).map((s) => {
           const count = (data ?? []).filter((v) => v.severity === s).length;
           return (
             <Card key={s} className="p-3">

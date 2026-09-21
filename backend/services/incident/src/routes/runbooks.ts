@@ -21,7 +21,10 @@ const CreateRunbookSchema = z.object({
   triggers: z.array(z.string()).default([]),
 });
 
-export const buildRunbookRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildRunbookRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, runbooks } = opts;
 
   server.get('/v1/runbooks', async (req) => {

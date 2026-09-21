@@ -7,12 +7,12 @@ decision made, and its consequences.
 
 ## Index
 
-| # | Title | Status | Date |
-|---|---|---|---|
-| [0001](./0001-event-bus-transport.md) | Event Bus Transport — Redis Streams First, NATS JetStream Later | Accepted | 2026-06-12 |
-| [0002](./0002-agent-to-agent-communication.md) | Agent-to-Agent Communication — Bus Only, No Direct Calls | Accepted | 2026-06-12 |
-| [0003](./0003-event-schema-format.md) | Event Schema Format — Avro with JSON-Schema Fallback | Accepted | 2026-06-12 |
-| [0004](./0004-six-services-one-database.md) | Six Services, One Database, Schema-per-Service | Accepted | 2026-06-12 |
+| #                                              | Title                                                           | Status   | Date       |
+| ---------------------------------------------- | --------------------------------------------------------------- | -------- | ---------- |
+| [0001](./0001-event-bus-transport.md)          | Event Bus Transport — Redis Streams First, NATS JetStream Later | Accepted | 2026-06-12 |
+| [0002](./0002-agent-to-agent-communication.md) | Agent-to-Agent Communication — Bus Only, No Direct Calls        | Accepted | 2026-06-12 |
+| [0003](./0003-event-schema-format.md)          | Event Schema Format — Avro with JSON-Schema Fallback            | Accepted | 2026-06-12 |
+| [0004](./0004-six-services-one-database.md)    | Six Services, One Database, Schema-per-Service                  | Accepted | 2026-06-12 |
 
 ## Format
 
@@ -56,7 +56,7 @@ Write an ADR when the decision:
 - Is **hard to reverse** (database choices, communication patterns,
   identity model, schema format).
 - Has **multiple reasonable options** with real trade-offs.
-- **Future engineers** will want to understand *why* we chose what
+- **Future engineers** will want to understand _why_ we chose what
   we chose.
 
 If a decision is reversible and local, prefer a code comment or a

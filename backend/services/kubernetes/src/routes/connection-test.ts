@@ -11,7 +11,10 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { Logger } from '@aicc/shared';
-import { ClusterConnectionTestRequestSchema, ClusterConnectionTestResponseSchema } from '@aicc/models';
+import {
+  ClusterConnectionTestRequestSchema,
+  ClusterConnectionTestResponseSchema,
+} from '@aicc/models';
 import type { ClusterRepository } from '../repositories/cluster.repository.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 
@@ -21,7 +24,10 @@ interface Deps {
   providers: ProviderRegistry;
 }
 
-export const buildConnectionTestRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildConnectionTestRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, providers } = opts;
 
   server.post('/v1/kubernetes/test-connection', async (req, reply) => {

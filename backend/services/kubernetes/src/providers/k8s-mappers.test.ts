@@ -1,5 +1,13 @@
 import { test, expect } from 'vitest';
-import type { V1Pod, V1Deployment, V1Service, V1Ingress, V1Namespace, V1StatefulSet, V1DaemonSet } from '@kubernetes/client-node';
+import type {
+  V1Pod,
+  V1Deployment,
+  V1Service,
+  V1Ingress,
+  V1Namespace,
+  V1StatefulSet,
+  V1DaemonSet,
+} from '@kubernetes/client-node';
 import {
   mapNamespace,
   mapPod,
@@ -32,7 +40,11 @@ test('parseMemoryBytes handles binary and decimal suffixes', () => {
 
 test('mapNamespace parses to a valid Namespace', () => {
   const ns: V1Namespace = {
-    metadata: { uid: '33333333-3333-4333-8333-333333333333', name: 'default', creationTimestamp: new Date() },
+    metadata: {
+      uid: '33333333-3333-4333-8333-333333333333',
+      name: 'default',
+      creationTimestamp: new Date(),
+    },
     status: { phase: 'Active' },
   };
   const mapped = mapNamespace(TENANT, CLUSTER, CLUSTER_NAME, ns);
@@ -49,7 +61,13 @@ test('mapPod derives phase, restarts, and crash reason', () => {
       labels: { app: 'payments-api' },
     },
     spec: {
-      containers: [{ name: 'app', image: 'ghcr.io/example/payments-api:1.0', resources: { requests: { cpu: '250m', memory: '256Mi' } } }],
+      containers: [
+        {
+          name: 'app',
+          image: 'ghcr.io/example/payments-api:1.0',
+          resources: { requests: { cpu: '250m', memory: '256Mi' } },
+        },
+      ],
       nodeName: 'node-1',
       serviceAccountName: 'default',
     },
@@ -78,7 +96,11 @@ test('mapPod derives phase, restarts, and crash reason', () => {
 
 test('mapService maps type, ports, and namespace filtering fqdn', () => {
   const svc: V1Service = {
-    metadata: { uid: '55555555-5555-4555-8555-555555555555', name: 'payments-api', namespace: 'prod' },
+    metadata: {
+      uid: '55555555-5555-4555-8555-555555555555',
+      name: 'payments-api',
+      namespace: 'prod',
+    },
     spec: {
       type: 'ClusterIP',
       clusterIP: '10.96.0.10',
@@ -100,7 +122,15 @@ test('mapIngress flattens rules and hosts', () => {
       rules: [
         {
           host: 'api.example.com',
-          http: { paths: [{ path: '/payments', pathType: 'Prefix', backend: { service: { name: 'payments-api', port: { number: 80 } } } }] },
+          http: {
+            paths: [
+              {
+                path: '/payments',
+                pathType: 'Prefix',
+                backend: { service: { name: 'payments-api', port: { number: 80 } } },
+              },
+            ],
+          },
         },
       ],
       tls: [{ hosts: ['api.example.com'], secretName: 'api-tls' }],
@@ -108,17 +138,27 @@ test('mapIngress flattens rules and hosts', () => {
   };
   const mapped = mapIngress(TENANT, CLUSTER, CLUSTER_NAME, ing);
   expect(mapped.className).toBe('nginx');
-  expect(mapped.rules[0]).toMatchObject({ host: 'api.example.com', serviceName: 'payments-api', servicePort: 80 });
+  expect(mapped.rules[0]).toMatchObject({
+    host: 'api.example.com',
+    serviceName: 'payments-api',
+    servicePort: 80,
+  });
   expect(mapped.tls[0]?.hosts).toEqual(['api.example.com']);
 });
 
 test('mapDeployment computes replicas and rollout status', () => {
   const dep: V1Deployment = {
-    metadata: { uid: '77777777-7777-4777-8777-777777777777', name: 'payments-api', namespace: 'default' },
+    metadata: {
+      uid: '77777777-7777-4777-8777-777777777777',
+      name: 'payments-api',
+      namespace: 'default',
+    },
     spec: {
       replicas: 3,
       selector: { matchLabels: { app: 'payments-api' } },
-      template: { spec: { containers: [{ name: 'app', image: 'ghcr.io/example/payments-api:1.0' }] } },
+      template: {
+        spec: { containers: [{ name: 'app', image: 'ghcr.io/example/payments-api:1.0' }] },
+      },
     },
     status: { readyReplicas: 3, updatedReplicas: 3, availableReplicas: 3 },
   };
@@ -131,7 +171,11 @@ test('mapDeployment computes replicas and rollout status', () => {
 
 test('mapStatefulSet and mapDaemonSet parse to valid workloads', () => {
   const sts: V1StatefulSet = {
-    metadata: { uid: '88888888-8888-4888-8888-888888888888', name: 'postgres', namespace: 'default' },
+    metadata: {
+      uid: '88888888-8888-4888-8888-888888888888',
+      name: 'postgres',
+      namespace: 'default',
+    },
     spec: {
       replicas: 1,
       serviceName: 'postgres-hl',
@@ -145,9 +189,21 @@ test('mapStatefulSet and mapDaemonSet parse to valid workloads', () => {
   expect(mappedSts.replicas.ready).toBe(1);
 
   const ds: V1DaemonSet = {
-    metadata: { uid: '99999999-9999-4999-8999-999999999999', name: 'fluentbit', namespace: 'kube-system' },
-    spec: { selector: { matchLabels: { app: 'fluentbit' } }, template: { spec: { containers: [{ name: 'fb', image: 'fluent/fluent-bit:2.2' }] } } },
-    status: { desiredNumberScheduled: 3, currentNumberScheduled: 3, numberReady: 3, numberMisscheduled: 0 },
+    metadata: {
+      uid: '99999999-9999-4999-8999-999999999999',
+      name: 'fluentbit',
+      namespace: 'kube-system',
+    },
+    spec: {
+      selector: { matchLabels: { app: 'fluentbit' } },
+      template: { spec: { containers: [{ name: 'fb', image: 'fluent/fluent-bit:2.2' }] } },
+    },
+    status: {
+      desiredNumberScheduled: 3,
+      currentNumberScheduled: 3,
+      numberReady: 3,
+      numberMisscheduled: 0,
+    },
   };
   const mappedDs = mapDaemonSet(TENANT, CLUSTER, CLUSTER_NAME, ds);
   expect(mappedDs.desiredNumberScheduled).toBe(3);

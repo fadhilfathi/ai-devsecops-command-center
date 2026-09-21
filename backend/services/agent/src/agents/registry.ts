@@ -33,17 +33,20 @@ export interface AgentRegistry {
 }
 
 function newId(): UUID {
-  return globalThis.crypto?.randomUUID?.() ??
+  return (
+    globalThis.crypto?.randomUUID?.() ??
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    })
+  );
 }
 
 class TriageAgent implements Agent {
   readonly id = 'triage-agent';
   readonly name = 'Triage Agent';
-  readonly description = 'Classifies scan findings and routes them to incidents or compliance checks.';
+  readonly description =
+    'Classifies scan findings and routes them to incidents or compliance checks.';
   canHandle(kind: string): boolean {
     return kind === 'triage.findings';
   }
@@ -63,7 +66,8 @@ class TriageAgent implements Agent {
 class RemediationAgent implements Agent {
   readonly id = 'remediation-agent';
   readonly name = 'Remediation Agent';
-  readonly description = 'Proposes code or config fixes and can open PRs via the integration service.';
+  readonly description =
+    'Proposes code or config fixes and can open PRs via the integration service.';
   canHandle(kind: string): boolean {
     return kind === 'remediation.propose' || kind === 'remediation.apply';
   }

@@ -76,16 +76,16 @@ to reason about for resource control.
 
 ## Failure modes
 
-| Failure                             | Detection                  | Response                          |
-|-------------------------------------|----------------------------|-----------------------------------|
-| `syft` not on PATH                  | `resolve_syft` at boot     | 500 `syft_not_found`              |
-| `syft` exit code != 0               | subprocess return code     | 502 `syft_execution_error`        |
-| `syft` times out                    | `asyncio.wait_for`         | 504 `syft_timeout`                |
-| Output exceeds 256 MiB              | byte length check          | 502 `syft_execution_error`        |
-| Output is non-JSON                  | `json.JSONDecodeError`     | 502 `syft_execution_error`        |
-| Bus publish fails                   | `RuntimeError` in publish  | logged; response still 200        |
-| Unknown source type                 | pydantic validator         | 400 `validation_error`            |
-| Auth header missing (when required) | service-level check        | 401 `unauthorized`                |
+| Failure                             | Detection                 | Response                   |
+| ----------------------------------- | ------------------------- | -------------------------- |
+| `syft` not on PATH                  | `resolve_syft` at boot    | 500 `syft_not_found`       |
+| `syft` exit code != 0               | subprocess return code    | 502 `syft_execution_error` |
+| `syft` times out                    | `asyncio.wait_for`        | 504 `syft_timeout`         |
+| Output exceeds 256 MiB              | byte length check         | 502 `syft_execution_error` |
+| Output is non-JSON                  | `json.JSONDecodeError`    | 502 `syft_execution_error` |
+| Bus publish fails                   | `RuntimeError` in publish | logged; response still 200 |
+| Unknown source type                 | pydantic validator        | 400 `validation_error`     |
+| Auth header missing (when required) | service-level check       | 401 `unauthorized`         |
 
 ## Security considerations
 
@@ -120,26 +120,26 @@ to reason about for resource control.
 
 ## Extension points
 
-| Need                                    | Where                                    |
-|-----------------------------------------|------------------------------------------|
-| New source kind                         | `models/request.py` + `syft.py:_syft_target` + `SUPPORTED_LOCKFILES` |
-| New output format                       | `output.py` + `models/sbom.py:SBOMFormat`|
-| Different event bus                     | `agent.py:BusClient` subclass             |
-| Different scan engine (e.g. `cdxgen`)   | `syft.py:SyftRunner` (swap implementation)|
-| Authentication provider                 | `service.py:_check_auth`                 |
-| Per-tenant rate limiting                | `agent.py` (semaphore map by tenant)     |
+| Need                                  | Where                                                                |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| New source kind                       | `models/request.py` + `syft.py:_syft_target` + `SUPPORTED_LOCKFILES` |
+| New output format                     | `output.py` + `models/sbom.py:SBOMFormat`                            |
+| Different event bus                   | `agent.py:BusClient` subclass                                        |
+| Different scan engine (e.g. `cdxgen`) | `syft.py:SyftRunner` (swap implementation)                           |
+| Authentication provider               | `service.py:_check_auth`                                             |
+| Per-tenant rate limiting              | `agent.py` (semaphore map by tenant)                                 |
 
 ## Sprint 2 acceptance criteria
 
-| ID    | Criterion                                                     | Status |
-|-------|---------------------------------------------------------------|--------|
-| S2.1.1| Wraps Syft CLI as a subprocess                                | ✅     |
-| S2.1.2| Supports Docker / OCI / Git / filesystems / archives          | ✅     |
-| S2.1.3| Outputs CycloneDX 1.5 JSON and XML                            | ✅     |
-| S2.1.4| Outputs SPDX 2.3 JSON and tag-value                           | ✅     |
-| S2.1.5| Service runs on port 4007                                     | ✅     |
-| S2.1.6| Bounded concurrency + per-request timeout                     | ✅     |
-| S2.1.7| Health, readiness, metrics endpoints                          | ✅     |
-| S2.1.8| Emits `sbom.generated` events on the bus                      | ✅     |
-| S2.1.9| Unit tests for model, serializers, request validation, service | ✅     |
-| S2.1.10| Containerized, runs as non-root                              | ✅     |
+| ID      | Criterion                                                      | Status |
+| ------- | -------------------------------------------------------------- | ------ |
+| S2.1.1  | Wraps Syft CLI as a subprocess                                 | ✅     |
+| S2.1.2  | Supports Docker / OCI / Git / filesystems / archives           | ✅     |
+| S2.1.3  | Outputs CycloneDX 1.5 JSON and XML                             | ✅     |
+| S2.1.4  | Outputs SPDX 2.3 JSON and tag-value                            | ✅     |
+| S2.1.5  | Service runs on port 4007                                      | ✅     |
+| S2.1.6  | Bounded concurrency + per-request timeout                      | ✅     |
+| S2.1.7  | Health, readiness, metrics endpoints                           | ✅     |
+| S2.1.8  | Emits `sbom.generated` events on the bus                       | ✅     |
+| S2.1.9  | Unit tests for model, serializers, request validation, service | ✅     |
+| S2.1.10 | Containerized, runs as non-root                                | ✅     |

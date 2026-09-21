@@ -11,11 +11,7 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { type EventBus, type Logger, type UUID } from '@aicc/shared';
-import type {
-  RuntimeRisk,
-  RuntimeRiskListResponse,
-  RuntimeSecurityReport,
-} from '@aicc/models';
+import type { RuntimeRisk, RuntimeRiskListResponse, RuntimeSecurityReport } from '@aicc/models';
 import type { RuntimeSecurityEngine } from '../engine/runtime-security.engine.js';
 import type { InventoryClient } from '../inventory/client.js';
 
@@ -44,7 +40,10 @@ function requireTenant(tenantId: string): UUID {
   return tenantId as UUID;
 }
 
-export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, inventory, engine, bus } = opts;
 
   // ---- rules ---------------------------------------------------------
@@ -122,14 +121,14 @@ export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (serve
   // ---- scan ----------------------------------------------------------
   server.post('/v1/runtime-security/scan', async (req, reply) => {
     const tenantId = requireTenant(req.tenantId);
-    const body = z
-      .object({ clusterId: z.string().uuid().optional() })
-      .parse(req.body ?? {});
+    const body = z.object({ clusterId: z.string().uuid().optional() }).parse(req.body ?? {});
     const snap = await inventory.fetch(tenantId, body.clusterId);
     const totalFindings = snap.clusters.reduce((acc, cluster) => {
       const report = engine.report(
         {
-          tenantId, clusterId: cluster.id, clusterName: cluster.name,
+          tenantId,
+          clusterId: cluster.id,
+          clusterName: cluster.name,
           pods: snap.pods.filter((p) => p.clusterId === cluster.id),
           workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
           services: snap.services.filter((s) => s.clusterId === cluster.id),
@@ -139,7 +138,10 @@ export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (serve
       );
       return acc + report.findings.length;
     }, 0);
-    logger.info({ tenantId, clusterId: body.clusterId, totalFindings }, 'runtime security scan completed');
+    logger.info(
+      { tenantId, clusterId: body.clusterId, totalFindings },
+      'runtime security scan completed',
+    );
     reply.code(202);
     return { accepted: true, totalFindings };
   });
@@ -153,43 +155,46 @@ export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (serve
     const snap = await inventory.fetch(tenantId, q.clusterId);
     const reports: RuntimeSecurityReport[] = [];
     for (const cluster of snap.clusters) {
-      reports.push(engine.report(
-        {
-          tenantId, clusterId: cluster.id, clusterName: cluster.name,
-          pods: snap.pods.filter((p) => p.clusterId === cluster.id),
-          workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
-          services: snap.services.filter((s) => s.clusterId === cluster.id),
-        },
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        new Date().toISOString(),
-      ));
+      reports.push(
+        engine.report(
+          {
+            tenantId,
+            clusterId: cluster.id,
+            clusterName: cluster.name,
+            pods: snap.pods.filter((p) => p.clusterId === cluster.id),
+            workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
+            services: snap.services.filter((s) => s.clusterId === cluster.id),
+          },
+          new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          new Date().toISOString(),
+        ),
+      );
     }
     return { items: reports, total: reports.length };
   });
 
-  server.get<{ Params: { id: string } }>(
-    '/v1/runtime-security/report/cluster/:id',
-    async (req) => {
-      const tenantId = requireTenant(req.tenantId);
-      const snap = await inventory.fetch(tenantId, req.params.id);
-      const cluster = snap.clusters.find((c) => c.id === req.params.id);
-      if (!cluster) {
-        const e = new Error('cluster not found') as Error & { statusCode?: number };
-        e.statusCode = 404;
-        throw e;
-      }
-      return engine.report(
-        {
-          tenantId, clusterId: cluster.id, clusterName: cluster.name,
-          pods: snap.pods.filter((p) => p.clusterId === cluster.id),
-          workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
-          services: snap.services.filter((s) => s.clusterId === cluster.id),
-        },
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        new Date().toISOString(),
-      );
-    },
-  );
+  server.get<{ Params: { id: string } }>('/v1/runtime-security/report/cluster/:id', async (req) => {
+    const tenantId = requireTenant(req.tenantId);
+    const snap = await inventory.fetch(tenantId, req.params.id);
+    const cluster = snap.clusters.find((c) => c.id === req.params.id);
+    if (!cluster) {
+      const e = new Error('cluster not found') as Error & { statusCode?: number };
+      e.statusCode = 404;
+      throw e;
+    }
+    return engine.report(
+      {
+        tenantId,
+        clusterId: cluster.id,
+        clusterName: cluster.name,
+        pods: snap.pods.filter((p) => p.clusterId === cluster.id),
+        workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
+        services: snap.services.filter((s) => s.clusterId === cluster.id),
+      },
+      new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      new Date().toISOString(),
+    );
+  });
 
   logger.debug('runtime-security-service routes registered');
   void bus;

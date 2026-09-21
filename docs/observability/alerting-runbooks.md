@@ -224,14 +224,14 @@ Every alert includes a templated `description`, `summary`, and links. Example:
 
 ```yaml
 annotations:
-  summary: "Auth service 5xx rate elevated"
+  summary: 'Auth service 5xx rate elevated'
   description: |
     Service `auth` is returning 5xx for {{ $value | humanizePercentage }} of requests
     over the last 5 minutes. SLO `availability` budget remaining: {{ with query "service_error_budget_remaining_ratio{service='auth',slo='availability'}" }}{{ . | first | value | humanizePercentage }}{{ end }}.
-  dashboard: "https://grafana.example.com/d/auth-overview"
-  runbook: "https://runbooks.example.com/auth/ServiceHigh5xxRate"
-  slo: "auth/availability"
-  team: "platform-identity"
+  dashboard: 'https://grafana.example.com/d/auth-overview'
+  runbook: 'https://runbooks.example.com/auth/ServiceHigh5xxRate'
+  slo: 'auth/availability'
+  team: 'platform-identity'
 ```
 
 The linter rejects alerts without a `runbook` URL.
@@ -276,7 +276,7 @@ receivers:
       - url: http://integration:8080/issue/create
   - name: slack-info
     slack_configs:
-      - channel: "#sre-info"
+      - channel: '#sre-info'
         send_resolved: true
 ```
 
@@ -487,4 +487,4 @@ three Python services (`sbom-pipeline`, `vuln-intel`, `dependency-intel`).
 
 ---
 
-*End of Alerting Rules & Runbooks v1.1 (Sprint 2 additions in §9)*
+_End of Alerting Rules & Runbooks v1.1 (Sprint 2 additions in §9)_

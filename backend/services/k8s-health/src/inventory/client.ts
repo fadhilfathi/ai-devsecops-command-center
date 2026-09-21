@@ -19,10 +19,7 @@ import type {
   DaemonSet,
   Ingress,
 } from '@aicc/models';
-import type {
-  KubernetesProvider,
-  ListOptions,
-} from '../providers/kubernetes-provider.types.js';
+import type { KubernetesProvider, ListOptions } from '../providers/kubernetes-provider.types.js';
 import { buildFixtureProvider } from '../providers/fixture.provider.js';
 
 export interface InventorySnapshot {
@@ -51,9 +48,7 @@ export function buildInventoryClient(deps: InventoryClientDeps): InventoryClient
   return {
     async fetch(tenantId, clusterId) {
       const clusters = await provider.listClusters(tenantId);
-      const target = clusterId
-        ? clusters.filter((c) => c.id === clusterId)
-        : clusters;
+      const target = clusterId ? clusters.filter((c) => c.id === clusterId) : clusters;
       const ns: Namespace[] = [];
       const workloads: Workload[] = [];
       const pods: Pod[] = [];

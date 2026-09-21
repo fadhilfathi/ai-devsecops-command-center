@@ -39,38 +39,38 @@ declare all of these won't load.
 
 ### Security domain
 
-| Agent                | Consumes                       | Produces                          | Tier    | Notes |
-| -------------------- | ------------------------------ | --------------------------------- | ------- | ----- |
-| `sbom-generator`     | `pr.opened`, `repo.scan`       | `sbom.generated`                  | cheap   | CycloneDX 1.5; offline-capable |
-| `vuln-scanner`       | `sbom.generated`, `pr.opened`  | `vulnerability.detected`          | balanced| Uses multiple CVE feeds |
-| `secrets-detector`   | `pr.opened`, `pr.synchronize`  | `secret.found`                    | balanced| Never echoes secret content |
-| `license-auditor`    | `sbom.generated`               | `license.flagged`                 | cheap   |  |
-| `container-scanner`  | `image.built`                  | `vulnerability.detected`         | premium |  |
+| Agent               | Consumes                      | Produces                 | Tier     | Notes                          |
+| ------------------- | ----------------------------- | ------------------------ | -------- | ------------------------------ |
+| `sbom-generator`    | `pr.opened`, `repo.scan`      | `sbom.generated`         | cheap    | CycloneDX 1.5; offline-capable |
+| `vuln-scanner`      | `sbom.generated`, `pr.opened` | `vulnerability.detected` | balanced | Uses multiple CVE feeds        |
+| `secrets-detector`  | `pr.opened`, `pr.synchronize` | `secret.found`           | balanced | Never echoes secret content    |
+| `license-auditor`   | `sbom.generated`              | `license.flagged`        | cheap    |                                |
+| `container-scanner` | `image.built`                 | `vulnerability.detected` | premium  |                                |
 
 ### Incident domain
 
-| Agent                | Consumes                       | Produces                          | Tier    |
-| -------------------- | ------------------------------ | --------------------------------- | ------- |
-| `incident-correlator`| `vulnerability.detected`, `secret.found` | `incident.opened`      | premium |
-| `triage-assistant`   | `incident.opened`              | `incident.classified`             | balanced|
-| `playbook-runner`    | `incident.classified`          | `incident.action.*`               | cheap   |
-| `postmortem-drafter` | `incident.resolved`            | `postmortem.drafted`              | balanced|
+| Agent                 | Consumes                                 | Produces              | Tier     |
+| --------------------- | ---------------------------------------- | --------------------- | -------- |
+| `incident-correlator` | `vulnerability.detected`, `secret.found` | `incident.opened`     | premium  |
+| `triage-assistant`    | `incident.opened`                        | `incident.classified` | balanced |
+| `playbook-runner`     | `incident.classified`                    | `incident.action.*`   | cheap    |
+| `postmortem-drafter`  | `incident.resolved`                      | `postmortem.drafted`  | balanced |
 
 ### Compliance domain
 
-| Agent                | Consumes                       | Produces                          | Tier    |
-| -------------------- | ------------------------------ | --------------------------------- | ------- |
-| `control-mapper`     | `vulnerability.detected`, `evidence.attached` | `control.mapped`     | balanced|
-| `evidence-collector` | `control.mapped`               | `evidence.attached`               | cheap   |
-| `attestation-builder`| `evidence.attached`            | `attestation.built`               | balanced|
+| Agent                 | Consumes                                      | Produces            | Tier     |
+| --------------------- | --------------------------------------------- | ------------------- | -------- |
+| `control-mapper`      | `vulnerability.detected`, `evidence.attached` | `control.mapped`    | balanced |
+| `evidence-collector`  | `control.mapped`                              | `evidence.attached` | cheap    |
+| `attestation-builder` | `evidence.attached`                           | `attestation.built` | balanced |
 
 ### Integration domain
 
-| Agent                | Consumes                       | Produces                          | Tier    |
-| -------------------- | ------------------------------ | --------------------------------- | ------- |
-| `github-pr-commenter`| `vulnerability.detected`, `secret.found` | `pr.comment.posted`  | cheap   |
-| `jira-issue-creator` | `incident.opened`              | `ticket.linked`                   | cheap   |
-| `slack-notifier`     | `incident.opened`, `incident.resolved` | `notification.sent`     | cheap   |
+| Agent                 | Consumes                                 | Produces            | Tier  |
+| --------------------- | ---------------------------------------- | ------------------- | ----- |
+| `github-pr-commenter` | `vulnerability.detected`, `secret.found` | `pr.comment.posted` | cheap |
+| `jira-issue-creator`  | `incident.opened`                        | `ticket.linked`     | cheap |
+| `slack-notifier`      | `incident.opened`, `incident.resolved`   | `notification.sent` | cheap |
 
 > The lists above are illustrative; they will evolve as we discover more
 > needs. The agent registry is the source of truth.

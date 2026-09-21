@@ -65,16 +65,16 @@ SYFT_VERSION=…`) and runs as a non-root user (`aionrs:1001`).
 
 ## HTTP API
 
-| Method | Path                          | Purpose                              |
-|--------|-------------------------------|--------------------------------------|
-| GET    | `/healthz`                    | Liveness + syft version + bus status |
-| GET    | `/readyz`                     | Readiness probe                      |
-| GET    | `/metrics`                    | Prometheus exposition                |
-| GET    | `/v1/sbom/formats`            | List output formats                  |
-| GET    | `/v1/sbom/source-kinds`       | List supported source types          |
-| POST   | `/v1/sbom/generate`           | Generate SBOM (full payload)         |
-| POST   | `/v1/sbom/analyze`            | Alias of `/generate`                 |
-| POST   | `/v1/sbom/quick`              | Simplified `{source, format}` body   |
+| Method | Path                    | Purpose                              |
+| ------ | ----------------------- | ------------------------------------ |
+| GET    | `/healthz`              | Liveness + syft version + bus status |
+| GET    | `/readyz`               | Readiness probe                      |
+| GET    | `/metrics`              | Prometheus exposition                |
+| GET    | `/v1/sbom/formats`      | List output formats                  |
+| GET    | `/v1/sbom/source-kinds` | List supported source types          |
+| POST   | `/v1/sbom/generate`     | Generate SBOM (full payload)         |
+| POST   | `/v1/sbom/analyze`      | Alias of `/generate`                 |
+| POST   | `/v1/sbom/quick`        | Simplified `{source, format}` body   |
 
 ### Full payload (`/v1/sbom/generate`)
 
@@ -102,54 +102,54 @@ The quick endpoint infers `source.type` from the value (image → `docker-image`
 
 ## Source kinds
 
-| `type`            | Description                                           | Example                                       |
-|-------------------|-------------------------------------------------------|-----------------------------------------------|
-| `directory`       | Local filesystem directory                            | `/var/lib/myapp`                              |
-| `file`            | Single file                                           | `/var/lib/myapp/Pipfile`                      |
-| `docker-image`    | Container image reference                             | `nginx:1.25`                                  |
-| `oci-image`       | OCI image fetched by digest                           | `ghcr.io/aionrs/api:v1.0.0`                   |
-| `git-repository`  | Git repo (https/git/ssh/file)                         | `https://github.com/aionrs/aionrs.git`        |
-| `archive`         | Tarball / zip                                         | `https://example.com/release.tar.gz`          |
-| `registry`        | Enumerate a registry catalog                          | `https://registry.example.com`                |
+| `type`           | Description                   | Example                                |
+| ---------------- | ----------------------------- | -------------------------------------- |
+| `directory`      | Local filesystem directory    | `/var/lib/myapp`                       |
+| `file`           | Single file                   | `/var/lib/myapp/Pipfile`               |
+| `docker-image`   | Container image reference     | `nginx:1.25`                           |
+| `oci-image`      | OCI image fetched by digest   | `ghcr.io/aionrs/api:v1.0.0`            |
+| `git-repository` | Git repo (https/git/ssh/file) | `https://github.com/aionrs/aionrs.git` |
+| `archive`        | Tarball / zip                 | `https://example.com/release.tar.gz`   |
+| `registry`       | Enumerate a registry catalog  | `https://registry.example.com`         |
 
 ## Output formats
 
-| `format`           | Spec          | Media type                       |
-|--------------------|---------------|----------------------------------|
-| `cyclonedx-json`   | CycloneDX 1.5 | `application/vnd.cyclonedx+json` |
-| `cyclonedx-xml`    | CycloneDX 1.5 | `application/vnd.cyclonedx+xml`  |
-| `spdx-json`        | SPDX 2.3      | `application/spdx+json`          |
-| `spdx-tag-value`   | SPDX 2.3      | `text/spdx`                      |
-| `syft-json`        | Syft native   | `application/json`               |
+| `format`         | Spec          | Media type                       |
+| ---------------- | ------------- | -------------------------------- |
+| `cyclonedx-json` | CycloneDX 1.5 | `application/vnd.cyclonedx+json` |
+| `cyclonedx-xml`  | CycloneDX 1.5 | `application/vnd.cyclonedx+xml`  |
+| `spdx-json`      | SPDX 2.3      | `application/spdx+json`          |
+| `spdx-tag-value` | SPDX 2.3      | `text/spdx`                      |
+| `syft-json`      | Syft native   | `application/json`               |
 
 ## Event bus
 
 The agent subscribes to and publishes on a configurable subject
 prefix (default `aionrs.security.sbom`):
 
-| Subject                                    | Direction | Payload kind           |
-|--------------------------------------------|-----------|------------------------|
-| `aionrs.security.sbom.requests`            | inbound   | `GenerateRequest` JSON |
-| `aionrs.security.sbom.results`             | outbound  | `{status, request_id}` |
-| `aionrs.security.sbom.events`              | outbound  | `agent.ready`, `agent.stopping`, `sbom.generated` |
+| Subject                         | Direction | Payload kind                                      |
+| ------------------------------- | --------- | ------------------------------------------------- |
+| `aionrs.security.sbom.requests` | inbound   | `GenerateRequest` JSON                            |
+| `aionrs.security.sbom.results`  | outbound  | `{status, request_id}`                            |
+| `aionrs.security.sbom.events`   | outbound  | `agent.ready`, `agent.stopping`, `sbom.generated` |
 
 The bus implementation is pluggable — `NATSClient` (default) or
 `InMemoryBus` (used by tests and the `--bus-url=memory://` flag).
 
 ## Configuration
 
-| Env var                  | Default                 | Notes                                  |
-|--------------------------|-------------------------|----------------------------------------|
-| `PORT`                   | `4007`                  |                                        |
-| `HOST`                   | `0.0.0.0`               |                                        |
-| `SYFT_BINARY`            | `syft`                  | Absolute path or `$PATH` lookup        |
-| `BUS_URL`                | `nats://localhost:4222` | Use `memory://` to disable the bus     |
-| `BUS_SUBJECT_PREFIX`     | `aionrs.security.sbom`  |                                        |
-| `SBOM_WORKSPACE`         | `/var/lib/aionrs/sbom-workspace` | Working dir for scans     |
-| `REQUEST_TIMEOUT_SECONDS`| `600`                   | Per-syft invocation timeout            |
-| `MAX_CONCURRENT_SCANS`   | `4`                     | Global concurrency cap                 |
-| `DEFAULT_FORMAT`         | `cyclonedx-json`        |                                        |
-| `REQUIRE_AUTH`           | `false`                 | When `true`, requires `Authorization: Bearer …` + `X-Tenant-Id` |
+| Env var                   | Default                          | Notes                                                           |
+| ------------------------- | -------------------------------- | --------------------------------------------------------------- |
+| `PORT`                    | `4007`                           |                                                                 |
+| `HOST`                    | `0.0.0.0`                        |                                                                 |
+| `SYFT_BINARY`             | `syft`                           | Absolute path or `$PATH` lookup                                 |
+| `BUS_URL`                 | `nats://localhost:4222`          | Use `memory://` to disable the bus                              |
+| `BUS_SUBJECT_PREFIX`      | `aionrs.security.sbom`           |                                                                 |
+| `SBOM_WORKSPACE`          | `/var/lib/aionrs/sbom-workspace` | Working dir for scans                                           |
+| `REQUEST_TIMEOUT_SECONDS` | `600`                            | Per-syft invocation timeout                                     |
+| `MAX_CONCURRENT_SCANS`    | `4`                              | Global concurrency cap                                          |
+| `DEFAULT_FORMAT`          | `cyclonedx-json`                 |                                                                 |
+| `REQUIRE_AUTH`            | `false`                          | When `true`, requires `Authorization: Bearer …` + `X-Tenant-Id` |
 
 ## Architecture
 

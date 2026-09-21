@@ -135,7 +135,9 @@ function mapTerminationReason(reason: string | undefined): PodTerminationReason 
 
 function containerTerminationReason(status: V1ContainerStatus | undefined): PodTerminationReason {
   const reason =
-    status?.state?.waiting?.reason ?? status?.state?.terminated?.reason ?? status?.lastState?.terminated?.reason;
+    status?.state?.waiting?.reason ??
+    status?.state?.terminated?.reason ??
+    status?.lastState?.terminated?.reason;
   return mapTerminationReason(reason);
 }
 
@@ -147,7 +149,11 @@ function mapContainers(pod: V1Pod): Container[] {
   );
   return specContainers.map((c) => {
     const status = statuses.find((s) => s.name === c.name);
-    const state = status?.state?.running ? 'running' : status?.state?.terminated ? 'terminated' : 'waiting';
+    const state = status?.state?.running
+      ? 'running'
+      : status?.state?.terminated
+        ? 'terminated'
+        : 'waiting';
     return {
       name: c.name,
       image: c.image ?? 'unknown',
@@ -164,7 +170,9 @@ function mapContainers(pod: V1Pod): Container[] {
       privileged: c.securityContext?.privileged ?? false,
       runAsRoot: c.securityContext?.runAsNonRoot === false || c.securityContext?.runAsUser === 0,
       addedCapabilities: c.securityContext?.capabilities?.add ?? [],
-      hostPaths: (c.volumeMounts ?? []).filter((vm) => hostPathVolumes.has(vm.name)).map((vm) => vm.mountPath),
+      hostPaths: (c.volumeMounts ?? [])
+        .filter((vm) => hostPathVolumes.has(vm.name))
+        .map((vm) => vm.mountPath),
     };
   });
 }
@@ -227,9 +235,19 @@ export function mapPod(tenantId: string, clusterId: string, clusterName: string,
     ownerKind: owner?.kind,
     ownerName: owner?.name,
     serviceAccount: pod.spec?.serviceAccountName,
-    containers: containers.length > 0 ? containers : [
-      { name: 'unknown', image: 'unknown', state: 'waiting', ready: false, restartCount: 0, lastTerminationReason: 'unknown' },
-    ],
+    containers:
+      containers.length > 0
+        ? containers
+        : [
+            {
+              name: 'unknown',
+              image: 'unknown',
+              state: 'waiting',
+              ready: false,
+              restartCount: 0,
+              lastTerminationReason: 'unknown',
+            },
+          ],
     conditions: (pod.status?.conditions ?? []).map((c) => ({
       type: POD_CONDITION_TYPE_MAP[c.type] ?? 'pod_scheduled',
       status: (c.status?.toLowerCase() as 'true' | 'false' | 'unknown') ?? 'unknown',
@@ -254,7 +272,12 @@ const SERVICE_TYPE_MAP: Record<string, ServiceType> = {
   ExternalName: 'external_name',
 };
 
-export function mapService(tenantId: string, clusterId: string, clusterName: string, svc: V1Service): Service {
+export function mapService(
+  tenantId: string,
+  clusterId: string,
+  clusterName: string,
+  svc: V1Service,
+): Service {
   const namespace = svc.metadata?.namespace ?? 'default';
   const name = svc.metadata?.name ?? 'unknown';
   return ServiceSchema.parse({
@@ -289,9 +312,22 @@ export function mapService(tenantId: string, clusterId: string, clusterName: str
   });
 }
 
-const INGRESS_CLASS_VALUES: IngressClass[] = ['nginx', 'nginx_internal', 'traefik', 'istio', 'alb', 'gce', 'kong'];
+const INGRESS_CLASS_VALUES: IngressClass[] = [
+  'nginx',
+  'nginx_internal',
+  'traefik',
+  'istio',
+  'alb',
+  'gce',
+  'kong',
+];
 
-export function mapIngress(tenantId: string, clusterId: string, clusterName: string, ing: V1Ingress): Ingress {
+export function mapIngress(
+  tenantId: string,
+  clusterId: string,
+  clusterName: string,
+  ing: V1Ingress,
+): Ingress {
   const className = ing.spec?.ingressClassName;
   const rules = (ing.spec?.rules ?? []).flatMap((rule) =>
     (rule.http?.paths ?? []).map((path) => ({
@@ -310,13 +346,18 @@ export function mapIngress(tenantId: string, clusterId: string, clusterName: str
     namespace: ing.metadata?.namespace ?? 'default',
     name: ing.metadata?.name ?? 'unknown',
     uid: ing.metadata?.uid,
-    className: INGRESS_CLASS_VALUES.includes(className as IngressClass) ? (className as IngressClass) : 'unknown',
+    className: INGRESS_CLASS_VALUES.includes(className as IngressClass)
+      ? (className as IngressClass)
+      : 'unknown',
     rules,
     tls: (ing.spec?.tls ?? []).map((t) => ({ hosts: t.hosts ?? [], secretName: t.secretName })),
     defaultBackend: ing.spec?.defaultBackend?.service
       ? {
           serviceName: ing.spec.defaultBackend.service.name,
-          servicePort: ing.spec.defaultBackend.service.port?.number ?? ing.spec.defaultBackend.service.port?.name ?? 0,
+          servicePort:
+            ing.spec.defaultBackend.service.port?.number ??
+            ing.spec.defaultBackend.service.port?.name ??
+            0,
         }
       : undefined,
     labels: ing.metadata?.labels ?? {},
@@ -330,7 +371,13 @@ function workloadBase(
   tenantId: string,
   clusterId: string,
   clusterName: string,
-  meta: { namespace?: string; name?: string; uid?: string; labels?: Record<string, string>; creationTimestamp?: Date },
+  meta: {
+    namespace?: string;
+    name?: string;
+    uid?: string;
+    labels?: Record<string, string>;
+    creationTimestamp?: Date;
+  },
   containers: V1Container[] | undefined,
   replicas: { desired: number; ready: number; updated: number; available: number },
   conditions: { type: string; status: string; message?: string; lastTransitionTime?: Date }[],
@@ -360,7 +407,12 @@ function workloadBase(
   };
 }
 
-export function mapDeployment(tenantId: string, clusterId: string, clusterName: string, dep: V1Deployment): Deployment {
+export function mapDeployment(
+  tenantId: string,
+  clusterId: string,
+  clusterName: string,
+  dep: V1Deployment,
+): Deployment {
   const desired = dep.spec?.replicas ?? 0;
   const ready = dep.status?.readyReplicas ?? 0;
   const base = workloadBase(
@@ -369,7 +421,12 @@ export function mapDeployment(tenantId: string, clusterId: string, clusterName: 
     clusterName,
     dep.metadata ?? {},
     dep.spec?.template?.spec?.containers,
-    { desired, ready, updated: dep.status?.updatedReplicas ?? 0, available: dep.status?.availableReplicas ?? 0 },
+    {
+      desired,
+      ready,
+      updated: dep.status?.updatedReplicas ?? 0,
+      available: dep.status?.availableReplicas ?? 0,
+    },
     dep.status?.conditions ?? [],
   );
   return DeploymentSchema.parse({
@@ -419,22 +476,27 @@ export function mapStatefulSet(
     ...base,
     kind: 'statefulset',
     serviceName: sts.spec?.serviceName ?? `${base.name}-headless`,
-    podManagementPolicy: sts.spec?.podManagementPolicy === 'Parallel' ? 'parallel' : 'ordered_ready',
+    podManagementPolicy:
+      sts.spec?.podManagementPolicy === 'Parallel' ? 'parallel' : 'ordered_ready',
     updateStrategy: sts.spec?.updateStrategy?.type === 'OnDelete' ? 'on_delete' : 'rolling_update',
     volumeClaimTemplates: (sts.spec?.volumeClaimTemplates ?? []).map((pvc) => ({
       name: pvc.metadata?.name ?? 'data',
       storageClassName: pvc.spec?.storageClassName,
       sizeBytes: parseMemoryBytes(pvc.spec?.resources?.requests?.storage),
-      accessModes: (pvc.spec?.accessModes as ('ReadWriteOnce' | 'ReadOnlyMany' | 'ReadWriteMany')[] | undefined) ?? [
-        'ReadWriteOnce',
-      ],
+      accessModes: (pvc.spec?.accessModes as
+        ('ReadWriteOnce' | 'ReadOnlyMany' | 'ReadWriteMany')[] | undefined) ?? ['ReadWriteOnce'],
     })),
     currentRevision: sts.status?.currentRevision,
     updateRevision: sts.status?.updateRevision,
   });
 }
 
-export function mapDaemonSet(tenantId: string, clusterId: string, clusterName: string, ds: V1DaemonSet): DaemonSet {
+export function mapDaemonSet(
+  tenantId: string,
+  clusterId: string,
+  clusterName: string,
+  ds: V1DaemonSet,
+): DaemonSet {
   const desired = ds.status?.desiredNumberScheduled ?? 0;
   const base = workloadBase(
     tenantId,

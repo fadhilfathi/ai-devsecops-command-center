@@ -68,7 +68,8 @@ export interface SecurityServiceDeps {
 export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<FastifyInstance> {
   const env = loadEnv();
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
-  const logger = deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
+  const logger =
+    deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? new InMemoryEventBus();
 
   const assets = buildAssetRepository();
@@ -90,7 +91,10 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
 
   // S2.7 — service name is resolved by the @aicc/observability helper
   // at module-load time from OTEL_SERVICE_NAME. Log it for visibility.
-  logger.info({ service: serviceName, otel: !!process.env.OTEL_SERVICE_NAME }, 'metrics service name resolved');
+  logger.info(
+    { service: serviceName, otel: !!process.env.OTEL_SERVICE_NAME },
+    'metrics service name resolved',
+  );
 
   // ---------- Plugins ----------
   await server.register(helmet, { contentSecurityPolicy: false });
@@ -106,8 +110,16 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     global: true,
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW_MS,
-    addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true, 'x-ratelimit-reset': true },
-    addHeaders: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true, 'x-ratelimit-reset': true },
+    addHeadersOnExceeding: {
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true,
+    },
+    addHeaders: {
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true,
+    },
     keyGenerator: (req) => req.user?.sub ?? req.ip,
     onExceeded: (req) => {
       const route = req.routeOptions?.url ?? req.url ?? 'unknown';
@@ -123,7 +135,8 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
       openapi: '3.1.0',
       info: {
         title: 'AICC Security Service API',
-        description: 'S2.5 — security API layer. Proxies to sbom-pipeline-service (4007), vuln-intel-service (4008), dependency-intel-service (4009), and aggregates the security dashboard.',
+        description:
+          'S2.5 — security API layer. Proxies to sbom-pipeline-service (4007), vuln-intel-service (4008), dependency-intel-service (4009), and aggregates the security dashboard.',
         version: SERVICE_VERSION,
       },
       servers: [{ url: `http://localhost:${env.PORT}`, description: 'Local' }],
@@ -148,13 +161,16 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   await server.register(swaggerUi, { routePrefix: '/docs', uiConfig: { docExpansion: 'list' } });
 
   // ---------- Auth ----------
-  server.addHook('preHandler', buildAuthHook({
-    alg: env.JWT_ALG,
-    secret: env.JWT_SECRET,
-    publicKey: env.JWT_PUBLIC_KEY,
-    issuer: env.JWT_ISSUER,
-    audience: env.JWT_AUDIENCE,
-  }));
+  server.addHook(
+    'preHandler',
+    buildAuthHook({
+      alg: env.JWT_ALG,
+      secret: env.JWT_SECRET,
+      publicKey: env.JWT_PUBLIC_KEY,
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+    }),
+  );
 
   // ---------- Request context ----------
   server.decorateRequest('tenantId', '');
@@ -220,7 +236,9 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     reply.send({
       code,
       message: err.message ?? 'Internal Server Error',
-      ...((err as { details?: unknown }).details ? { details: (err as { details?: unknown }).details } : {}),
+      ...((err as { details?: unknown }).details
+        ? { details: (err as { details?: unknown }).details }
+        : {}),
       requestId: req.id,
     });
   });

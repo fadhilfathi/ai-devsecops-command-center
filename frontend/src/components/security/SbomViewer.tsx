@@ -1,16 +1,23 @@
-import { useMemo, useState } from "react";
-import { FixedSizeList, type ListChildComponentProps } from "react-window";
-import { Download, Filter, Search, X } from "lucide-react";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { api } from "@/lib/api";
-import { useFetch } from "@/hooks/useFetch";
-import { fmtRel, severityClasses, titleCase } from "@/lib/format";
-import type { Ecosystem, SbomComponentEnhanced, Severity } from "@/types";
+import { useMemo, useState } from 'react';
+import { FixedSizeList, type ListChildComponentProps } from 'react-window';
+import { Download, Filter, Search, X } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
+import { fmtRel, severityClasses, titleCase } from '@/lib/format';
+import type { Ecosystem, SbomComponentEnhanced, Severity } from '@/types';
 
 const ECOSYSTEMS: Ecosystem[] = [
-  "npm", "pypi", "maven", "go", "rubygems", "cargo", "nuget", "other",
+  'npm',
+  'pypi',
+  'maven',
+  'go',
+  'rubygems',
+  'cargo',
+  'nuget',
+  'other',
 ];
 
 const ROW_HEIGHT = 56;
@@ -28,11 +35,19 @@ const ROW_HEIGHT = 56;
 export function SbomViewer({ sbomId }: { sbomId: string }) {
   const { data, loading } = useFetch(
     () => api.sbomDocument(sbomId),
-    { id: sbomId, assetId: "", assetName: "", generatedAt: "", format: "CycloneDX-1.5" as const, componentCount: 0, components: [] },
+    {
+      id: sbomId,
+      assetId: '',
+      assetName: '',
+      generatedAt: '',
+      format: 'CycloneDX-1.5' as const,
+      componentCount: 0,
+      components: [],
+    },
     [sbomId],
   );
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [ecosystemFilter, setEcosystemFilter] = useState<Set<Ecosystem>>(new Set());
   const [licenseFilter, setLicenseFilter] = useState<string | null>(null);
   const [maxDepth, setMaxDepth] = useState<number | null>(null);
@@ -40,7 +55,7 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
   const components = data?.components ?? [];
   const licenses = useMemo(
     () => Array.from(new Set(components.map((c) => c.license))).sort(),
-    [components]
+    [components],
   );
 
   const filtered = useMemo(() => {
@@ -56,7 +71,7 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
 
   const handleExport = () => {
     const url = api.sbomExportUrl(sbomId);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
     a.download = `${sbomId}.cyclonedx.json`;
     document.body.appendChild(a);
@@ -65,30 +80,25 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
   };
 
   const clearFilters = () => {
-    setSearch("");
+    setSearch('');
     setEcosystemFilter(new Set());
     setLicenseFilter(null);
     setMaxDepth(null);
   };
 
   const filtersActive =
-    search !== "" ||
-    ecosystemFilter.size > 0 ||
-    licenseFilter != null ||
-    maxDepth != null;
+    search !== '' || ecosystemFilter.size > 0 || licenseFilter != null || maxDepth != null;
 
   return (
     <div>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-text">
-            {data?.assetName ?? "SBOM"}
-          </h2>
+          <h2 className="text-lg font-semibold text-text">{data?.assetName ?? 'SBOM'}</h2>
           <p className="aion-mono text-[11px]">
             {data
               ? `${data.format} · ${data.componentCount} components · generated ${fmtRel(data.generatedAt)}`
-              : "loading…"}
+              : 'loading…'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -119,16 +129,13 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
 
           {/* Ecosystem */}
           <FilterPill label="Ecosystem" active={ecosystemFilter.size > 0}>
-            <EcosystemMenu
-              selected={ecosystemFilter}
-              onChange={setEcosystemFilter}
-            />
+            <EcosystemMenu selected={ecosystemFilter} onChange={setEcosystemFilter} />
           </FilterPill>
 
           {/* License */}
           <FilterPill label="License" active={licenseFilter != null}>
             <select
-              value={licenseFilter ?? ""}
+              value={licenseFilter ?? ''}
               onChange={(e) => setLicenseFilter(e.target.value || null)}
               className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-text focus:border-accent/50 focus:outline-none"
               aria-label="Filter by license"
@@ -145,10 +152,8 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
           {/* Depth */}
           <FilterPill label="Depth" active={maxDepth != null}>
             <select
-              value={maxDepth ?? ""}
-              onChange={(e) =>
-                setMaxDepth(e.target.value === "" ? null : Number(e.target.value))
-              }
+              value={maxDepth ?? ''}
+              onChange={(e) => setMaxDepth(e.target.value === '' ? null : Number(e.target.value))}
               className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-text focus:border-accent/50 focus:outline-none"
               aria-label="Filter by maximum depth"
             >
@@ -176,9 +181,7 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
       <Card className="overflow-hidden">
         <HeaderRow />
         {loading || !data ? (
-          <div className="grid place-items-center p-10 text-sm text-muted">
-            Loading components…
-          </div>
+          <div className="grid place-items-center p-10 text-sm text-muted">Loading components…</div>
         ) : filtered.length === 0 ? (
           <div className="grid place-items-center p-10 text-sm text-muted">
             No components match the current filters.
@@ -205,15 +208,15 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
 // -------------------------------------------------------------------------
 
 const COLS = [
-  { key: "name",   header: "Component",  width: "minmax(220px,2fr)" },
-  { key: "ver",    header: "Version",    width: "110px" },
-  { key: "eco",    header: "Ecosystem",  width: "100px" },
-  { key: "lic",    header: "License",    width: "120px" },
-  { key: "depth",  header: "Depth",      width: "70px" },
-  { key: "vulns",  header: "Vulns",      width: "180px" },
+  { key: 'name', header: 'Component', width: 'minmax(220px,2fr)' },
+  { key: 'ver', header: 'Version', width: '110px' },
+  { key: 'eco', header: 'Ecosystem', width: '100px' },
+  { key: 'lic', header: 'License', width: '120px' },
+  { key: 'depth', header: 'Depth', width: '70px' },
+  { key: 'vulns', header: 'Vulns', width: '180px' },
 ] as const;
 
-const GRID_TEMPLATE = COLS.map((c) => c.width).join(" ");
+const GRID_TEMPLATE = COLS.map((c) => c.width).join(' ');
 
 function HeaderRow() {
   return (
@@ -243,16 +246,22 @@ const Row = ({ index, style, data }: ListChildComponentProps<SbomComponentEnhanc
         <div className="truncate font-medium text-text">{c.name}</div>
         <div className="aion-mono truncate text-[11px]">{c.purl}</div>
       </div>
-      <div role="cell" className="aion-mono text-text">{c.version}</div>
+      <div role="cell" className="aion-mono text-text">
+        {c.version}
+      </div>
       <div role="cell">
         <Badge variant="neutral">{c.ecosystem}</Badge>
       </div>
-      <div role="cell" className="text-text">{c.license}</div>
-      <div role="cell" className="aion-mono text-muted">{c.depth}</div>
+      <div role="cell" className="text-text">
+        {c.license}
+      </div>
+      <div role="cell" className="aion-mono text-muted">
+        {c.depth}
+      </div>
       <div role="cell">
         {c.vulnerabilities > 0 ? (
           <div className="inline-flex items-center gap-2">
-            <SeverityChip severity={c.highestSeverity ?? "medium"} />
+            <SeverityChip severity={c.highestSeverity ?? 'medium'} />
             <span className="aion-mono">{c.vulnerabilities}</span>
           </div>
         ) : (
@@ -285,7 +294,7 @@ function FilterPill({
   return (
     <div
       className={`flex items-center gap-1.5 rounded-md border bg-surface-2 px-2 py-1 ${
-        active ? "border-accent/40" : "border-border"
+        active ? 'border-accent/40' : 'border-border'
       }`}
     >
       <Filter className="h-3 w-3 text-muted" aria-hidden="true" />
@@ -319,8 +328,8 @@ function EcosystemMenu({
             onClick={() => toggle(e)}
             className={`rounded border px-1.5 py-0.5 text-[10px] ${
               on
-                ? "border-accent/50 bg-accent/10 text-accent"
-                : "border-border bg-surface text-muted hover:border-accent/30"
+                ? 'border-accent/50 bg-accent/10 text-accent'
+                : 'border-border bg-surface text-muted hover:border-accent/30'
             }`}
             aria-pressed={on}
           >

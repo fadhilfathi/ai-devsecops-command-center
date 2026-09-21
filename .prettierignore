@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+coverage
+.turbo
+.cache
+*.tsbuildinfo
+pnpm-lock.yaml
+.pytest_cache
+__pycache__
+*.egg-info

@@ -9,7 +9,12 @@ export interface UserRepository {
   list(): Promise<User[]>;
   findById(id: UUID): Promise<User | undefined>;
   findByEmail(email: string): Promise<User | undefined>;
-  create(input: { email: string; displayName: string; role: UserRole; tenantId: UUID }): Promise<User>;
+  create(input: {
+    email: string;
+    displayName: string;
+    role: UserRole;
+    tenantId: UUID;
+  }): Promise<User>;
   setActive(id: UUID, active: boolean): Promise<User | undefined>;
 }
 
@@ -31,11 +36,13 @@ export function buildUserRepository(): UserRepository {
   });
 
   function newId(): UUID {
-    return globalThis.crypto?.randomUUID?.() ??
+    return (
+      globalThis.crypto?.randomUUID?.() ??
       'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
         const r = (Math.random() * 16) | 0;
         return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-      });
+      })
+    );
   }
 
   return {

@@ -1,8 +1,8 @@
 ---
 name: Bug report
 about: Report incorrect behavior or a defect
-title: "[Bug] "
-labels: ["bug", "triage"]
+title: '[Bug] '
+labels: ['bug', 'triage']
 assignees: []
 ---
 

@@ -22,11 +22,7 @@ export const IngressClassSchema = z.enum([
 ]);
 export type IngressClass = z.infer<typeof IngressClassSchema>;
 
-export const IngressPathTypeSchema = z.enum([
-  'Exact',
-  'Prefix',
-  'ImplementationSpecific',
-]);
+export const IngressPathTypeSchema = z.enum(['Exact', 'Prefix', 'ImplementationSpecific']);
 export type IngressPathType = z.infer<typeof IngressPathTypeSchema>;
 
 export const IngressTlsSchema = z.object({

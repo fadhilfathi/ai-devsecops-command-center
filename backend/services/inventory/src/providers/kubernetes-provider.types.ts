@@ -2,8 +2,15 @@
  * Kubernetes provider types — Sprint 4 stub.
  */
 import type {
-  Cluster, Namespace, Workload, Pod, Service, Ingress,
-  Deployment, StatefulSet, DaemonSet,
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Ingress,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
 } from '@aicc/models';
 
 export interface ListOptions {

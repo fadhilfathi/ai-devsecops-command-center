@@ -1,6 +1,7 @@
 # Agents
 
 > AI agents live in two places:
+>
 > 1. The **runtime** in `backend/services/agent/` — the dispatcher,
 >    memory, contract registry.
 > 2. The **definitions** in `agents/` — the typed contracts, prompt

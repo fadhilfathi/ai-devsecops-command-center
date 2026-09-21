@@ -56,7 +56,8 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
         // compile a $ref cycle — it blows the call stack at boot.
         tags: ['security', 'sbom'],
         summary: 'Generate an SBOM from a container image, git repo, or filesystem path',
-        description: 'Proxies to sbom-pipeline-service (port 4007). Emits `security.sbom.generated` on success.',
+        description:
+          'Proxies to sbom-pipeline-service (port 4007). Emits `security.sbom.generated` on success.',
       },
     },
     async (req: FastifyRequest<{ Body: unknown }>, reply) => {
@@ -82,7 +83,10 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
         const event: SecuritySbomGeneratedEvent = {
           sbomId: validated.data.sbom.metadata.timestamp,
           tenantId,
-          rootBomRef: validated.data.sbom.metadata.component?.['bom-ref'] ?? validated.data.sbom.serialNumber ?? 'unknown',
+          rootBomRef:
+            validated.data.sbom.metadata.component?.['bom-ref'] ??
+            validated.data.sbom.serialNumber ??
+            'unknown',
           specVersion: validated.data.sbom.specVersion,
           componentCount: validated.data.sbom.components.length,
           generatedAt: new Date().toISOString(),
@@ -96,7 +100,10 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
           severity: 'info',
           data: event,
         });
-        logger.info({ tenantId, rootBomRef: event.rootBomRef, componentCount: event.componentCount }, 'SBOM generated');
+        logger.info(
+          { tenantId, rootBomRef: event.rootBomRef, componentCount: event.componentCount },
+          'SBOM generated',
+        );
       }
 
       reply.code(proxyResult.status).send(proxyResult.body);

@@ -19,11 +19,11 @@ with risk level (`critical` / `high` / `medium` / `low`) and a
 
 ## Endpoints
 
-| Method | Path                                          | Description                       |
-| ------ | --------------------------------------------- | --------------------------------- |
-| GET    | `/v1/runtime-security/risks`                  | Per-finding risk list             |
-| GET    | `/v1/runtime-security/risks/:id`              | Single finding detail             |
-| POST   | `/v1/runtime-security/scan`                   | Trigger a re-scan (idempotent)    |
-| GET    | `/v1/runtime-security/report`                 | Tenant-wide rollup report         |
-| GET    | `/v1/runtime-security/report/cluster/:id`     | Per-cluster rollup report         |
-| GET    | `/v1/runtime-security/rules`                  | List active rules                 |
+| Method | Path                                      | Description                    |
+| ------ | ----------------------------------------- | ------------------------------ |
+| GET    | `/v1/runtime-security/risks`              | Per-finding risk list          |
+| GET    | `/v1/runtime-security/risks/:id`          | Single finding detail          |
+| POST   | `/v1/runtime-security/scan`               | Trigger a re-scan (idempotent) |
+| GET    | `/v1/runtime-security/report`             | Tenant-wide rollup report      |
+| GET    | `/v1/runtime-security/report/cluster/:id` | Per-cluster rollup report      |
+| GET    | `/v1/runtime-security/rules`              | List active rules              |

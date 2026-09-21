@@ -44,14 +44,18 @@ const PURL_RE =
 //   - no whitespace, no control chars
 const COMPONENT_NAME_RE = /^[A-Za-z0-9._-]{1,214}$/;
 
-const MAX_SBOM_BYTES = 10 * 1024 * 1024;          // 10 MB
+const MAX_SBOM_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_COMPONENTS = 5_000;
-const MAX_DEPENDENCIES = 5_000;                   // distinct declared deps
+const MAX_DEPENDENCIES = 5_000; // distinct declared deps
 const MAX_EDGES = 100_000;
 const MAX_DEPTH = 20;
 
 export class SbomValidationError extends Error {
-  constructor(public code: string, public field: string, message: string) {
+  constructor(
+    public code: string,
+    public field: string,
+    message: string,
+  ) {
     super(message);
     this.name = 'SbomValidationError';
   }
@@ -65,8 +69,11 @@ function assertPurl(purl: unknown, field: string): void {
 
 function assertName(name: unknown, field: string): void {
   if (typeof name !== 'string' || !COMPONENT_NAME_RE.test(name)) {
-    throw new SbomValidationError('sbom.component.name.invalid', field,
-      'component name must match ' + COMPONENT_NAME_RE.source);
+    throw new SbomValidationError(
+      'sbom.component.name.invalid',
+      field,
+      'component name must match ' + COMPONENT_NAME_RE.source,
+    );
   }
 }
 
@@ -76,44 +83,58 @@ export const sbomInputMiddleware: FastifyPluginAsync = fp(async (app) => {
     { parseAs: 'string', bodyLimit: MAX_SBOM_BYTES },
     (_req, body, done) => {
       if (Buffer.byteLength(body as string, 'utf8') > MAX_SBOM_BYTES) {
-        return done(new SbomValidationError('sbom.size.exceeded', 'body',
-          'SBOM exceeds 10 MB limit'));
+        return done(
+          new SbomValidationError('sbom.size.exceeded', 'body', 'SBOM exceeds 10 MB limit'),
+        );
       }
       try {
         const doc = JSON.parse(body as string);
         return done(null, doc);
       } catch (e) {
-        return done(new SbomValidationError('sbom.json.invalid', 'body',
-          'SBOM is not valid JSON'));
+        return done(new SbomValidationError('sbom.json.invalid', 'body', 'SBOM is not valid JSON'));
       }
-    }
+    },
   );
 
   app.post('/sbom/analyze', async (req) => {
     const doc = req.body as any;
     if (!doc || typeof doc !== 'object') {
-      throw new SbomValidationError('sbom.body.invalid', 'body', 'body must be a CycloneDX JSON object');
+      throw new SbomValidationError(
+        'sbom.body.invalid',
+        'body',
+        'body must be a CycloneDX JSON object',
+      );
     }
     if (doc.bomFormat !== 'CycloneDX') {
-      throw new SbomValidationError('sbom.format.unsupported', 'bomFormat', 'only CycloneDX is supported');
+      throw new SbomValidationError(
+        'sbom.format.unsupported',
+        'bomFormat',
+        'only CycloneDX is supported',
+      );
     }
     const components = Array.isArray(doc.components) ? doc.components : [];
     if (components.length > MAX_COMPONENTS) {
-      throw new SbomValidationError('sbom.components.exceeded', 'components',
-        `component count ${components.length} exceeds ${MAX_COMPONENTS}`);
+      throw new SbomValidationError(
+        'sbom.components.exceeded',
+        'components',
+        `component count ${components.length} exceeds ${MAX_COMPONENTS}`,
+      );
     }
     const deps = Array.isArray(doc.dependencies) ? doc.dependencies : [];
     let edgeCount = 0;
     for (const c of components) {
       assertName(c.name, `components[${components.indexOf(c)}].name`);
-      assertPurl(c.purl,   `components[${components.indexOf(c)}].purl`);
+      assertPurl(c.purl, `components[${components.indexOf(c)}].purl`);
     }
     for (const d of deps) {
       assertName(d.ref, `dependencies[${deps.indexOf(d)}].ref`);
       edgeCount += Array.isArray(d.dependsOn) ? d.dependsOn.length : 0;
       if (edgeCount > MAX_EDGES) {
-        throw new SbomValidationError('sbom.edges.exceeded', 'dependencies',
-          `edge count exceeds ${MAX_EDGES}`);
+        throw new SbomValidationError(
+          'sbom.edges.exceeded',
+          'dependencies',
+          `edge count exceeds ${MAX_EDGES}`,
+        );
       }
     }
     // Depth check: BFS the dependency graph, max depth MAX_DEPTH
@@ -122,12 +143,15 @@ export const sbomInputMiddleware: FastifyPluginAsync = fp(async (app) => {
       adj.set(d.ref, Array.isArray(d.dependsOn) ? d.dependsOn : []);
     }
     const seen = new Set<string>();
-    const queue: Array<[string, number]> = components.map(c => [c['bom-ref'] ?? c.purl, 1]);
+    const queue: Array<[string, number]> = components.map((c) => [c['bom-ref'] ?? c.purl, 1]);
     while (queue.length) {
       const [node, depth] = queue.shift()!;
       if (depth > MAX_DEPTH) {
-        throw new SbomValidationError('sbom.depth.exceeded', 'dependencies',
-          `dependency depth exceeds ${MAX_DEPTH}`);
+        throw new SbomValidationError(
+          'sbom.depth.exceeded',
+          'dependencies',
+          `dependency depth exceeds ${MAX_DEPTH}`,
+        );
       }
       if (seen.has(node)) continue;
       seen.add(node);
@@ -151,12 +175,15 @@ import fp from 'fastify-plugin';
 import { createClient } from 'redis';
 
 export type Bucket = 'sbom' | 'vuln' | 'risk';
-interface Limit { capacity: number; refillPerSec: number; }
+interface Limit {
+  capacity: number;
+  refillPerSec: number;
+}
 
 const LIMITS: Record<Bucket, Limit> = {
-  sbom: { capacity: 10,   refillPerSec: 10/60  },  // 10 SBOM/min
-  vuln: { capacity: 100,  refillPerSec: 100/60 },  // 100 vulns/min
-  risk: { capacity: 60,   refillPerSec: 60/60  },  // 60 risk-calc/min
+  sbom: { capacity: 10, refillPerSec: 10 / 60 }, // 10 SBOM/min
+  vuln: { capacity: 100, refillPerSec: 100 / 60 }, // 100 vulns/min
+  risk: { capacity: 60, refillPerSec: 60 / 60 }, // 60 risk-calc/min
 };
 
 // Atomic token-bucket Lua: returns remaining tokens after this request.
@@ -180,32 +207,31 @@ redis.call('HMSET', key, 'tokens', tokens, 'ts', now)
 redis.call('PEXPIRE', key, 60000)
 return {allowed, math.floor(tokens)}`;
 
-export const rateLimitMiddleware: FastifyPluginAsync<{ bucket: Bucket }> = fp(
-  async (app, opts) => {
-    const redis = createClient({ url: process.env.REDIS_URL });
-    await redis.connect();
-    const limit = LIMITS[opts.bucket];
+export const rateLimitMiddleware: FastifyPluginAsync<{ bucket: Bucket }> = fp(async (app, opts) => {
+  const redis = createClient({ url: process.env.REDIS_URL });
+  await redis.connect();
+  const limit = LIMITS[opts.bucket];
 
-    app.addHook('preHandler', async (req, reply) => {
-      const tenantId = (req as any).tenantId;
-      if (!tenantId) return; // auth middleware should have set this
-      const key = `ratelimit:${tenantId}:${opts.bucket}`;
-      const [allowed, remaining] = (await redis.eval(
-        LUA, { keys: [key], arguments: [String(limit.capacity), String(limit.refillPerSec), String(Date.now())] }
-      )) as [number, number];
-      reply.header('X-RateLimit-Limit', String(limit.capacity));
-      reply.header('X-RateLimit-Remaining', String(remaining));
-      if (!allowed) {
-        reply.header('Retry-After', '60');
-        return reply.code(429).send({
-          error: 'rate_limited',
-          bucket: opts.bucket,
-          trace_id: req.id,
-        });
-      }
-    });
-  }
-);
+  app.addHook('preHandler', async (req, reply) => {
+    const tenantId = (req as any).tenantId;
+    if (!tenantId) return; // auth middleware should have set this
+    const key = `ratelimit:${tenantId}:${opts.bucket}`;
+    const [allowed, remaining] = (await redis.eval(LUA, {
+      keys: [key],
+      arguments: [String(limit.capacity), String(limit.refillPerSec), String(Date.now())],
+    })) as [number, number];
+    reply.header('X-RateLimit-Limit', String(limit.capacity));
+    reply.header('X-RateLimit-Remaining', String(remaining));
+    if (!allowed) {
+      reply.header('Retry-After', '60');
+      return reply.code(429).send({
+        error: 'rate_limited',
+        bucket: opts.bucket,
+        trace_id: req.id,
+      });
+    }
+  });
+});
 ```
 
 Wiring (in `security-service/src/server.ts`):
@@ -230,7 +256,7 @@ metadata:
   namespace: security
   labels:
     app: sbom-scanner
-    security.aicc/sandbox: "true"
+    security.aicc/sandbox: 'true'
 spec:
   automountServiceAccountToken: false
   restartPolicy: Never
@@ -246,15 +272,15 @@ spec:
       # Pinned by digest; rotated via PR; verified at startup by an initContainer (see § 3.4).
       image: anchore/syft@sha256:REPLACE_WITH_PINNED_DIGEST
       imagePullPolicy: IfNotPresent
-      command: ["/syft", "server", "--listen", "0.0.0.0:4954", "--token", "from-vault"]
+      command: ['/syft', 'server', '--listen', '0.0.0.0:4954', '--token', 'from-vault']
       resources:
         requests: { cpu: 500m, memory: 1Gi }
-        limits:   { cpu: 2,    memory: 4Gi }
+        limits: { cpu: 2, memory: 4Gi }
       securityContext:
         readOnlyRootFilesystem: true
         allowPrivilegeEscalation: false
         capabilities:
-          drop: ["ALL"]
+          drop: ['ALL']
       volumeMounts:
         - name: syft-cache
           mountPath: /root/.cache/syft
@@ -270,7 +296,7 @@ spec:
   initContainers:
     - name: cosign-verify
       image: sigstore/cosign:v2.2.4
-      command: ["/bin/sh", "-c"]
+      command: ['/bin/sh', '-c']
       args:
         - |
           cosign verify --keyless \
@@ -282,7 +308,7 @@ spec:
           value: sha256:REPLACE_WITH_PINNED_DIGEST
       resources:
         requests: { cpu: 50m, memory: 64Mi }
-        limits:   { cpu: 100m, memory: 128Mi }
+        limits: { cpu: 100m, memory: 128Mi }
   volumes:
     - name: syft-cache
       emptyDir: { sizeLimit: 1Gi }
@@ -305,7 +331,7 @@ spec:
   podSelector:
     matchLabels:
       app: sbom-scanner
-  policyTypes: ["Egress"]
+  policyTypes: ['Egress']
   egress:
     # DNS to cluster CoreDNS only
     - to:
@@ -431,7 +457,10 @@ const OSV_SCHEMA = {
 export class FeedValidator {
   private validators = new Map<string, ValidateFunction>();
   private ajv = new Ajv({ allErrors: true, removeAdditional: 'failing' });
-  constructor() { addFormats(this.ajv); this.validators.set('nvd', this.ajv.compile(NVD_CVE_SCHEMA)); }
+  constructor() {
+    addFormats(this.ajv);
+    this.validators.set('nvd', this.ajv.compile(NVD_CVE_SCHEMA));
+  }
   validateNVD(record: unknown): { ok: true } | { ok: false; errors: string[] } {
     return this.check('nvd', record);
   }
@@ -439,7 +468,10 @@ export class FeedValidator {
   private check(name: string, record: unknown) {
     const fn = this.validators.get(name)!;
     if (fn(record)) return { ok: true as const };
-    return { ok: false as const, errors: (fn.errors ?? []).map(e => `${e.instancePath} ${e.message}`) };
+    return {
+      ok: false as const,
+      errors: (fn.errors ?? []).map((e) => `${e.instancePath} ${e.message}`),
+    };
   }
 }
 
@@ -455,7 +487,10 @@ export function rangeCheckEpss(score: number): boolean {
 
 ```typescript
 // In the vulnerability engine:
-function isHighConfidence(cveId: string, present: { nvd: boolean; ghsa: boolean; osv: boolean }): boolean {
+function isHighConfidence(
+  cveId: string,
+  present: { nvd: boolean; ghsa: boolean; osv: boolean },
+): boolean {
   const sourcesPresent = [present.nvd, present.ghsa, present.osv].filter(Boolean).length;
   return sourcesPresent >= 2;
 }
@@ -475,20 +510,20 @@ const pg = new Pool({ connectionString: process.env.AUDIT_DB_URL });
 export interface RiskScoreInput {
   tenantId: string;
   assetId: string;
-  sbomFingerprint: string;       // sha256 of the SBOM bytes
-  cveSnapshotId: string;         // versioned id of the CVE snapshot used
-  policyId: string;              // versioned id of the policy used
-  topContributors: Array<{ cveId: string; weight: number }>;  // top 5
-  score: number;                 // 0..100
+  sbomFingerprint: string; // sha256 of the SBOM bytes
+  cveSnapshotId: string; // versioned id of the CVE snapshot used
+  policyId: string; // versioned id of the policy used
+  topContributors: Array<{ cveId: string; weight: number }>; // top 5
+  score: number; // 0..100
 }
 
 export async function recordRiskScoreCalculation(
   input: RiskScoreInput,
-  actor: { id: string; type: 'user'|'service'|'agent'; ip?: string }
+  actor: { id: string; type: 'user' | 'service' | 'agent'; ip?: string },
 ): Promise<void> {
   const prev = await pg.query<{ hash: string }>(
     'SELECT hash FROM audit_log WHERE tenant_id=$1 ORDER BY id DESC LIMIT 1',
-    [input.tenantId]
+    [input.tenantId],
   );
   const prevHash = prev.rows[0]?.hash ?? '0'.repeat(64);
 
@@ -512,13 +547,27 @@ export async function recordRiskScoreCalculation(
   };
   // Canonicalize via sorted keys to be deterministic across processes
   const canonical = JSON.stringify(record, Object.keys(record).sort());
-  const hash = crypto.createHash('sha256').update(prevHash + canonical).digest('hex');
+  const hash = crypto
+    .createHash('sha256')
+    .update(prevHash + canonical)
+    .digest('hex');
   await pg.query(
     `INSERT INTO audit_log
        (id, ts, tenant_id, actor, action, target, inputs, output, prev_hash, hash, record)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [record.id, record.ts, record.tenantId, record.actor, record.action,
-     record.target, record.inputs, record.output, prevHash, hash, canonical]
+    [
+      record.id,
+      record.ts,
+      record.tenantId,
+      record.actor,
+      record.action,
+      record.target,
+      record.inputs,
+      record.output,
+      prevHash,
+      hash,
+      canonical,
+    ],
   );
 }
 ```
@@ -567,14 +616,13 @@ The seed for a tenant's first audit record is `HMAC-SHA256(AICC_AUDIT_CHAIN_SALT
 // tests/test_audit.py and the security-service runtime).
 import { createHmac } from 'node:crypto';
 function seedFor(tenantId: string, tenantCreatedAtRfc3339Nanos: string): Buffer {
-  const salt = process.env.AICC_AUDIT_CHAIN_SALT!;  // from Vault
-  return createHmac('sha256', salt)
-    .update(`${tenantId}:${tenantCreatedAtRfc3339Nanos}`)
-    .digest();
+  const salt = process.env.AICC_AUDIT_CHAIN_SALT!; // from Vault
+  return createHmac('sha256', salt).update(`${tenantId}:${tenantCreatedAtRfc3339Nanos}`).digest();
 }
 ```
 
 **Retention** (per ComplianceOfficer alignment):
+
 - 0–90 days: hot, queryable in Postgres. `retention_class = 'diagnostic'` rows are dropped at 90d.
 - 90 d – 1 y: warm, daily export to Parquet in object storage, queryable via Athena/Trino. `retention_class = 'operational'` rows are dropped at 1y.
 - 1 y – 7 y: cold, archive in object storage with object-lock (WORM). `retention_class = 'regulatory'` rows are kept the full 7y.
@@ -582,14 +630,14 @@ function seedFor(tenantId: string, tenantCreatedAtRfc3339Nanos: string): Buffer 
 
 ## 4. Risks
 
-| Risk | Mitigation | Status |
-|------|------------|--------|
-| `cosign` keyless verification depends on Rekor transparency log availability; if Rekor is down, pod startup fails | Cache the most recent Rekor checkpoint for 24h; on Rekor 5xx, allow startup with a 1h SLO breach alert | Open (S2.7) |
-| Egress proxy is a SPOF for the SBOM pipeline; one bad config blocks all scans | HA proxy (≥2 replicas); per-tenant circuit breaker; if proxy down, fail-closed with clear error to the user | Open |
-| PURL regex strictness: rejecting valid PURLs is a customer-facing issue | CI test corpus of 10k+ real PURLs from npm, PyPI, Maven, Go, Cargo, RubyGems, NuGet; fuzz tests with PURL spec test vectors | Open |
-| Audit log chain growth: with 60 risk-calc/min/tenant, the chain is large | Sample and hash hot data; object storage for cold; quarterly retention rotation | Open |
-| Cosign image digests must be rotated; a too-rapid rotation breaks all pods | Canary deploy: 1 pod new digest, watch for 30 min, then roll; old digest valid 7 days | Open |
-| Sandbox restricts the scanner; some Syft features (e.g., live `registry:auth` logins) need explicit exception | Per-tenant registry-credential volume mount with NetworkPolicy exception; documented in onboarding | Open |
+| Risk                                                                                                              | Mitigation                                                                                                                  | Status      |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `cosign` keyless verification depends on Rekor transparency log availability; if Rekor is down, pod startup fails | Cache the most recent Rekor checkpoint for 24h; on Rekor 5xx, allow startup with a 1h SLO breach alert                      | Open (S2.7) |
+| Egress proxy is a SPOF for the SBOM pipeline; one bad config blocks all scans                                     | HA proxy (≥2 replicas); per-tenant circuit breaker; if proxy down, fail-closed with clear error to the user                 | Open        |
+| PURL regex strictness: rejecting valid PURLs is a customer-facing issue                                           | CI test corpus of 10k+ real PURLs from npm, PyPI, Maven, Go, Cargo, RubyGems, NuGet; fuzz tests with PURL spec test vectors | Open        |
+| Audit log chain growth: with 60 risk-calc/min/tenant, the chain is large                                          | Sample and hash hot data; object storage for cold; quarterly retention rotation                                             | Open        |
+| Cosign image digests must be rotated; a too-rapid rotation breaks all pods                                        | Canary deploy: 1 pod new digest, watch for 30 min, then roll; old digest valid 7 days                                       | Open        |
+| Sandbox restricts the scanner; some Syft features (e.g., live `registry:auth` logins) need explicit exception     | Per-tenant registry-credential volume mount with NetworkPolicy exception; documented in onboarding                          | Open        |
 
 ## 5. Next actions
 
@@ -602,4 +650,4 @@ function seedFor(tenantId: string, tenantCreatedAtRfc3339Nanos: string): Buffer 
 
 ---
 
-*End of S2 Security Mitigations — security-service Extensions.*
+_End of S2 Security Mitigations — security-service Extensions._

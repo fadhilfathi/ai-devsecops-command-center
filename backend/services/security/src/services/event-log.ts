@@ -16,12 +16,7 @@
  * per tenant.
  */
 import type { EventBus, EventEnvelope } from '@aicc/shared';
-import {
-  SBOM_TOPIC,
-  VULN_TOPIC,
-  RISK_TOPIC,
-  SCAN_TOPIC,
-} from '@aicc/shared/security';
+import { SBOM_TOPIC, VULN_TOPIC, RISK_TOPIC, SCAN_TOPIC } from '@aicc/shared/security';
 import type { RecentActivityEntry } from '@aicc/shared/security';
 
 const MAX_EVENTS_PER_TENANT = 200;
@@ -42,10 +37,18 @@ export class InMemoryEventLog {
   private byTenant = new Map<string, SecurityEventRecord[]>();
 
   constructor(bus: EventBus) {
-    void bus.subscribe(SBOM_TOPIC, (e) => { this.record(e); });
-    void bus.subscribe(VULN_TOPIC, (e) => { this.record(e); });
-    void bus.subscribe(RISK_TOPIC, (e) => { this.record(e); });
-    void bus.subscribe(SCAN_TOPIC, (e) => { this.record(e); });
+    void bus.subscribe(SBOM_TOPIC, (e) => {
+      this.record(e);
+    });
+    void bus.subscribe(VULN_TOPIC, (e) => {
+      this.record(e);
+    });
+    void bus.subscribe(RISK_TOPIC, (e) => {
+      this.record(e);
+    });
+    void bus.subscribe(SCAN_TOPIC, (e) => {
+      this.record(e);
+    });
   }
 
   private record(e: EventEnvelope): void {
@@ -95,7 +98,11 @@ export class InMemoryEventLog {
       }
       case SCAN_TOPIC: {
         // Wire shape: { asset_id, scan_type, finding_count, ... } (snake_case)
-        const d = (e.data ?? {}) as { asset_id?: string; scan_type?: string; finding_count?: number };
+        const d = (e.data ?? {}) as {
+          asset_id?: string;
+          scan_type?: string;
+          finding_count?: number;
+        };
         return `${d.scan_type ?? 'security'} scan of ${d.asset_id ?? 'unknown'} completed (${d.finding_count ?? 0} findings)`;
       }
       default:
@@ -105,8 +112,14 @@ export class InMemoryEventLog {
 
   private severityFor(e: EventEnvelope): SecurityEventRecord['severity'] {
     if (!e.severity) return undefined;
-    if (e.severity === 'critical' || e.severity === 'high' || e.severity === 'medium' ||
-        e.severity === 'low' || e.severity === 'info') return e.severity;
+    if (
+      e.severity === 'critical' ||
+      e.severity === 'high' ||
+      e.severity === 'medium' ||
+      e.severity === 'low' ||
+      e.severity === 'info'
+    )
+      return e.severity;
     return undefined;
   }
 

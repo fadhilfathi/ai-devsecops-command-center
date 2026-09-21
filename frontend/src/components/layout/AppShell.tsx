@@ -1,7 +1,7 @@
-import { Outlet } from "react-router-dom";
-import { Sidebar } from "./Sidebar";
-import { Topbar } from "./Topbar";
-import { StatusBar } from "./StatusBar";
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
+import { Topbar } from './Topbar';
+import { StatusBar } from './StatusBar';
 
 /**
  * AppShell — the persistent chrome around every AionUi screen.

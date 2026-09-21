@@ -33,12 +33,12 @@ and [`/docs/adr/0008-compliance-evidence-stream.md`](../adr/0008-compliance-evid
 
 ## What lives here vs. the running system
 
-| What                                            | Where                                  |
-| ----------------------------------------------- | -------------------------------------- |
-| Control **mappings** (the rules)                | This folder, plus the `compliance` DB  |
-| Live **posture** (current pass/fail per control)| Grafana / `compliance` service API     |
-| **Evidence** (raw + signed)                     | Object store; pointers in this folder  |
-| **Audit reports** (generated artifacts)         | This folder                            |
+| What                                             | Where                                 |
+| ------------------------------------------------ | ------------------------------------- |
+| Control **mappings** (the rules)                 | This folder, plus the `compliance` DB |
+| Live **posture** (current pass/fail per control) | Grafana / `compliance` service API    |
+| **Evidence** (raw + signed)                      | Object store; pointers in this folder |
+| **Audit reports** (generated artifacts)          | This folder                           |
 
 ## See also
 

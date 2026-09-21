@@ -1,7 +1,7 @@
-import clsx from "clsx";
-import type { ReactNode } from "react";
-import { severityClasses, titleCase } from "@/lib/format";
-import type { Severity } from "@/types";
+import clsx from 'clsx';
+import type { ReactNode } from 'react';
+import { severityClasses, titleCase } from '@/lib/format';
+import type { Severity } from '@/types';
 
 /**
  * Badge — small inline status / severity indicator.
@@ -11,20 +11,20 @@ import type { Severity } from "@/types";
  *   - "neutral"   → default subtle badge
  *   - "ok" | "warn" | "danger" | "info" → explicit semantic colors
  */
-type Variant = "severity" | "neutral" | "ok" | "warn" | "danger" | "info";
+type Variant = 'severity' | 'neutral' | 'ok' | 'warn' | 'danger' | 'info';
 
 const variantClasses: Record<Variant, string> = {
-  severity: "border", // set per severity in the component body
-  neutral: "bg-aion-surface2 text-aion-muted border border-aion-border",
-  ok: "bg-aion-ok/15 text-aion-ok border border-aion-ok/30",
-  warn: "bg-aion-warn/15 text-aion-warn border border-aion-warn/30",
-  danger: "bg-aion-danger/15 text-aion-danger border border-aion-danger/30",
-  info: "bg-aion-info/15 text-aion-info border border-aion-info/30",
+  severity: 'border', // set per severity in the component body
+  neutral: 'bg-aion-surface2 text-aion-muted border border-aion-border',
+  ok: 'bg-aion-ok/15 text-aion-ok border border-aion-ok/30',
+  warn: 'bg-aion-warn/15 text-aion-warn border border-aion-warn/30',
+  danger: 'bg-aion-danger/15 text-aion-danger border border-aion-danger/30',
+  info: 'bg-aion-info/15 text-aion-info border border-aion-info/30',
 };
 
 export function Badge({
   children,
-  variant = "neutral",
+  variant = 'neutral',
   severity,
   className,
 }: {
@@ -34,16 +34,14 @@ export function Badge({
   className?: string;
 }) {
   const classes =
-    variant === "severity" && severity
-      ? severityClasses(severity)
-      : variantClasses[variant];
+    variant === 'severity' && severity ? severityClasses(severity) : variantClasses[variant];
 
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide",
+        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide',
         classes,
-        className
+        className,
       )}
     >
       {children ?? (severity ? titleCase(severity) : null)}

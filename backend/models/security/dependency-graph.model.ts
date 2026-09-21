@@ -115,20 +115,22 @@ export type NodeRiskWeight = z.infer<typeof NodeRiskWeightSchema>;
 
 // ---------- top-level graph ----------
 
-export const DependencyGraphSchema = z.object({
-  graphId: z.string().uuid(),
-  generatedAt: z.string().datetime({ offset: true }),
-  /** The SBOM serial number this graph was derived from (urn:uuid or just uuid) */
-  rootSbomSerial: z.string().optional(),
-  /** The `bom-ref` of the root component the graph is rooted at */
-  rootBomRef: z.string().min(1),
-  nodes: z.array(GraphNodeSchema).min(1),
-  edges: z.array(GraphEdgeSchema).default([]),
-  transitivePaths: z.array(TransitivePathSchema).default([]),
-  riskWeights: z.array(NodeRiskWeightSchema).default([]),
-  /** Model version that computed the weights (e.g. `risk-score-v1`) */
-  modelVersion: z.string().default('risk-score-v1'),
-}).passthrough();
+export const DependencyGraphSchema = z
+  .object({
+    graphId: z.string().uuid(),
+    generatedAt: z.string().datetime({ offset: true }),
+    /** The SBOM serial number this graph was derived from (urn:uuid or just uuid) */
+    rootSbomSerial: z.string().optional(),
+    /** The `bom-ref` of the root component the graph is rooted at */
+    rootBomRef: z.string().min(1),
+    nodes: z.array(GraphNodeSchema).min(1),
+    edges: z.array(GraphEdgeSchema).default([]),
+    transitivePaths: z.array(TransitivePathSchema).default([]),
+    riskWeights: z.array(NodeRiskWeightSchema).default([]),
+    /** Model version that computed the weights (e.g. `risk-score-v1`) */
+    modelVersion: z.string().default('risk-score-v1'),
+  })
+  .passthrough();
 export type DependencyGraph = z.infer<typeof DependencyGraphSchema>;
 
 // ---------- service I/O shapes (used by S2.5 security-service proxy) ----------
@@ -139,29 +141,37 @@ export type DependencyGraph = z.infer<typeof DependencyGraphSchema>;
  */
 export const RiskCalculateRequestSchema = z.object({
   /** SBOM to compute the risk graph over */
-  sbom: z.object({
-    bomFormat: z.literal('CycloneDX'),
-    specVersion: z.string(),
-    version: z.number().int(),
-    metadata: z.unknown(),
-    components: z.array(z.unknown()).default([]),
-    dependencies: z.array(z.unknown()).default([]),
-  }).passthrough(),
+  sbom: z
+    .object({
+      bomFormat: z.literal('CycloneDX'),
+      specVersion: z.string(),
+      version: z.number().int(),
+      metadata: z.unknown(),
+      components: z.array(z.unknown()).default([]),
+      dependencies: z.array(z.unknown()).default([]),
+    })
+    .passthrough(),
   /** Vulnerability findings to correlate (from vuln-intel-service) */
   vulnerabilities: z.array(z.unknown()).default([]),
   /** Optional tenant scoping */
   tenantId: z.string().uuid().optional(),
   /** Factor weights override; default weights are used if omitted */
-  factorWeights: z.object({
-    severity: z.number().min(0).max(1),
-    epss: z.number().min(0).max(1),
-    kev: z.number().min(0).max(1),
-    reachability: z.number().min(0).max(1),
-    exposure: z.number().min(0).max(1),
-  }).refine((w) => {
-    const sum = w.severity + w.epss + w.kev + w.reachability + w.exposure;
-    return Math.abs(sum - 1) < 0.001;
-  }, { message: 'factor weights must sum to 1.0' }).optional(),
+  factorWeights: z
+    .object({
+      severity: z.number().min(0).max(1),
+      epss: z.number().min(0).max(1),
+      kev: z.number().min(0).max(1),
+      reachability: z.number().min(0).max(1),
+      exposure: z.number().min(0).max(1),
+    })
+    .refine(
+      (w) => {
+        const sum = w.severity + w.epss + w.kev + w.reachability + w.exposure;
+        return Math.abs(sum - 1) < 0.001;
+      },
+      { message: 'factor weights must sum to 1.0' },
+    )
+    .optional(),
 });
 export type RiskCalculateRequest = z.infer<typeof RiskCalculateRequestSchema>;
 

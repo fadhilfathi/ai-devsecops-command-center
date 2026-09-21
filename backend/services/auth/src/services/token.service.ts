@@ -60,7 +60,11 @@ function parseTtl(ttl: string): number {
 }
 
 function b64url(buf: Buffer | string): string {
-  return Buffer.from(buf).toString('base64').replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  return Buffer.from(buf)
+    .toString('base64')
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');
 }
 
 function b64urlDecode(s: string): Buffer {

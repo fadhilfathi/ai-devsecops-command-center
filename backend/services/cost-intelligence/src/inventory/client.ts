@@ -2,8 +2,22 @@
  * Inventory client (shared shape).
  */
 import type { Logger } from '@aicc/shared';
-import type { Cluster, Namespace, Workload, Pod, Service, Deployment, StatefulSet, DaemonSet, Ingress } from '@aicc/models';
-import { buildFixtureProvider, type KubernetesProvider, type ListOptions } from '../providers/index.js';
+import type {
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
+  Ingress,
+} from '@aicc/models';
+import {
+  buildFixtureProvider,
+  type KubernetesProvider,
+  type ListOptions,
+} from '../providers/index.js';
 
 export interface InventorySnapshot {
   clusters: Cluster[];
@@ -54,7 +68,17 @@ export function buildInventoryClient(deps: { logger: Logger }): InventoryClient 
         ingresses.push(...ing);
         workloads.push(...d, ...s, ...da);
       }
-      return { clusters: target, namespaces, workloads, pods, services, deployments, statefulsets, daemonsets, ingresses };
+      return {
+        clusters: target,
+        namespaces,
+        workloads,
+        pods,
+        services,
+        deployments,
+        statefulsets,
+        daemonsets,
+        ingresses,
+      };
     },
   };
 }

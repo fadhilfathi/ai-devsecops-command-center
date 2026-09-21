@@ -42,12 +42,12 @@ a service in another namespace.
 
 ## Edge semantics
 
-| Edge kind       | Direction                       | Meaning                              |
-| --------------- | ------------------------------- | ------------------------------------ |
-| `routes_to`     | ingress → service               | Ingress rule routes traffic to service |
-| `selects`       | service → workload              | Service selector matches workload labels |
-| `in_namespace`  | cluster → namespace             | Namespace belongs to cluster         |
-| `depends_on`    | consumer → producer             | Reversed for the Dependency Graph    |
+| Edge kind      | Direction           | Meaning                                  |
+| -------------- | ------------------- | ---------------------------------------- |
+| `routes_to`    | ingress → service   | Ingress rule routes traffic to service   |
+| `selects`      | service → workload  | Service selector matches workload labels |
+| `in_namespace` | cluster → namespace | Namespace belongs to cluster             |
+| `depends_on`   | consumer → producer | Reversed for the Dependency Graph        |
 
 ## Layout
 
@@ -57,14 +57,14 @@ layout (Sprint 4). Sprint 5 will swap in `dagre` or
 
 ## Endpoints
 
-| Method | Path                                  | Description                |
-| ------ | ------------------------------------- | -------------------------- |
-| GET    | `/v1/topology/graphs`                 | List saved topology graphs |
-| GET    | `/v1/topology/service-map`            | Service Map view           |
-| GET    | `/v1/topology/application-graph`      | Application Graph view     |
-| GET    | `/v1/topology/graph`                  | Full Topology Graph view   |
-| GET    | `/v1/topology/namespace/:name`        | Per-namespace view         |
-| GET    | `/v1/topology/namespace-relationships` | Cross-namespace edges    |
+| Method | Path                                   | Description                |
+| ------ | -------------------------------------- | -------------------------- |
+| GET    | `/v1/topology/graphs`                  | List saved topology graphs |
+| GET    | `/v1/topology/service-map`             | Service Map view           |
+| GET    | `/v1/topology/application-graph`       | Application Graph view     |
+| GET    | `/v1/topology/graph`                   | Full Topology Graph view   |
+| GET    | `/v1/topology/namespace/:name`         | Per-namespace view         |
+| GET    | `/v1/topology/namespace-relationships` | Cross-namespace edges      |
 
 ## See also
 

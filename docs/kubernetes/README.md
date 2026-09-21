@@ -7,15 +7,15 @@ and daemonsets — read-only, tenant-scoped, multi-cluster.
 
 ## Services
 
-| Service                                | Port | Purpose                                   |
-| -------------------------------------- | ---- | ----------------------------------------- |
-| `@aicc/kubernetes-service`             | 4006 | Read-only K8s inventory                   |
-| `@aicc/k8s-health-service`             | 4007 | Health scoring + recommendations          |
-| `@aicc/runtime-security-service`       | 4008 | Runtime security findings + reports       |
-| `@aicc/inventory-service`              | 4009 | Unified asset catalog + graph             |
-| `@aicc/cost-intelligence-service`      | 4010 | Cost analysis + recommendations           |
-| `@aicc/topology-service`               | 4011 | Service Map / Application Graph / Topology Graph |
-| `@aicc/reporting-service`              | 4012 | 6 reports × {json, md, pdf}               |
+| Service                           | Port | Purpose                                          |
+| --------------------------------- | ---- | ------------------------------------------------ |
+| `@aicc/kubernetes-service`        | 4006 | Read-only K8s inventory                          |
+| `@aicc/k8s-health-service`        | 4007 | Health scoring + recommendations                 |
+| `@aicc/runtime-security-service`  | 4008 | Runtime security findings + reports              |
+| `@aicc/inventory-service`         | 4009 | Unified asset catalog + graph                    |
+| `@aicc/cost-intelligence-service` | 4010 | Cost analysis + recommendations                  |
+| `@aicc/topology-service`          | 4011 | Service Map / Application Graph / Topology Graph |
+| `@aicc/reporting-service`         | 4012 | 6 reports × {json, md, pdf}                      |
 
 ## Core concepts
 
@@ -29,57 +29,57 @@ and daemonsets — read-only, tenant-scoped, multi-cluster.
 - **Pod** — the smallest deployable unit; the natural point
   for both health and runtime-security observation.
 - **Service** — a stable virtual IP / DNS name that fronts
-  a set of pods. The Application Graph's *depends_on* edges
+  a set of pods. The Application Graph's _depends_on_ edges
   terminate at services.
 - **Ingress** — the layer-7 routing object; the source of
-  *routes_to* edges.
+  _routes_to_ edges.
 - **Asset** — a generic inventory item; the inventory
   service flattens the K8s hierarchy into a list of assets
   with `kind` discriminator.
 
 ## Endpoints (summary)
 
-| Method | Path                                                | Service                |
-| ------ | --------------------------------------------------- | ---------------------- |
-| GET    | `/v1/kubernetes/clusters`                           | kubernetes-service     |
-| GET    | `/v1/kubernetes/namespaces`                         | kubernetes-service     |
-| GET    | `/v1/kubernetes/workloads`                          | kubernetes-service     |
-| GET    | `/v1/kubernetes/pods`                               | kubernetes-service     |
-| GET    | `/v1/kubernetes/services`                           | kubernetes-service     |
-| GET    | `/v1/kubernetes/ingresses`                          | kubernetes-service     |
-| GET    | `/v1/kubernetes/deployments`                        | kubernetes-service     |
-| GET    | `/v1/kubernetes/statefulsets`                       | kubernetes-service     |
-| GET    | `/v1/kubernetes/daemonsets`                         | kubernetes-service     |
-| POST   | `/v1/kubernetes/test-connection`                    | kubernetes-service     |
-| GET    | `/v1/health/clusters`                               | k8s-health-service     |
-| GET    | `/v1/health/namespaces`                             | k8s-health-service     |
-| GET    | `/v1/health/workloads`                              | k8s-health-service     |
-| GET    | `/v1/health/pods`                                   | k8s-health-service     |
-| GET    | `/v1/health/issues`                                 | k8s-health-service     |
-| GET    | `/v1/health/recommendations`                        | k8s-health-service     |
-| GET    | `/v1/runtime-security/rules`                        | runtime-security-service |
-| GET    | `/v1/runtime-security/risks`                        | runtime-security-service |
-| POST   | `/v1/runtime-security/scan`                         | runtime-security-service |
-| GET    | `/v1/runtime-security/report`                       | runtime-security-service |
-| GET    | `/v1/inventory/assets`                              | inventory-service      |
-| GET    | `/v1/inventory/graph/asset`                         | inventory-service      |
-| GET    | `/v1/inventory/graph/relationships`                 | inventory-service      |
-| GET    | `/v1/inventory/graph/dependencies`                  | inventory-service      |
-| GET    | `/v1/cost/analysis`                                 | cost-intelligence-service |
-| GET    | `/v1/cost/workloads`                                | cost-intelligence-service |
-| GET    | `/v1/cost/findings`                                 | cost-intelligence-service |
-| GET    | `/v1/cost/recommendations`                          | cost-intelligence-service |
-| GET    | `/v1/topology/graphs`                               | topology-service       |
-| GET    | `/v1/topology/service-map`                          | topology-service       |
-| GET    | `/v1/topology/application-graph`                    | topology-service       |
-| GET    | `/v1/topology/graph`                                | topology-service       |
-| GET    | `/v1/topology/namespace/:name`                      | topology-service       |
-| GET    | `/v1/reports/cluster-health`                        | reporting-service      |
-| GET    | `/v1/reports/infrastructure-risk`                   | reporting-service      |
-| GET    | `/v1/reports/runtime-security`                      | reporting-service      |
-| GET    | `/v1/reports/cost-optimization`                     | reporting-service      |
-| GET    | `/v1/reports/topology`                              | reporting-service      |
-| GET    | `/v1/reports/executive-summary`                     | reporting-service      |
+| Method | Path                                | Service                   |
+| ------ | ----------------------------------- | ------------------------- |
+| GET    | `/v1/kubernetes/clusters`           | kubernetes-service        |
+| GET    | `/v1/kubernetes/namespaces`         | kubernetes-service        |
+| GET    | `/v1/kubernetes/workloads`          | kubernetes-service        |
+| GET    | `/v1/kubernetes/pods`               | kubernetes-service        |
+| GET    | `/v1/kubernetes/services`           | kubernetes-service        |
+| GET    | `/v1/kubernetes/ingresses`          | kubernetes-service        |
+| GET    | `/v1/kubernetes/deployments`        | kubernetes-service        |
+| GET    | `/v1/kubernetes/statefulsets`       | kubernetes-service        |
+| GET    | `/v1/kubernetes/daemonsets`         | kubernetes-service        |
+| POST   | `/v1/kubernetes/test-connection`    | kubernetes-service        |
+| GET    | `/v1/health/clusters`               | k8s-health-service        |
+| GET    | `/v1/health/namespaces`             | k8s-health-service        |
+| GET    | `/v1/health/workloads`              | k8s-health-service        |
+| GET    | `/v1/health/pods`                   | k8s-health-service        |
+| GET    | `/v1/health/issues`                 | k8s-health-service        |
+| GET    | `/v1/health/recommendations`        | k8s-health-service        |
+| GET    | `/v1/runtime-security/rules`        | runtime-security-service  |
+| GET    | `/v1/runtime-security/risks`        | runtime-security-service  |
+| POST   | `/v1/runtime-security/scan`         | runtime-security-service  |
+| GET    | `/v1/runtime-security/report`       | runtime-security-service  |
+| GET    | `/v1/inventory/assets`              | inventory-service         |
+| GET    | `/v1/inventory/graph/asset`         | inventory-service         |
+| GET    | `/v1/inventory/graph/relationships` | inventory-service         |
+| GET    | `/v1/inventory/graph/dependencies`  | inventory-service         |
+| GET    | `/v1/cost/analysis`                 | cost-intelligence-service |
+| GET    | `/v1/cost/workloads`                | cost-intelligence-service |
+| GET    | `/v1/cost/findings`                 | cost-intelligence-service |
+| GET    | `/v1/cost/recommendations`          | cost-intelligence-service |
+| GET    | `/v1/topology/graphs`               | topology-service          |
+| GET    | `/v1/topology/service-map`          | topology-service          |
+| GET    | `/v1/topology/application-graph`    | topology-service          |
+| GET    | `/v1/topology/graph`                | topology-service          |
+| GET    | `/v1/topology/namespace/:name`      | topology-service          |
+| GET    | `/v1/reports/cluster-health`        | reporting-service         |
+| GET    | `/v1/reports/infrastructure-risk`   | reporting-service         |
+| GET    | `/v1/reports/runtime-security`      | reporting-service         |
+| GET    | `/v1/reports/cost-optimization`     | reporting-service         |
+| GET    | `/v1/reports/topology`              | reporting-service         |
+| GET    | `/v1/reports/executive-summary`     | reporting-service         |
 
 ## Multi-tenancy
 

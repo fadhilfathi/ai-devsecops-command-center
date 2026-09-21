@@ -12,17 +12,17 @@ Each rule is a pure function that takes a snapshot of
 inventory (pods, workloads, services) and returns zero or
 more `RuntimeRisk` findings.
 
-| ID         | Name                                | Default level   |
-| ---------- | ----------------------------------- | --------------- |
-| AICC-RT-001 | Privileged container              | critical        |
-| AICC-RT-002 | hostPath volume mount             | high (critical for sensitive paths) |
-| AICC-RT-003 | Root user execution               | high            |
-| AICC-RT-004 | Dangerous Linux capability        | high (critical for SYS_ADMIN / ALL) |
-| AICC-RT-005 | Weak / missing SecurityContext    | medium          |
-| AICC-RT-006 | Risky ServiceAccount usage        | medium          |
-| AICC-RT-007 | Risky RBAC binding                | high (stub for Sprint 5) |
-| AICC-RT-008 | Missing resource limits           | low             |
-| AICC-RT-009 | Image tag not pinned to digest    | medium (AICC extension) |
+| ID          | Name                           | Default level                       |
+| ----------- | ------------------------------ | ----------------------------------- |
+| AICC-RT-001 | Privileged container           | critical                            |
+| AICC-RT-002 | hostPath volume mount          | high (critical for sensitive paths) |
+| AICC-RT-003 | Root user execution            | high                                |
+| AICC-RT-004 | Dangerous Linux capability     | high (critical for SYS_ADMIN / ALL) |
+| AICC-RT-005 | Weak / missing SecurityContext | medium                              |
+| AICC-RT-006 | Risky ServiceAccount usage     | medium                              |
+| AICC-RT-007 | Risky RBAC binding             | high (stub for Sprint 5)            |
+| AICC-RT-008 | Missing resource limits        | low                                 |
+| AICC-RT-009 | Image tag not pinned to digest | medium (AICC extension)             |
 
 ## Report
 
@@ -40,14 +40,14 @@ more `RuntimeRisk` findings.
 
 ## Endpoints
 
-| Method | Path                                          | Description                  |
-| ------ | --------------------------------------------- | ---------------------------- |
-| GET    | `/v1/runtime-security/rules`                  | List active rules            |
-| GET    | `/v1/runtime-security/risks`                  | Per-finding risk list        |
-| GET    | `/v1/runtime-security/risks/:id`              | Single finding detail        |
-| POST   | `/v1/runtime-security/scan`                   | Trigger a re-scan            |
-| GET    | `/v1/runtime-security/report`                 | Tenant-wide rollup report    |
-| GET    | `/v1/runtime-security/report/cluster/:id`     | Per-cluster rollup report    |
+| Method | Path                                      | Description               |
+| ------ | ----------------------------------------- | ------------------------- |
+| GET    | `/v1/runtime-security/rules`              | List active rules         |
+| GET    | `/v1/runtime-security/risks`              | Per-finding risk list     |
+| GET    | `/v1/runtime-security/risks/:id`          | Single finding detail     |
+| POST   | `/v1/runtime-security/scan`               | Trigger a re-scan         |
+| GET    | `/v1/runtime-security/report`             | Tenant-wide rollup report |
+| GET    | `/v1/runtime-security/report/cluster/:id` | Per-cluster rollup report |
 
 ## See also
 

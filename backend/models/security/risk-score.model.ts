@@ -28,30 +28,40 @@ import { z } from 'zod';
 export { RiskFactorBreakdownSchema, type RiskFactorBreakdown } from './dependency-graph.model.js';
 import { RiskFactorBreakdownSchema, type RiskFactorBreakdown } from './dependency-graph.model.js';
 
-export const RiskFactorWeightsSchema = z.object({
-  severity: z.number().min(0).max(1),
-  epss: z.number().min(0).max(1),
-  kev: z.number().min(0).max(1),
-  reachability: z.number().min(0).max(1),
-  exposure: z.number().min(0).max(1),
-}).refine((w) => {
-  const sum = w.severity + w.epss + w.kev + w.reachability + w.exposure;
-  return Math.abs(sum - 1) < 0.001;
-}, { message: 'factor weights must sum to 1.0' });
+export const RiskFactorWeightsSchema = z
+  .object({
+    severity: z.number().min(0).max(1),
+    epss: z.number().min(0).max(1),
+    kev: z.number().min(0).max(1),
+    reachability: z.number().min(0).max(1),
+    exposure: z.number().min(0).max(1),
+  })
+  .refine(
+    (w) => {
+      const sum = w.severity + w.epss + w.kev + w.reachability + w.exposure;
+      return Math.abs(sum - 1) < 0.001;
+    },
+    { message: 'factor weights must sum to 1.0' },
+  );
 export type RiskFactorWeights = z.infer<typeof RiskFactorWeightsSchema>;
 
 /** Default weights used if `factorWeights` is not provided. */
 export const DEFAULT_RISK_FACTOR_WEIGHTS: RiskFactorWeights = {
   severity: 0.35,
-  epss: 0.20,
-  kev: 0.20,
+  epss: 0.2,
+  kev: 0.2,
   reachability: 0.15,
-  exposure: 0.10,
+  exposure: 0.1,
 };
 
 // ---------- subject identification ----------
 
-export const SecurityRiskSubjectKindSchema = z.enum(['component', 'sbom', 'vulnerability', 'tenant']);
+export const SecurityRiskSubjectKindSchema = z.enum([
+  'component',
+  'sbom',
+  'vulnerability',
+  'tenant',
+]);
 export type SecurityRiskSubjectKind = z.infer<typeof SecurityRiskSubjectKindSchema>;
 
 export const SecurityRiskSubjectSchema = z.object({
@@ -65,22 +75,24 @@ export type SecurityRiskSubject = z.infer<typeof SecurityRiskSubjectSchema>;
 
 // ---------- top-level RiskScore ----------
 
-export const RiskScoreSchema = z.object({
-  subject: SecurityRiskSubjectSchema,
-  /** Composite 0-100 score (integer, higher = riskier) */
-  compositeScore: z.number().int().min(0).max(100),
-  factors: RiskFactorBreakdownSchema,
-  /** Weights used to compute the score (echoed for auditability) */
-  factorWeights: RiskFactorWeightsSchema,
-  /** Human-readable explanation, max 2000 chars */
-  rationale: z.string().min(1).max(2000),
-  /** When the score was computed */
-  computedAt: z.string().datetime({ offset: true }),
-  /** Model version that produced this score (e.g. `risk-score-v1`) */
-  modelVersion: z.string().min(1).default('risk-score-v1'),
-  /** Tenant this score belongs to (multi-tenant isolation) */
-  tenantId: z.string().uuid().optional(),
-}).passthrough();
+export const RiskScoreSchema = z
+  .object({
+    subject: SecurityRiskSubjectSchema,
+    /** Composite 0-100 score (integer, higher = riskier) */
+    compositeScore: z.number().int().min(0).max(100),
+    factors: RiskFactorBreakdownSchema,
+    /** Weights used to compute the score (echoed for auditability) */
+    factorWeights: RiskFactorWeightsSchema,
+    /** Human-readable explanation, max 2000 chars */
+    rationale: z.string().min(1).max(2000),
+    /** When the score was computed */
+    computedAt: z.string().datetime({ offset: true }),
+    /** Model version that produced this score (e.g. `risk-score-v1`) */
+    modelVersion: z.string().min(1).default('risk-score-v1'),
+    /** Tenant this score belongs to (multi-tenant isolation) */
+    tenantId: z.string().uuid().optional(),
+  })
+  .passthrough();
 export type RiskScore = z.infer<typeof RiskScoreSchema>;
 
 // ---------- helpers ----------
@@ -179,10 +191,15 @@ export const SecurityDashboardResponseSchema = z.object({
   /** Aggregate security score 0-100 (100 = perfectly secure) */
   securityScore: z.number().int().min(0).max(100),
   /** Security score trend (last 7 days, oldest first) */
-  securityScoreTrend: z.array(z.object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    score: z.number().int().min(0).max(100),
-  })).max(7).default([]),
+  securityScoreTrend: z
+    .array(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        score: z.number().int().min(0).max(100),
+      }),
+    )
+    .max(7)
+    .default([]),
   /** Model version that produced the security score */
   modelVersion: z.string().default('security-score-v1'),
 });

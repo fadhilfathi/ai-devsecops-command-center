@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release-type:
-        description: "Release type"
+        description: 'Release type'
         required: true
         type: choice
-        default: "patch"
+        default: 'patch'
         options:
           - patch
           - minor
@@ -37,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.18.0"
+          node-version: '22.12.0'
           cache: pnpm
 
       - name: Install
@@ -85,7 +85,7 @@ jobs:
   # See: docs/runbooks/security-automation.md
   # ─────────────────────────────────────────────────────────────────────────
   attach-sbom:
-    name: "Attach SBOMs to release"
+    name: 'Attach SBOMs to release'
     needs: release
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

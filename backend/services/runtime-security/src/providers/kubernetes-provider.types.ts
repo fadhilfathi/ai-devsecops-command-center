@@ -3,8 +3,15 @@
  * provider in Sprint 4 and the live (K8s API) provider in Sprint 5.
  */
 import type {
-  Cluster, Namespace, Workload, Pod, Service, Ingress,
-  Deployment, StatefulSet, DaemonSet,
+  Cluster,
+  Namespace,
+  Workload,
+  Pod,
+  Service,
+  Ingress,
+  Deployment,
+  StatefulSet,
+  DaemonSet,
 } from '@aicc/models';
 
 export interface ListOptions {

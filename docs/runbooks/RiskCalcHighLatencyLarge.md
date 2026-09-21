@@ -20,7 +20,7 @@ to thousands of transitives). The graph has 10k–100k nodes.
    `sbom_size_bucket="large"`. Check whether the regression is fleet-
    wide or only some tenants (e.g. monorepos).
 2. **Check graph DB indices.** A missing index on `component(ecosystem,
-   version)` is the #1 cause of large-SBOM regression. `EXPLAIN ANALYZE`
+version)` is the #1 cause of large-SBOM regression. `EXPLAIN ANALYZE`
    the slowest query in `pg_stat_statements` (or `CALL db.schema.visualize`
    in Neo4j) to verify index usage.
 3. **Memory pressure.** Large SBOMs require proportional working set. If

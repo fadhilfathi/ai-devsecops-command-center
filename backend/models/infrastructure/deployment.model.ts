@@ -12,11 +12,7 @@
 import { z } from 'zod';
 import { WorkloadSchema } from './workload.model.js';
 
-export const DeploymentStrategyTypeSchema = z.enum([
-  'rolling_update',
-  'recreate',
-  'in_place',
-]);
+export const DeploymentStrategyTypeSchema = z.enum(['rolling_update', 'recreate', 'in_place']);
 export type DeploymentStrategyType = z.infer<typeof DeploymentStrategyTypeSchema>;
 
 export const DeploymentRolloutStatusSchema = z.enum([
@@ -31,10 +27,13 @@ export type DeploymentRolloutStatus = z.infer<typeof DeploymentRolloutStatusSche
 export const DeploymentSchema = WorkloadSchema.extend({
   kind: z.literal('deployment'),
   strategy: DeploymentStrategyTypeSchema.default('rolling_update'),
-  rollingUpdate: z.object({
-    maxSurge: z.union([z.number().int().nonnegative(), z.string()]).optional(),
-    maxUnavailable: z.union([z.number().int().nonnegative(), z.string()]).optional(),
-  }).partial().default({}),
+  rollingUpdate: z
+    .object({
+      maxSurge: z.union([z.number().int().nonnegative(), z.string()]).optional(),
+      maxUnavailable: z.union([z.number().int().nonnegative(), z.string()]).optional(),
+    })
+    .partial()
+    .default({}),
   /** ReplicaSet name currently serving traffic. */
   currentReplicaSet: z.string().optional(),
   /** ReplicaSet name from the previous generation. Kept for rollback. */

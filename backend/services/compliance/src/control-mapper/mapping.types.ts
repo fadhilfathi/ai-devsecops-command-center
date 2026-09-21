@@ -125,5 +125,8 @@ export interface MappingBatchResult {
   /** Flattened (controlId, vulnId) tuples, deduplicated. */
   tuples: ControlVulnTuple[];
   /** Per-control summary: which vulnIds matched the control. */
-  controlSummary: Map<string, { controlId: string; framework: Framework; vulnIds: string[]; highestSeverity: VulnSeverity }>;
+  controlSummary: Map<
+    string,
+    { controlId: string; framework: Framework; vulnIds: string[]; highestSeverity: VulnSeverity }
+  >;
 }

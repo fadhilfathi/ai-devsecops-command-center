@@ -28,14 +28,14 @@ The integration is implemented as a **GitHub App** (preferred over OAuth Apps an
 
 ## 2. Why a GitHub App (not OAuth or PAT)
 
-| Property | GitHub App | OAuth App | Personal Access Token |
-|----------|------------|-----------|-----------------------|
-| Per-installation identity | ✅ | ❌ | ❌ |
-| Fine-grained permissions | ✅ | ⚠️ | ⚠️ |
-| Short-lived tokens | ✅ (10 min) | ⚠️ | ❌ |
-| Webhook events by installation | ✅ | ❌ | ❌ |
-| Works for orgs without owning user | ✅ | ❌ | ❌ |
-| Independent of user lifecycle | ✅ | ❌ | ❌ |
+| Property                           | GitHub App  | OAuth App | Personal Access Token |
+| ---------------------------------- | ----------- | --------- | --------------------- |
+| Per-installation identity          | ✅          | ❌        | ❌                    |
+| Fine-grained permissions           | ✅          | ⚠️        | ⚠️                    |
+| Short-lived tokens                 | ✅ (10 min) | ⚠️        | ❌                    |
+| Webhook events by installation     | ✅          | ❌        | ❌                    |
+| Works for orgs without owning user | ✅          | ❌        | ❌                    |
+| Independent of user lifecycle      | ✅          | ❌        | ❌                    |
 
 We standardize on **GitHub Apps** for all first-party integrations. PATs are only used as a last-resort fallback for tenants that cannot install Apps.
 
@@ -83,29 +83,27 @@ We standardize on **GitHub Apps** for all first-party integrations. PATs are onl
     "members": "read",
     "emails": "read"
   },
-  "default_events": [
-    "pull_request", "push", "installation"
-  ]
+  "default_events": ["pull_request", "push", "installation"]
 }
 ```
 
 ### 3.2 Permissions — Justification
 
-| Permission | Why needed |
-|------------|------------|
-| `contents:read` | Clone repos, read manifests (package.json, requirements.txt, etc.) |
-| `metadata:read` | Basic repo info, required by GitHub |
-| `pull_requests:write` | Post review comments, request changes |
-| `checks:write` | Create Check Runs / Check Suites (status checks) |
-| `issues:write` | File remediation issues, link findings |
-| `statuses:write` | Update commit status (older API; fallback to checks) |
-| `actions:read` | Read workflow run results, integrate with CI signals |
-| `security_events:read` | Read code-scanning, secret-scanning, Dependabot alerts |
-| `secret_scanning_alerts:read` | Pull alerts from GHAS |
-| `vulnerability_alerts:read` | Receive Dependabot vulnerability webhooks |
-| `dependabot_secrets:read` | Read Dependabot config for coordination |
-| `members:read` | Map GitHub users → tenant users for attribution |
-| `emails:read` | Resolve user emails for notification (where permitted) |
+| Permission                    | Why needed                                                         |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `contents:read`               | Clone repos, read manifests (package.json, requirements.txt, etc.) |
+| `metadata:read`               | Basic repo info, required by GitHub                                |
+| `pull_requests:write`         | Post review comments, request changes                              |
+| `checks:write`                | Create Check Runs / Check Suites (status checks)                   |
+| `issues:write`                | File remediation issues, link findings                             |
+| `statuses:write`              | Update commit status (older API; fallback to checks)               |
+| `actions:read`                | Read workflow run results, integrate with CI signals               |
+| `security_events:read`        | Read code-scanning, secret-scanning, Dependabot alerts             |
+| `secret_scanning_alerts:read` | Pull alerts from GHAS                                              |
+| `vulnerability_alerts:read`   | Receive Dependabot vulnerability webhooks                          |
+| `dependabot_secrets:read`     | Read Dependabot config for coordination                            |
+| `members:read`                | Map GitHub users → tenant users for attribution                    |
+| `emails:read`                 | Resolve user emails for notification (where permitted)             |
 
 **No write access to `contents`** — we never push code; remediation goes through PRs authored by users or via the dedicated bot identity (see §3.4).
 
@@ -178,11 +176,11 @@ The `installation_repositories` event fires when a user adds/removes repos. The 
 
 ### 4.5 Suspension & Deletion
 
-| GitHub event | Action |
-|--------------|--------|
-| `installation.suspended` | Pause all scheduled work; keep last state; mark tenant `integration_paused` |
-| `installation.unsuspended` | Resume scheduling |
-| `installation.deleted` | Mark tenant `integration_removed`; retain audit data per retention policy; revoke installation token |
+| GitHub event               | Action                                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `installation.suspended`   | Pause all scheduled work; keep last state; mark tenant `integration_paused`                          |
+| `installation.unsuspended` | Resume scheduling                                                                                    |
+| `installation.deleted`     | Mark tenant `integration_removed`; retain audit data per retention policy; revoke installation token |
 
 ---
 
@@ -194,9 +192,9 @@ The `installation_repositories` event fires when a user adds/removes repos. The 
 asset:
   id: uuid
   tenant_id: uuid
-  integration_id: uuid        # points to the GitHub installation
-  external_id: 123456         # GitHub repo id
-  full_name: acme/widget-api   # org/repo
+  integration_id: uuid # points to the GitHub installation
+  external_id: 123456 # GitHub repo id
+  full_name: acme/widget-api # org/repo
   default_branch: main
   visibility: private|public|internal
   languages: [typescript, python]
@@ -228,17 +226,17 @@ policies:
   block_on:
     - severity: critical
     - severity: high
-      cwe: [79, 89, 22]   # only block on these CWEs at high
+      cwe: [79, 89, 22] # only block on these CWEs at high
   ignore:
-    - path: "**/test/**"
-    - rule: "GHA-BADGE-001"
-      reason: "Test fixture; tracked in JIRA-1234"
+    - path: '**/test/**'
+    - rule: 'GHA-BADGE-001'
+      reason: 'Test fixture; tracked in JIRA-1234'
       expires: 2026-12-31
   scan_schedule:
     full: weekly
     incremental: on_push
   notify:
-    channel: "#security-alerts"
+    channel: '#security-alerts'
     on:
       - new_critical
       - new_high_in_main
@@ -343,12 +341,12 @@ When a new commit introduces a finding that **triggers the block policy**:
 
 ### 7.1 What We Publish
 
-| Check | Source | When |
-|-------|--------|------|
-| `command-center/security` | PR scan (this doc) | Every PR open/sync |
-| `command-center/sbom` | SBOM generation | Every PR + every release |
-| `command-center/dependency-review` | Dependency diff vs base | Every PR (incremental) |
-| `command-center/policy` | Policy gate (block logic) | After scan completes |
+| Check                              | Source                    | When                     |
+| ---------------------------------- | ------------------------- | ------------------------ |
+| `command-center/security`          | PR scan (this doc)        | Every PR open/sync       |
+| `command-center/sbom`              | SBOM generation           | Every PR + every release |
+| `command-center/dependency-review` | Dependency diff vs base   | Every PR (incremental)   |
+| `command-center/policy`            | Policy gate (block logic) | After scan completes     |
 
 ### 7.2 Recommended Branch Protection
 
@@ -398,23 +396,23 @@ if !constant_time_equals(expected, received):
 
 ### 8.4 Webhook Event Handling
 
-| Event | Handler | Action |
-|-------|---------|--------|
-| `installation` | install/suspend/unsuspend/delete | Tenant & asset state updates |
-| `installation_repositories` | repos added/removed | Asset create/archive |
-| `pull_request` | opened/synchronize/reopened | Trigger scan |
-| `pull_request` | closed/merged | Final scan, close out alerts |
-| `push` | new commits on watched branch | Incremental scan |
-| `check_run` | rerequested | Re-run scan for that SHA |
-| `check_run` | completed (from CI) | Correlate with scan result |
-| `issues` | opened/labeled | Link to vulnerability/incident |
-| `issue_comment` | new comment | Bidirectional reply sync |
-| `secret_scanning_alert` | created/resolved | Mirror as finding |
-| `dependabot_alert` | created/resolved | Mirror as vulnerability |
-| `code_scanning_alert` | created/resolved | Mirror as finding |
-| `repository` | renamed/archived/transfered | Update asset, pause on archive |
-| `member` | added/removed | Tenant membership update |
-| `ping` | test | Acknowledge |
+| Event                       | Handler                          | Action                         |
+| --------------------------- | -------------------------------- | ------------------------------ |
+| `installation`              | install/suspend/unsuspend/delete | Tenant & asset state updates   |
+| `installation_repositories` | repos added/removed              | Asset create/archive           |
+| `pull_request`              | opened/synchronize/reopened      | Trigger scan                   |
+| `pull_request`              | closed/merged                    | Final scan, close out alerts   |
+| `push`                      | new commits on watched branch    | Incremental scan               |
+| `check_run`                 | rerequested                      | Re-run scan for that SHA       |
+| `check_run`                 | completed (from CI)              | Correlate with scan result     |
+| `issues`                    | opened/labeled                   | Link to vulnerability/incident |
+| `issue_comment`             | new comment                      | Bidirectional reply sync       |
+| `secret_scanning_alert`     | created/resolved                 | Mirror as finding              |
+| `dependabot_alert`          | created/resolved                 | Mirror as vulnerability        |
+| `code_scanning_alert`       | created/resolved                 | Mirror as finding              |
+| `repository`                | renamed/archived/transfered      | Update asset, pause on archive |
+| `member`                    | added/removed                    | Tenant membership update       |
+| `ping`                      | test                             | Acknowledge                    |
 
 ### 8.5 Rate Limit Awareness
 
@@ -438,13 +436,13 @@ if !constant_time_equals(expected, received):
 
 ### 9.2 GraphQL vs REST
 
-| Use case | API | Why |
-|----------|-----|-----|
-| Listing PRs, files | GraphQL | Fewer round-trips, less rate-limit burn |
-| Creating Check Runs | REST | More mature for check management |
-| Posting review comments | GraphQL (PR review thread API) | Stable since 2022 |
-| Reading alerts | GraphQL | Unified across secret/dependabot/code-scanning |
-| Repository metadata | REST | Simpler for ad-hoc lookups |
+| Use case                | API                            | Why                                            |
+| ----------------------- | ------------------------------ | ---------------------------------------------- |
+| Listing PRs, files      | GraphQL                        | Fewer round-trips, less rate-limit burn        |
+| Creating Check Runs     | REST                           | More mature for check management               |
+| Posting review comments | GraphQL (PR review thread API) | Stable since 2022                              |
+| Reading alerts          | GraphQL                        | Unified across secret/dependabot/code-scanning |
+| Repository metadata     | REST                           | Simpler for ad-hoc lookups                     |
 
 ### 9.3 Rate Limit Budgeting
 
@@ -533,17 +531,17 @@ When a secret is detected (by us or by GitHub):
 
 ## 13. Permissions Model (Tenant-Side)
 
-| Action | GitHub Permission | Why |
-|--------|-------------------|-----|
-| Clone repo | `contents:read` | Scan engine input |
-| Post review | `pull_requests:write` | Inline comments |
-| Create Check Run | `checks:write` | Status reporting |
-| Create issue | `issues:write` | Remediation issues |
-| Set status | `statuses:write` | Fallback for older check API |
-| Read alerts | `security_events:read`, `secret_scanning_alerts:read`, etc. | Mirror GHAS findings |
-| Modify branch protection | **NOT requested** | We don't auto-modify repo settings without explicit user action |
-| Read members | `members:read` | User attribution |
-| Push code | **NOT requested** | Remediation uses a separate bot identity with its own auth, not the App |
+| Action                   | GitHub Permission                                           | Why                                                                     |
+| ------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Clone repo               | `contents:read`                                             | Scan engine input                                                       |
+| Post review              | `pull_requests:write`                                       | Inline comments                                                         |
+| Create Check Run         | `checks:write`                                              | Status reporting                                                        |
+| Create issue             | `issues:write`                                              | Remediation issues                                                      |
+| Set status               | `statuses:write`                                            | Fallback for older check API                                            |
+| Read alerts              | `security_events:read`, `secret_scanning_alerts:read`, etc. | Mirror GHAS findings                                                    |
+| Modify branch protection | **NOT requested**                                           | We don't auto-modify repo settings without explicit user action         |
+| Read members             | `members:read`                                              | User attribution                                                        |
+| Push code                | **NOT requested**                                           | Remediation uses a separate bot identity with its own auth, not the App |
 
 The App **never** requests `contents:write` on the App itself; all code writes happen via the separate `command-center-bot` machine user or via user-authored commits.
 
@@ -551,15 +549,15 @@ The App **never** requests `contents:write` on the App itself; all code writes h
 
 ## 14. Failure Modes & Recovery
 
-| Failure | Detection | Recovery |
-|---------|-----------|----------|
-| Webhook signature invalid | Counter spike | Alert, quarantine source IP for 1h, log |
-| Webhook backlog growing | Queue depth | Auto-scale workers; alert at 5 min SLO breach |
-| GitHub rate limit exhausted | API 403 with `X-RateLimit-Remaining=0` | Queue outbound calls, retry after reset, notify tenant at 80% |
-| Installation token expired | API 401 | Auto-refresh from Vault before next call |
-| GHES unreachable | Health check | Pause integration, mark `degraded`, alert tenant admin |
-| App private key rotation | Scheduled | New key in Vault; old key valid for 7-day overlap; update GitHub App setting; restart pods |
-| Bot identity loses access | API 401/403 on PR create | Fall back to suggestion-only mode; alert security admin |
+| Failure                     | Detection                              | Recovery                                                                                   |
+| --------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Webhook signature invalid   | Counter spike                          | Alert, quarantine source IP for 1h, log                                                    |
+| Webhook backlog growing     | Queue depth                            | Auto-scale workers; alert at 5 min SLO breach                                              |
+| GitHub rate limit exhausted | API 403 with `X-RateLimit-Remaining=0` | Queue outbound calls, retry after reset, notify tenant at 80%                              |
+| Installation token expired  | API 401                                | Auto-refresh from Vault before next call                                                   |
+| GHES unreachable            | Health check                           | Pause integration, mark `degraded`, alert tenant admin                                     |
+| App private key rotation    | Scheduled                              | New key in Vault; old key valid for 7-day overlap; update GitHub App setting; restart pods |
+| Bot identity loses access   | API 401/403 on PR create               | Fall back to suggestion-only mode; alert security admin                                    |
 
 ---
 
@@ -593,17 +591,17 @@ The App **never** requests `contents:write` on the App itself; all code writes h
 
 This section highlights security-specific aspects of the integration. The full security model is in [security-model.md](./security-model.md); key integration-specific items:
 
-| Concern | Control |
-|---------|---------|
-| **Webhook spoofing** | HMAC-SHA-256 signature verification, constant-time compare |
-| **Replay attacks** | Delivery-id dedupe (24h) + clock skew check |
-| **Token theft** | Installation tokens cached in Redis only, TTL 9h, refreshed in memory |
-| **Excessive permissions** | Principle of least privilege in App manifest; per-installation permission audit weekly |
-| **Tenant data leakage** | Every outbound call scoped to the installation's `tenant_id`; `repository_ids` enforced |
-| **Abuse of PR commenting** | Per-PR comment budget (≤20 per scan); comment deduplication |
-| **Compromised bot identity** | Bot cannot read secrets or merge PRs; PRs require human review |
-| **App private key compromise** | Vault-managed, rotated quarterly, alarm on retrieval; keys never logged |
-| **GHES-specific risks** | Per-tenant network segmentation; no shared outbound proxy |
+| Concern                        | Control                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| **Webhook spoofing**           | HMAC-SHA-256 signature verification, constant-time compare                              |
+| **Replay attacks**             | Delivery-id dedupe (24h) + clock skew check                                             |
+| **Token theft**                | Installation tokens cached in Redis only, TTL 9h, refreshed in memory                   |
+| **Excessive permissions**      | Principle of least privilege in App manifest; per-installation permission audit weekly  |
+| **Tenant data leakage**        | Every outbound call scoped to the installation's `tenant_id`; `repository_ids` enforced |
+| **Abuse of PR commenting**     | Per-PR comment budget (≤20 per scan); comment deduplication                             |
+| **Compromised bot identity**   | Bot cannot read secrets or merge PRs; PRs require human review                          |
+| **App private key compromise** | Vault-managed, rotated quarterly, alarm on retrieval; keys never logged                 |
+| **GHES-specific risks**        | Per-tenant network segmentation; no shared outbound proxy                               |
 
 ### 16.1 Threat Scenarios (Integration-Specific)
 
@@ -648,14 +646,14 @@ The Integration Service team must complete, in order, before public release:
 
 ## 18. Open Questions / Future Work
 
-| Topic | Owner | Status |
-|-------|-------|--------|
-| GitHub Enterprise Cloud (EMU) support | SecurityArchitect + GitOps | To scope |
-| Real-time PR comment streaming (via GraphQL Subscriptions) | Integration team | Research |
-| Auto-fix for IaC findings (terraform) | Agent team | Roadmap |
-| Native Dependabot config generator | Agent team | Roadmap |
-| Custom rule packs per tenant | Security team | Design in Q3 |
-| Audit log export to GHES Audit Log API | SRE | To scope |
+| Topic                                                      | Owner                      | Status       |
+| ---------------------------------------------------------- | -------------------------- | ------------ |
+| GitHub Enterprise Cloud (EMU) support                      | SecurityArchitect + GitOps | To scope     |
+| Real-time PR comment streaming (via GraphQL Subscriptions) | Integration team           | Research     |
+| Auto-fix for IaC findings (terraform)                      | Agent team                 | Roadmap      |
+| Native Dependabot config generator                         | Agent team                 | Roadmap      |
+| Custom rule packs per tenant                               | Security team              | Design in Q3 |
+| Audit log export to GHES Audit Log API                     | SRE                        | To scope     |
 
 ---
 
@@ -670,4 +668,4 @@ The Integration Service team must complete, in order, before public release:
 
 ---
 
-*End of GitHub Integration Workflow.*
+_End of GitHub Integration Workflow._

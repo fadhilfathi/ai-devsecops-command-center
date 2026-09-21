@@ -43,7 +43,9 @@ const AcceptRiskSchema = z.object({
 });
 
 const ListQuerySchema = z.object({
-  status: z.enum(['open', 'closed', 'overdue', 'in_progress', 'awaiting_evidence', 'risk_accepted', 'all']).optional(),
+  status: z
+    .enum(['open', 'closed', 'overdue', 'in_progress', 'awaiting_evidence', 'risk_accepted', 'all'])
+    .optional(),
   controlId: z.string().optional(),
   framework: z.enum(['cis_v8', 'nist_800_53', 'soc2', 'iso_27001']).optional(),
   vulnId: z.string().optional(),
@@ -78,7 +80,9 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId, userId } = requireTenantUser(req);
     const parsed = CreatePoamSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid POA&M body', { details: parsed.error.flatten() });
+      throw new AppError('VALIDATION_ERROR', 'Invalid POA&M body', {
+        details: parsed.error.flatten(),
+      });
     }
     const poam = await poamService.createManual(tenantId, parsed.data, userId);
     reply.code(201).send(poam);
@@ -119,10 +123,18 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId, userId } = requireTenantUser(req);
     const parsed = ClosePoamSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid close body', { details: parsed.error.flatten() });
+      throw new AppError('VALIDATION_ERROR', 'Invalid close body', {
+        details: parsed.error.flatten(),
+      });
     }
     try {
-      return await poamService.close(tenantId, req.params.id, userId, parsed.data.resolutionNotes, parsed.data.evidenceRefs);
+      return await poamService.close(
+        tenantId,
+        req.params.id,
+        userId,
+        parsed.data.resolutionNotes,
+        parsed.data.evidenceRefs,
+      );
     } catch (err) {
       const msg = (err as Error).message;
       if (msg.includes('requires at least one evidence')) {
@@ -140,7 +152,9 @@ export const buildPoamRoutes: FastifyPluginAsync<PoamRoutesDeps> = async (app, d
     const { tenantId, userId } = requireTenantUser(req);
     const parsed = AcceptRiskSchema.safeParse(req.body);
     if (!parsed.success) {
-      throw new AppError('VALIDATION_ERROR', 'Invalid accept-risk body', { details: parsed.error.flatten() });
+      throw new AppError('VALIDATION_ERROR', 'Invalid accept-risk body', {
+        details: parsed.error.flatten(),
+      });
     }
     try {
       return await poamService.acceptRisk(

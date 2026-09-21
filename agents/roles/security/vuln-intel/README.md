@@ -5,16 +5,16 @@
 
 ## Responsibilities
 
-| Capability | Source |
-|---|---|
-| CVE ingestion (full text + delta) | NVD 2.0 (`/rest/json/cves/2.0`) |
-| CVE ingestion (security advisories) | GitHub Advisory DB (`/advisories`) |
-| CVE ingestion (cross-ecosystem)    | OSV.dev (`/v1/query` + `/v1/vulns/{id}`) |
-| Exploit likelihood                  | FIRST.org EPSS (`/api/v1/epss`) |
+| Capability                          | Source                                             |
+| ----------------------------------- | -------------------------------------------------- |
+| CVE ingestion (full text + delta)   | NVD 2.0 (`/rest/json/cves/2.0`)                    |
+| CVE ingestion (security advisories) | GitHub Advisory DB (`/advisories`)                 |
+| CVE ingestion (cross-ecosystem)     | OSV.dev (`/v1/query` + `/v1/vulns/{id}`)           |
+| Exploit likelihood                  | FIRST.org EPSS (`/api/v1/epss`)                    |
 | KEV (known exploited)               | CISA KEV (`/known_exploited_vulnerabilities.json`) |
-| Severity scoring                    | CVSS 3.1 / 4.0 (derived from source) |
-| Local store (cross-restart)         | JSONL append-only feed (simple, versioned) |
-| Cache                               | TTL in-process (cachetools) + Redis optional |
+| Severity scoring                    | CVSS 3.1 / 4.0 (derived from source)               |
+| Local store (cross-restart)         | JSONL append-only feed (simple, versioned)         |
+| Cache                               | TTL in-process (cachetools) + Redis optional       |
 
 ## Data model
 
@@ -46,34 +46,34 @@ consumers (compliance, risk layer) don't have to relearn the field names.
 
 ## Endpoints (REST, JSON)
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET`  | `/livez`                              | Liveness — process is up |
-| `GET`  | `/readyz`                             | Readiness — sources reachable, store writable |
-| `GET`  | `/metrics`                            | Prometheus text format |
-| `POST` | `/vuln-intel/ingest`                  | Trigger ad-hoc ingestion (all or one source) |
-| `GET`  | `/vuln-intel/cve/{cve_id}`            | Fetch a single normalized CVE |
-| `POST` | `/vuln-intel/cve/lookup`              | Bulk lookup by `CVE-…`, `GHSA-…`, `PYSEC-…` |
-| `POST` | `/vuln-intel/score`                   | Compute / refresh severity + EPSS for one or many CVEs |
-| `POST` | `/vuln-intel/match`                   | Match vulnerabilities to a list of SBOM components |
-| `GET`  | `/vuln-intel/stats`                   | Coverage / cache stats |
-| `POST` | `/vuln-intel/sync/once`               | Manual one-shot NVD + GHSA + OSV + EPSS pull |
+| Method | Path                       | Purpose                                                |
+| ------ | -------------------------- | ------------------------------------------------------ |
+| `GET`  | `/livez`                   | Liveness — process is up                               |
+| `GET`  | `/readyz`                  | Readiness — sources reachable, store writable          |
+| `GET`  | `/metrics`                 | Prometheus text format                                 |
+| `POST` | `/vuln-intel/ingest`       | Trigger ad-hoc ingestion (all or one source)           |
+| `GET`  | `/vuln-intel/cve/{cve_id}` | Fetch a single normalized CVE                          |
+| `POST` | `/vuln-intel/cve/lookup`   | Bulk lookup by `CVE-…`, `GHSA-…`, `PYSEC-…`            |
+| `POST` | `/vuln-intel/score`        | Compute / refresh severity + EPSS for one or many CVEs |
+| `POST` | `/vuln-intel/match`        | Match vulnerabilities to a list of SBOM components     |
+| `GET`  | `/vuln-intel/stats`        | Coverage / cache stats                                 |
+| `POST` | `/vuln-intel/sync/once`    | Manual one-shot NVD + GHSA + OSV + EPSS pull           |
 
 ## Configuration (env vars)
 
-| Var | Default | Notes |
-|---|---|---|
-| `VULN_INTEL_PORT` | `4008` | API port |
-| `VULN_INTEL_TENANT_ID` | `default` | Tenant ID for single-tenant mode |
-| `VULN_INTEL_DATA_DIR`  | `./data` | Where the JSONL store is kept |
-| `NVD_API_KEY`          | unset    | 5 req/30s without key, 50 req/30s with key |
-| `GITHUB_TOKEN`         | unset    | 60 req/h unauthenticated, 5000 req/h authed |
-| `EPSS_CACHE_TTL`       | `3600`   | seconds |
-| `NVD_CACHE_TTL`        | `86400`  | seconds |
-| `OSV_CACHE_TTL`        | `86400`  | seconds |
-| `INGEST_SCHEDULE`      | `0 3 * * *` | when in cron mode (daily 03:00 UTC) |
-| `LOG_LEVEL`            | `INFO`  | DEBUG / INFO / WARNING / ERROR |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4317` | OTel collector |
+| Var                           | Default                 | Notes                                       |
+| ----------------------------- | ----------------------- | ------------------------------------------- |
+| `VULN_INTEL_PORT`             | `4008`                  | API port                                    |
+| `VULN_INTEL_TENANT_ID`        | `default`               | Tenant ID for single-tenant mode            |
+| `VULN_INTEL_DATA_DIR`         | `./data`                | Where the JSONL store is kept               |
+| `NVD_API_KEY`                 | unset                   | 5 req/30s without key, 50 req/30s with key  |
+| `GITHUB_TOKEN`                | unset                   | 60 req/h unauthenticated, 5000 req/h authed |
+| `EPSS_CACHE_TTL`              | `3600`                  | seconds                                     |
+| `NVD_CACHE_TTL`               | `86400`                 | seconds                                     |
+| `OSV_CACHE_TTL`               | `86400`                 | seconds                                     |
+| `INGEST_SCHEDULE`             | `0 3 * * *`             | when in cron mode (daily 03:00 UTC)         |
+| `LOG_LEVEL`                   | `INFO`                  | DEBUG / INFO / WARNING / ERROR              |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4317` | OTel collector                              |
 
 ## Local dev
 

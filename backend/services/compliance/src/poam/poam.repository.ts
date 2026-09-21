@@ -22,7 +22,9 @@ export interface PoamRepository {
     controlId: string,
     vulnId: string,
   ): Promise<PoamItem | null>;
-  list(filter: ListPoamFilter & { tenantId: string }): Promise<{ items: PoamItem[]; nextCursor: string | null }>;
+  list(
+    filter: ListPoamFilter & { tenantId: string },
+  ): Promise<{ items: PoamItem[]; nextCursor: string | null }>;
   update(tenantId: string, poamId: string, patch: Partial<PoamItem>): Promise<PoamItem>;
   /** Used by the scheduler: return all open items with dueAt <= now. */
   findOverdue(tenantId: string, now: string, framework?: Framework): Promise<PoamItem[]>;
@@ -40,7 +42,11 @@ export function buildPoamRepository(): PoamRepository {
 
   return {
     async create(item: PoamItem): Promise<PoamItem> {
-      const copy = { ...item, evidenceRefs: [...item.evidenceRefs], metadata: { ...item.metadata } };
+      const copy = {
+        ...item,
+        evidenceRefs: [...item.evidenceRefs],
+        metadata: { ...item.metadata },
+      };
       items.set(item.poamId, copy);
       return { ...copy };
     },
@@ -67,7 +73,9 @@ export function buildPoamRepository(): PoamRepository {
       return null;
     },
 
-    async list(filter: ListPoamFilter & { tenantId: string }): Promise<{ items: PoamItem[]; nextCursor: string | null }> {
+    async list(
+      filter: ListPoamFilter & { tenantId: string },
+    ): Promise<{ items: PoamItem[]; nextCursor: string | null }> {
       const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200);
       const matches: PoamItem[] = [];
       for (const item of items.values()) {
@@ -79,7 +87,10 @@ export function buildPoamRepository(): PoamRepository {
         if (filter.dueAfter && item.dueAt < filter.dueAfter) continue;
         if (filter.status && filter.status !== 'all') {
           if (filter.status === 'overdue') {
-            const isOpen = item.status === 'open' || item.status === 'in_progress' || item.status === 'awaiting_evidence';
+            const isOpen =
+              item.status === 'open' ||
+              item.status === 'in_progress' ||
+              item.status === 'awaiting_evidence';
             if (!isOpen) continue;
             if (Date.parse(item.dueAt) > Date.now()) continue;
           } else if (item.status !== filter.status) {
@@ -101,7 +112,12 @@ export function buildPoamRepository(): PoamRepository {
       if (!existing || existing.tenantId !== tenantId) {
         throw new Error(`POA&M ${poamId} not found`);
       }
-      const next: PoamItem = { ...existing, ...patch, poamId: existing.poamId, tenantId: existing.tenantId };
+      const next: PoamItem = {
+        ...existing,
+        ...patch,
+        poamId: existing.poamId,
+        tenantId: existing.tenantId,
+      };
       items.set(poamId, next);
       return { ...next };
     },
@@ -111,7 +127,12 @@ export function buildPoamRepository(): PoamRepository {
       for (const item of items.values()) {
         if (item.tenantId !== tenantId) continue;
         if (framework && item.framework !== framework) continue;
-        if (item.status !== 'open' && item.status !== 'in_progress' && item.status !== 'awaiting_evidence') continue;
+        if (
+          item.status !== 'open' &&
+          item.status !== 'in_progress' &&
+          item.status !== 'awaiting_evidence'
+        )
+          continue;
         if (Date.parse(item.dueAt) > Date.parse(now)) continue;
         out.push({ ...item });
       }

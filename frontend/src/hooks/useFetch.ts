@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 /**
  * Minimal data-fetching hook used by the AionUi pages.
@@ -28,7 +28,6 @@ export function useFetch<T>(loader: () => Promise<T>, defaultValue: T, deps: unk
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, error, loading };

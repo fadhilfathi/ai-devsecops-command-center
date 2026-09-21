@@ -1,9 +1,9 @@
 ---
 name: Security vulnerability
 about: Report a suspected security issue (private channel)
-title: "[Security] "
-labels: ["security", "triage"]
-assignees: ["@aionrs/security"]
+title: '[Security] '
+labels: ['security', 'triage']
+assignees: ['@aionrs/security']
 ---
 
 > :lock: **Please do not file public issues for exploitable vulnerabilities.**

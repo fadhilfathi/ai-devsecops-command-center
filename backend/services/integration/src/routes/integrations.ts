@@ -17,7 +17,10 @@ const CreateIntegrationSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
-export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, integrations, providers } = opts;
 
   server.get('/v1/providers', async () => ({

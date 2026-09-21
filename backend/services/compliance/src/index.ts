@@ -42,7 +42,8 @@ export interface ComplianceServiceDeps {
 
 export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promise<FastifyInstance> {
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
-  const logger = deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
+  const logger =
+    deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? new InMemoryEventBus();
 
   const controls = buildControlRepository();

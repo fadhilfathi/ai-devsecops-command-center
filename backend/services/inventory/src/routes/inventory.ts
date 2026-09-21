@@ -24,7 +24,19 @@ interface Deps {
 const QuerySchema = z.object({
   clusterId: z.string().uuid().optional(),
   namespace: z.string().optional(),
-  kind: z.enum(['cluster', 'namespace', 'service', 'deployment', 'statefulset', 'daemonset', 'ingress', 'workload', 'pod']).optional(),
+  kind: z
+    .enum([
+      'cluster',
+      'namespace',
+      'service',
+      'deployment',
+      'statefulset',
+      'daemonset',
+      'ingress',
+      'workload',
+      'pod',
+    ])
+    .optional(),
 });
 
 function requireTenant(tenantId: string): UUID {
@@ -36,12 +48,19 @@ function requireTenant(tenantId: string): UUID {
   return tenantId as UUID;
 }
 
-async function snapshot(inventory: InventoryClient, tenantId: string, clusterId?: string): Promise<InventoryEngineInput> {
+async function snapshot(
+  inventory: InventoryClient,
+  tenantId: string,
+  clusterId?: string,
+): Promise<InventoryEngineInput> {
   const s = await inventory.fetch(tenantId, clusterId);
   return s;
 }
 
-export const buildInventoryRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildInventoryRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, inventory, engine, bus } = opts;
 
   server.get<{ Querystring: z.infer<typeof QuerySchema> }>('/v1/inventory/assets', async (req) => {
@@ -66,39 +85,51 @@ export const buildInventoryRoutes: FastifyPluginAsync<Deps> = async (server: Fas
     return { asset: item };
   });
 
-  server.get<{ Querystring: z.infer<typeof QuerySchema> }>('/v1/inventory/clusters', async (req) => {
-    const tenantId = requireTenant(req.tenantId);
-    const q = QuerySchema.parse(req.query ?? {});
-    const snap = await snapshot(inventory, tenantId, q.clusterId);
-    return { items: snap.clusters, total: snap.clusters.length };
-  });
+  server.get<{ Querystring: z.infer<typeof QuerySchema> }>(
+    '/v1/inventory/clusters',
+    async (req) => {
+      const tenantId = requireTenant(req.tenantId);
+      const q = QuerySchema.parse(req.query ?? {});
+      const snap = await snapshot(inventory, tenantId, q.clusterId);
+      return { items: snap.clusters, total: snap.clusters.length };
+    },
+  );
 
-  server.get<{ Querystring: z.infer<typeof QuerySchema> }>('/v1/inventory/namespaces', async (req) => {
-    const tenantId = requireTenant(req.tenantId);
-    const q = QuerySchema.parse(req.query ?? {});
-    const snap = await snapshot(inventory, tenantId, q.clusterId);
-    let items = snap.namespaces;
-    if (q.namespace) items = items.filter((n) => n.name === q.namespace);
-    return { items, total: items.length };
-  });
+  server.get<{ Querystring: z.infer<typeof QuerySchema> }>(
+    '/v1/inventory/namespaces',
+    async (req) => {
+      const tenantId = requireTenant(req.tenantId);
+      const q = QuerySchema.parse(req.query ?? {});
+      const snap = await snapshot(inventory, tenantId, q.clusterId);
+      let items = snap.namespaces;
+      if (q.namespace) items = items.filter((n) => n.name === q.namespace);
+      return { items, total: items.length };
+    },
+  );
 
-  server.get<{ Querystring: z.infer<typeof QuerySchema> }>('/v1/inventory/services', async (req) => {
-    const tenantId = requireTenant(req.tenantId);
-    const q = QuerySchema.parse(req.query ?? {});
-    const snap = await snapshot(inventory, tenantId, q.clusterId);
-    let items = snap.services;
-    if (q.namespace) items = items.filter((s) => s.namespace === q.namespace);
-    return { items, total: items.length };
-  });
+  server.get<{ Querystring: z.infer<typeof QuerySchema> }>(
+    '/v1/inventory/services',
+    async (req) => {
+      const tenantId = requireTenant(req.tenantId);
+      const q = QuerySchema.parse(req.query ?? {});
+      const snap = await snapshot(inventory, tenantId, q.clusterId);
+      let items = snap.services;
+      if (q.namespace) items = items.filter((s) => s.namespace === q.namespace);
+      return { items, total: items.length };
+    },
+  );
 
-  server.get<{ Querystring: z.infer<typeof QuerySchema> }>('/v1/inventory/deployments', async (req) => {
-    const tenantId = requireTenant(req.tenantId);
-    const q = QuerySchema.parse(req.query ?? {});
-    const snap = await snapshot(inventory, tenantId, q.clusterId);
-    let items = snap.deployments;
-    if (q.namespace) items = items.filter((d) => d.namespace === q.namespace);
-    return { items, total: items.length };
-  });
+  server.get<{ Querystring: z.infer<typeof QuerySchema> }>(
+    '/v1/inventory/deployments',
+    async (req) => {
+      const tenantId = requireTenant(req.tenantId);
+      const q = QuerySchema.parse(req.query ?? {});
+      const snap = await snapshot(inventory, tenantId, q.clusterId);
+      let items = snap.deployments;
+      if (q.namespace) items = items.filter((d) => d.namespace === q.namespace);
+      return { items, total: items.length };
+    },
+  );
 
   logger.debug('inventory-service inventory routes registered');
   void bus;

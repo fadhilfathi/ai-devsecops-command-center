@@ -24,14 +24,16 @@ const UpdateIncidentSchema = z.object({
   assigneeId: z.string().uuid().optional(),
 });
 
-export const buildIncidentRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
+export const buildIncidentRoutes: FastifyPluginAsync<Deps> = async (
+  server: FastifyInstance,
+  opts,
+) => {
   const { logger, incidents, bus } = opts;
 
   server.get('/v1/incidents', async (req) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const status = (req.query as { status?: string }).status as
-      | 'open' | 'acknowledged' | 'mitigating' | 'resolved' | 'closed'
-      | undefined;
+      'open' | 'acknowledged' | 'mitigating' | 'resolved' | 'closed' | undefined;
     const items = await incidents.list(tenantId, { status });
     return { items, total: items.length };
   });

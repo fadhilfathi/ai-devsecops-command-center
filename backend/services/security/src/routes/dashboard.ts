@@ -19,10 +19,7 @@
  */
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import {
-  type EventBus,
-  type Logger,
-} from '@aicc/shared';
+import { type EventBus, type Logger } from '@aicc/shared';
 import {
   SecurityDashboardResponseSchema,
   type SecurityDashboardResponse,
@@ -53,7 +50,14 @@ const QuerySchema = z.object({
   tenantId: z.string().uuid().optional(),
 });
 
-const BUCKETS: ReadonlyArray<VulnerabilitySeverity> = ['critical', 'high', 'medium', 'low', 'info', 'unknown'];
+const BUCKETS: ReadonlyArray<VulnerabilitySeverity> = [
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'info',
+  'unknown',
+];
 
 export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
   server: FastifyInstance,
@@ -76,7 +80,8 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
         },
         response: { 200: toJSONSchema(SecurityDashboardResponseSchema) },
         tags: ['security', 'dashboard'],
-        summary: 'Aggregate security dashboard: SBOM count, vuln count by severity, top 5 riskiest components, recent activity, security score',
+        summary:
+          'Aggregate security dashboard: SBOM count, vuln count by severity, top 5 riskiest components, recent activity, security score',
         description: 'Read-only. Available to all authenticated roles. Rate-limited at 10 req/s.',
       },
     },
@@ -96,7 +101,12 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
       // ---------- Vulnerability count by severity ----------
       const allFindings = await findings.list(tenantId);
       const vulnCountBySeverity: SecurityDashboardResponse['vulnCountBySeverity'] = {
-        critical: 0, high: 0, medium: 0, low: 0, info: 0, unknown: 0,
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        info: 0,
+        unknown: 0,
       };
       for (const f of allFindings) {
         const sev = (f.severity ?? 'unknown') as VulnerabilitySeverity;
@@ -107,11 +117,18 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
       // ---------- Top 5 riskiest components (computed locally from findings) ----------
       // Group findings by packageName; compute a per-package composite
       // risk score using the same weights as the dependency-intel-service.
-      const byPackage = new Map<string, { name: string; version?: string; findings: typeof allFindings }>();
+      const byPackage = new Map<
+        string,
+        { name: string; version?: string; findings: typeof allFindings }
+      >();
       for (const f of allFindings) {
         if (!f.packageName) continue;
         const key = `${f.packageName}@${f.packageVersion ?? '*'}`;
-        const cur = byPackage.get(key) ?? { name: f.packageName, version: f.packageVersion, findings: [] };
+        const cur = byPackage.get(key) ?? {
+          name: f.packageName,
+          version: f.packageVersion,
+          findings: [],
+        };
         cur.findings.push(f);
         byPackage.set(key, cur);
       }
@@ -119,18 +136,20 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
         .map((p): TopRiskyComponent => {
           // Worst severity in the package → factor
           const worstSeverity = p.findings.reduce<VulnerabilitySeverity>(
-            (acc, f) => severityRank(f.severity) > severityRank(acc) ? f.severity : acc,
+            (acc, f) => (severityRank(f.severity) > severityRank(acc) ? f.severity : acc),
             'unknown',
           );
           const factors = {
             severity: severityToFactor(worstSeverity),
             epss: 0, // unknown by default
-            kev: 0,  // unknown by default
+            kev: 0, // unknown by default
             reachability: 0.5, // assume transitive
-            exposure: 0.5,     // assume internal
+            exposure: 0.5, // assume internal
           };
           const score = computeCompositeScore(factors, DEFAULT_RISK_FACTOR_WEIGHTS);
-          const worst = p.findings.reduce((a, b) => severityRank(b.severity) > severityRank(a.severity) ? b : a);
+          const worst = p.findings.reduce((a, b) =>
+            severityRank(b.severity) > severityRank(a.severity) ? b : a,
+          );
           return {
             bomRef: `pkg:${p.name}@${p.version ?? '*'}`,
             name: p.name,
@@ -195,7 +214,10 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
       // Validate before sending so contract regressions are caught at the edge
       const verified = SecurityDashboardResponseSchema.safeParse(response);
       if (!verified.success) {
-        logger.error({ issues: verified.error.flatten() }, 'dashboard response failed schema validation');
+        logger.error(
+          { issues: verified.error.flatten() },
+          'dashboard response failed schema validation',
+        );
         reply.code(500);
         return { code: 'INTERNAL_ERROR', message: 'Dashboard response failed schema validation' };
       }
@@ -214,34 +236,52 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
 
 function severityRank(s: VulnerabilitySeverity): number {
   switch (s) {
-    case 'critical': return 5;
-    case 'high':     return 4;
-    case 'medium':   return 3;
-    case 'low':      return 2;
-    case 'info':     return 1;
-    default:         return 0;
+    case 'critical':
+      return 5;
+    case 'high':
+      return 4;
+    case 'medium':
+      return 3;
+    case 'low':
+      return 2;
+    case 'info':
+      return 1;
+    default:
+      return 0;
   }
 }
 
 function severityToFactor(s: VulnerabilitySeverity): number {
   switch (s) {
-    case 'critical': return 1.0;
-    case 'high':     return 0.8;
-    case 'medium':   return 0.5;
-    case 'low':      return 0.25;
-    case 'info':     return 0.1;
-    default:         return 0.5; // unknown — treat as medium until clarified
+    case 'critical':
+      return 1.0;
+    case 'high':
+      return 0.8;
+    case 'medium':
+      return 0.5;
+    case 'low':
+      return 0.25;
+    case 'info':
+      return 0.1;
+    default:
+      return 0.5; // unknown — treat as medium until clarified
   }
 }
 
 function severityToCvss(s: VulnerabilitySeverity): number {
   switch (s) {
-    case 'critical': return 9.5;
-    case 'high':     return 7.5;
-    case 'medium':   return 5.0;
-    case 'low':      return 2.5;
-    case 'info':     return 0.1;
-    default:         return 5.0;
+    case 'critical':
+      return 9.5;
+    case 'high':
+      return 7.5;
+    case 'medium':
+      return 5.0;
+    case 'low':
+      return 2.5;
+    case 'info':
+      return 0.1;
+    default:
+      return 5.0;
   }
 }
 
