@@ -18,6 +18,13 @@ COPY backend ./backend
 COPY tests/contracts/package.json ./tests/contracts/package.json
 COPY frontend ./frontend
 RUN pnpm install --frozen-lockfile
+
+# Vite inlines import.meta.env.VITE_* at build time — these must be set as
+# build args (not runtime env) to change the image's mock-vs-live behaviour.
+ARG VITE_USE_MOCKS=true
+ARG VITE_TENANT_ID=demo-tenant
+ENV VITE_USE_MOCKS=${VITE_USE_MOCKS}
+ENV VITE_TENANT_ID=${VITE_TENANT_ID}
 RUN pnpm --filter ./frontend build
 
 FROM nginx:alpine AS runtime

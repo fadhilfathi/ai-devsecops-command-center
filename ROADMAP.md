@@ -101,7 +101,7 @@ Status: **complete** (2026-09-22). See
 
 Status: **planned**.
 
-- **S6-1**: wire the frontend to the real service APIs instead of
+- ✅ **S6-1**: wire the frontend to the real service APIs instead of
   `src/lib/*.mock.ts`, starting with the infrastructure pages
   (clusters, namespaces, workloads, runtime security, topology,
   cost, health).

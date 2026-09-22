@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { StatusBar } from './StatusBar';
+import { useApiHealth } from '@/lib/api';
 
 /**
  * AppShell — the persistent chrome around every AionUi screen.
@@ -11,6 +12,7 @@ import { StatusBar } from './StatusBar';
  * and the routed page rendered in the middle.
  */
 export function AppShell() {
+  const health = useApiHealth();
   return (
     <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[56px_1fr_28px] bg-aion-bg">
       {/* Sidebar spans the full height on the left. */}
@@ -25,6 +27,12 @@ export function AppShell() {
 
       {/* Routed content */}
       <main className="overflow-y-auto">
+        {health.degraded && (
+          <div className="border-b border-aion-warn/40 bg-aion-warn/10 px-6 py-1.5 text-xs text-aion-warn">
+            Degraded: showing sample data for {health.failures.length} endpoint
+            {health.failures.length === 1 ? '' : 's'}.
+          </div>
+        )}
         <div className="mx-auto max-w-[1600px] p-6">
           <Outlet />
         </div>

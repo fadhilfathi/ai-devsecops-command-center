@@ -67,8 +67,57 @@ pnpm --filter @aicc/frontend dev
 make dev-frontend
 ```
 
-The dev server runs on `:5173` and proxies API calls to `:3000`
-(configured in `vite.config.ts`).
+The dev server runs on `:5173`. There is no API gateway: each
+browser-facing resource is proxied straight to the backend service that
+owns it — see `PROXY_TABLE` in `proxy-table.mjs`, the single source of
+truth for both the dev proxy (`vite.config.ts`) and the production nginx
+image. `nginx.conf` is **generated** from that table — never edit it by
+hand; run `pnpm --filter ./frontend gen:nginx` after changing
+`proxy-table.mjs` (a test asserts they can't drift).
+
+## Running against real services
+
+By default the app renders from `src/lib/*.mock.ts` — no backend
+required. To hit the real services:
+
+```bash
+# from the repo root
+docker compose up postgres redis kubernetes-service k8s-health-service \
+  runtime-security-service inventory-service cost-intelligence-service \
+  topology-service
+
+cd frontend
+cp .env.example .env
+# edit .env: VITE_USE_MOCKS=false
+pnpm dev
+```
+
+`get<T>()` in `src/lib/api.ts` falls back to mock data (with a console
+warning) on any network error or non-2xx response, so a page never
+crashes if one service isn't running. When mocks are off and a call
+fails, the failure is also recorded in `apiHealth` (`src/lib/api.ts`),
+and the app shell shows a "Degraded: showing sample data for N
+endpoint(s)" banner instead of failing silently. `VITE_TENANT_ID`
+(default `demo-tenant`) is sent as the `x-tenant-id` header — the dev
+shortcut until S6-2 wires real auth.
+
+`frontend/Dockerfile` accepts `VITE_USE_MOCKS` (default `true`) and
+`VITE_TENANT_ID` (default `demo-tenant`) as build args — Vite inlines
+`import.meta.env.VITE_*` at build time, so these can't be changed at
+container runtime. `docker-compose.yml`'s `frontend` service builds
+with `VITE_USE_MOCKS=false` so the compose stack exercises the real
+proxy path.
+
+### Endpoints with no backend route yet (mock-only)
+
+These accessors in `src/lib/api.ts` always return mock data, regardless
+of `VITE_USE_MOCKS` — there is no matching backend route (marked with a
+`ponytail:` comment at each call site; see S6-1):
+
+- `api.vulnerabilities()` — no `GET /vulnerabilities` on security-service
+- `api.sbom()` — no SBOM components-listing endpoint
+- `api.securityScore()`, `api.vulnTimeline()`, `api.riskHeatmap()`,
+  `api.graphData()` — no security-service routes for these yet
 
 ## See also
 

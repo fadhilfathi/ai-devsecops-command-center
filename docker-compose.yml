@@ -304,6 +304,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        # Exercise the real proxy path in the compose stack instead of the
+        # mock-on default the standalone Dockerfile build uses.
+        VITE_USE_MOCKS: 'false'
     container_name: cc-frontend
     ports:
       - '5173:80'

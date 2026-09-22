@@ -12,6 +12,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **S6-1: frontend wired to real service APIs (mock fallback)** — no
+  API gateway exists, so each backend service is proxied under its
+  own `/api/<name>` prefix (dev: `vite.config.ts`'s `SERVICE_TABLE`;
+  prod: mirrored `nginx.conf` `location` blocks pointing at the
+  compose service names). `src/lib/api.ts`'s `USE_MOCKS` now reads
+  `VITE_USE_MOCKS` (default: mocks on), sends `x-tenant-id` from
+  `VITE_TENANT_ID`, and falls back to mock data with a console
+  warning on any network error or non-2xx response instead of
+  crashing the page. Added `frontend/.env.example` and `pnpm test`
+  (vitest) with `src/lib/api.test.ts` covering the mock/live/error
+  paths.
+- **S6-1 review fixes: resource-based proxy table** — the S6-1 proxy
+  map was built from service _names_, not the routes those services
+  actually mount (e.g. Kubernetes list routes live under
+  `/v1/kubernetes/<resource>`, POA&M is mounted unversioned). Replaced
+  it with `frontend/proxy-table.mjs`, a single table of `browser path
+-> {port, container, upstream path}` verified against every
+  `backend/services/*/src/routes/*.ts`, consumed by both
+  `vite.config.ts` (dev proxy) and a new `pnpm --filter ./frontend
+gen:nginx` script that generates `nginx.conf` (checked in; a test
+  asserts it can't drift from the table). `nginx.conf` now has both an
+  exact `location = /api/<res>` and a prefix `location /api/<res>/`
+  per resource, fixing routes with no trailing slash (e.g.
+  `/api/incidents`). `src/lib/api.ts` accessors were repointed at the
+  real flattened paths (`/api/clusters`, `/api/health/...`,
+  `/api/controls`, `/api/sboms/:id`, ...); `dashboardKpis()` /
+  `eventStream()` now reshape security-service's `/security/dashboard`
+  aggregate instead of hitting a non-existent `/dashboard/*` route.
+  Endpoints with no backend route at all (`vulnerabilities`, SBOM
+  components list, security score/vuln-timeline/risk-heatmap/graph)
+  are now hard-coded mock-only (never issue a doomed request) and
+  documented in `frontend/README.md`. Added an `apiHealth` store +
+  `useApiHealth()` hook: a failed live request now shows a persistent
+  "Degraded: showing sample data" banner in `AppShell` instead of
+  failing silently. `frontend/Dockerfile` takes `VITE_USE_MOCKS` /
+  `VITE_TENANT_ID` as build args; the compose `frontend` service now
+  builds with `VITE_USE_MOCKS=false` to exercise the real proxy path.
+
 ## [0.2.0] - 2026-09-22
 
 Sprint 5 — live Kubernetes, persistence, observability, containerisation.
