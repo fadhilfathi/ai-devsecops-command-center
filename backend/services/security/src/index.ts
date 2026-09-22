@@ -28,12 +28,12 @@ import {
   loadServiceConfig,
   registerGracefulShutdown,
   InMemoryEventBus,
+  buildAuthHook,
   type EventBus,
   type Logger,
 } from '@aicc/shared';
 
 import { loadEnv } from './config.js';
-import { buildAuthHook, requireAuth } from './middleware/auth.js';
 import { buildHealthRoutes } from './routes/health.js';
 import { buildAssetRoutes } from './routes/assets.js';
 import { buildScanRoutes } from './routes/scans.js';
@@ -56,6 +56,7 @@ import {
   withService,
   metricsRegistry,
   rateLimitRejectionsTotal,
+  authFailureTotal,
 } from './services/metrics.js';
 
 const SERVICE_NAME = 'security-service';
@@ -122,7 +123,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
       'x-ratelimit-remaining': true,
       'x-ratelimit-reset': true,
     },
-    keyGenerator: (req) => req.user?.sub ?? req.ip,
+    keyGenerator: (req) => req.userId || req.ip,
     onExceeded: (req) => {
       const route = req.routeOptions?.url ?? req.url ?? 'unknown';
       // tenantId deliberately NOT a metric label per metrics-spec.md §5.1.
@@ -163,23 +164,17 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   await server.register(swaggerUi, { routePrefix: '/docs', uiConfig: { docExpansion: 'list' } });
 
   // ---------- Auth ----------
-  server.addHook(
-    'preHandler',
-    buildAuthHook({
-      alg: env.JWT_ALG,
-      secret: env.JWT_SECRET,
-      publicKey: env.JWT_PUBLIC_KEY,
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE,
-    }),
-  );
-
-  // ---------- Request context ----------
   server.decorateRequest('tenantId', '');
   server.decorateRequest('userId', '');
+  server.addHook(
+    'onRequest',
+    buildAuthHook({
+      ...cfg.auth,
+      logger,
+      onAuthFailure: (reason) => authFailureTotal.inc(withService({ route: 'auth', reason })),
+    }),
+  );
   server.addHook('onRequest', async (req) => {
-    req.tenantId = (req.headers['x-tenant-id'] as string) ?? req.user?.tenantId ?? '';
-    req.userId = req.user?.sub ?? '';
     logger.debug({ tenantId: req.tenantId, userId: req.userId, url: req.url }, 'request');
   });
 
@@ -236,7 +231,6 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   });
 
   // Reference unused to keep tree-shake honest
-  void requireAuth;
   void z;
 
   return server;

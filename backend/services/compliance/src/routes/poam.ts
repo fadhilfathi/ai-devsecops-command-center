@@ -9,9 +9,9 @@
 //   POST  /poam/:id/close        — -> closed (requires evidence)
 //   POST  /poam/:id/accept-risk  — -> risk_accepted (justification + expiry)
 //
-// All routes are tenant-scoped. The tenant id is read from the
-// `x-tenant-id` request header (set by the auth gateway). The user id
-// is read from `x-user-id`. Both are required; missing values return
+// All routes are tenant-scoped. The tenant id and user id come from the
+// verified access token (`req.tenantId`/`req.userId`, set by the shared
+// auth hook) — never from client-supplied headers. Missing values return
 // 401.
 
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
@@ -61,13 +61,12 @@ export interface PoamRoutesDeps {
 }
 
 function requireTenantUser(req: FastifyRequest): { tenantId: string; userId: string } {
-  const tenantId = req.headers['x-tenant-id'];
-  const userId = req.headers['x-user-id'];
-  if (typeof tenantId !== 'string' || !tenantId) {
-    throw new AppError('UNAUTHENTICATED', 'Missing x-tenant-id header');
+  const { tenantId, userId } = req;
+  if (!tenantId) {
+    throw new AppError('UNAUTHENTICATED', 'Missing tenant identity');
   }
-  if (typeof userId !== 'string' || !userId) {
-    throw new AppError('UNAUTHENTICATED', 'Missing x-user-id header');
+  if (!userId) {
+    throw new AppError('UNAUTHENTICATED', 'Missing user identity');
   }
   return { tenantId, userId };
 }

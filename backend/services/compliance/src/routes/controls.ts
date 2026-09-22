@@ -9,6 +9,15 @@ interface Deps {
   bus: EventBus;
 }
 
+function requireTenant(tenantId: string): UUID {
+  if (!tenantId) {
+    const e = new Error('x-tenant-id header required') as Error & { statusCode?: number };
+    e.statusCode = 400;
+    throw e;
+  }
+  return tenantId as UUID;
+}
+
 const CreateControlSchema = z.object({
   framework: z.enum(['cis_v8', 'nist_800_53', 'soc2', 'iso_27001']),
   controlId: z.string().min(1).max(64),
@@ -28,7 +37,7 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (
   const { logger, controls, bus } = opts;
 
   server.get('/v1/controls', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const framework = (req.query as { framework?: string }).framework as
       'cis_v8' | 'nist_800_53' | 'soc2' | 'iso_27001' | undefined;
     const items = await controls.list(tenantId, { framework });
@@ -36,13 +45,9 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   server.post('/v1/controls', async (req, reply) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    if (!tenantId) {
-      reply.code(400);
-      return { code: 'VALIDATION_ERROR', message: 'x-tenant-id header required' };
-    }
+    const tenantId = requireTenant(req.tenantId);
     const body = CreateControlSchema.parse(req.body);
-    const control = await controls.create({ ...body, tenantId: tenantId as UUID });
+    const control = await controls.create({ ...body, tenantId });
     await bus.publish({
       type: EventTypes.COMPLIANCE_CONTROL_UPDATED,
       version: 1,
@@ -60,14 +65,14 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   server.get<{ Params: { id: string } }>('/v1/controls/:id', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const c = await controls.findById(req.params.id, tenantId);
     if (!c) throw new NotFoundError('Control', req.params.id);
     return { control: c };
   });
 
   server.patch<{ Params: { id: string } }>('/v1/controls/:id/status', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const body = UpdateStatusSchema.parse(req.body);
     const updated = await controls.updateStatus(req.params.id, tenantId, body.status);
     if (!updated) throw new NotFoundError('Control', req.params.id);
@@ -88,7 +93,7 @@ export const buildControlRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   server.post<{ Params: { id: string } }>('/v1/controls/:id/evidence', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const body = z.object({ ref: z.string().min(1) }).parse(req.body);
     const updated = await controls.addEvidence(req.params.id, tenantId, body.ref);
     if (!updated) throw new NotFoundError('Control', req.params.id);

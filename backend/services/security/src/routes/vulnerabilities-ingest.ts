@@ -64,7 +64,7 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
         });
       }
       const req_ = parsed.data;
-      const tenantId = req_.tenantId ?? req.user!.tenantId;
+      const tenantId = req_.tenantId ?? req.tenantId;
       const proxyResult = await proxyRequest<unknown>({
         url: `${vulnIntelUrl}/v1/vulnerabilities/ingest`,
         method: 'POST',

@@ -409,25 +409,24 @@ curl -sS http://localhost:4003/security/dashboard \
 
 ## Auth — issuing a dev token (S2.5 stub)
 
-Until `@aicc/auth` lands in Sprint 2.1, generate a dev JWT inline with the
-helper exported from `src/middleware/auth.ts`:
+Generate a dev JWT inline with the shared helper (same secret every service
+verifies against by default — see `AUTH_JWT_SECRET` in `.env.example`):
 
 ```ts
-import { signDevJwt } from '@aicc/security-service/middleware/auth';
+import { signAccessToken, AUTH_DEV_DEFAULT_SECRET } from '@aicc/shared';
 
-const token = signDevJwt({
-  secret: 'change-me-in-production-please-use-a-long-random-string',
-  issuer: 'aicc',
-  audience: 'aicc-api',
-  sub: 'admin-user-uuid',
-  email: 'admin@aicc.local',
-  role: 'security_engineer',
-  tenantId: '00000000-0000-4000-8000-000000000000',
-  ttlSeconds: 3600,
-});
+const token = signAccessToken(
+  {
+    sub: 'admin-user-uuid',
+    email: 'admin@aicc.local',
+    role: 'security_engineer',
+    tenantId: '00000000-0000-4000-8000-000000000000',
+  },
+  { secret: AUTH_DEV_DEFAULT_SECRET, issuer: 'aicc', audience: 'aicc-api', ttlSeconds: 3600 },
+);
 ```
 
-Or use the `auth-service`'s `POST /v1/auth/dev-login` from Sprint 1.
+Or use the `auth-service`'s `POST /v1/auth/dev-login`.
 
 ## Health
 

@@ -105,10 +105,11 @@ Status: **planned**.
   `src/lib/*.mock.ts`, starting with the infrastructure pages
   (clusters, namespaces, workloads, runtime security, topology,
   cost, health).
-- **S6-2**: auth end-to-end — `auth-service` issues JWTs, every
+- ✅ **S6-2**: auth end-to-end — `auth-service` issues JWTs, every
   backend service verifies them via a shared middleware in
   `@aicc/shared`, and the frontend gets a real login flow (replacing
-  the `x-tenant-id`-header development shortcut).
+  the `x-tenant-id`-header development shortcut). See
+  [ADR 0013](./docs/adr/0013-service-to-service-auth.md).
 - **S6-3**: event bus driver beyond in-memory — Redis Streams,
   using the existing compose `redis` container, behind the same
   `EventBus` interface.

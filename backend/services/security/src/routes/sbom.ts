@@ -12,6 +12,15 @@ interface Deps {
   bus: EventBus;
 }
 
+function requireTenant(tenantId: string): UUID {
+  if (!tenantId) {
+    const e = new Error('x-tenant-id header required') as Error & { statusCode?: number };
+    e.statusCode = 400;
+    throw e;
+  }
+  return tenantId as UUID;
+}
+
 const CreateSbomSchema = z.object({
   assetId: z.string().uuid(),
   format: z.enum(['cyclonedx', 'spdx']),
@@ -22,23 +31,19 @@ export const buildSbomRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
   const { logger, sboms, assets, bus } = opts;
 
   server.get('/v1/sboms', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const assetId = (req.query as { assetId?: string }).assetId;
     const items = await sboms.list(tenantId, assetId);
     return { items, total: items.length };
   });
 
   server.post('/v1/sboms', async (req, reply) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    if (!tenantId) {
-      reply.code(400);
-      return { code: 'VALIDATION_ERROR', message: 'x-tenant-id header required' };
-    }
+    const tenantId = requireTenant(req.tenantId);
     const body = CreateSbomSchema.parse(req.body);
     const asset = await assets.findById(body.assetId, tenantId);
     if (!asset) throw new NotFoundError('Asset', body.assetId);
     const record = await sboms.create({
-      tenantId: tenantId as UUID,
+      tenantId,
       assetId: body.assetId,
       format: body.format as SbomFormat,
       document: body.document,
@@ -55,7 +60,7 @@ export const buildSbomRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
   });
 
   server.get<{ Params: { id: string } }>('/v1/sboms/:id', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const s = await sboms.findById(req.params.id, tenantId);
     if (!s) throw new NotFoundError('Sbom', req.params.id);
     return { sbom: s };

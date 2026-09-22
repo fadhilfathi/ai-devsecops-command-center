@@ -2,8 +2,9 @@
  * Role-based access control (RBAC) middleware.
  *
  * Two layers:
- *   1. `requireAuth` — already provided by `middleware/auth.ts`.
- *   2. `requireRole(...allowed)` — adds a role check on top of `requireAuth`.
+ *   1. Authentication — enforced service-wide by the shared `@aicc/shared/auth`
+ *      hook wired in `index.ts`, which sets `req.tenantId`/`req.userRole`.
+ *   2. `requireRole(...allowed)` — adds a role check on top of that.
  *
  * Roles (per docs/architecture/security-model.md, owned by SecurityArchitect):
  *   - `platform_admin`      — full access (god mode)
@@ -60,16 +61,16 @@ export function requireRole(...allowed: UserRole[]): preHandlerHookHandler {
   const allowedSet = new Set<UserRole>(allowed);
   return async (req: FastifyRequest) => {
     const route = req.routeOptions?.url ?? req.url ?? 'unknown';
-    if (!req.user) {
+    if (!req.userRole) {
       authFailureTotal.inc(withService({ route, reason: 'missing_token' }));
       throw new AppError('UNAUTHENTICATED', 'Authentication required');
     }
-    if (!allowedSet.has(req.user.role)) {
+    if (!allowedSet.has(req.userRole)) {
       authFailureTotal.inc(withService({ route, reason: 'forbidden_role' }));
       throw new AppError(
         'FORBIDDEN',
-        `Requires one of [${Array.from(allowedSet).join(', ')}]; got '${req.user.role}'`,
-        { statusCode: 403, details: { allowed: Array.from(allowedSet), got: req.user.role } },
+        `Requires one of [${Array.from(allowedSet).join(', ')}]; got '${req.userRole}'`,
+        { statusCode: 403, details: { allowed: Array.from(allowedSet), got: req.userRole } },
       );
     }
   };
@@ -82,16 +83,16 @@ export function requireRole(...allowed: UserRole[]): preHandlerHookHandler {
  */
 export const requireTenantMatch: preHandlerHookHandler = async (req: FastifyRequest) => {
   const route = req.routeOptions?.url ?? req.url ?? 'unknown';
-  if (!req.user) {
+  if (!req.tenantId) {
     authFailureTotal.inc(withService({ route, reason: 'missing_token' }));
     throw new AppError('UNAUTHENTICATED', 'Authentication required');
   }
   const headerTenant = req.headers['x-tenant-id'] as string | undefined;
-  if (headerTenant && headerTenant !== req.user.tenantId) {
+  if (headerTenant && headerTenant !== req.tenantId) {
     authFailureTotal.inc(withService({ route, reason: 'tenant_mismatch' }));
     throw new AppError('FORBIDDEN', 'Token tenantId does not match x-tenant-id header', {
       statusCode: 403,
-      details: { tokenTenant: req.user.tenantId, headerTenant },
+      details: { tokenTenant: req.tenantId, headerTenant },
     });
   }
 };

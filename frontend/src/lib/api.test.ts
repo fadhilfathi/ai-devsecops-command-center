@@ -153,3 +153,37 @@ describe('apiHealth', () => {
     expect(apiHealth.get().failures).toContain('/assets');
   });
 });
+
+describe('api auth integration', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('sends the token as a bearer header once logged in, and clears it on a 401', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'false');
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ accessToken: 'tok-1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: false, status: 401 });
+    vi.stubGlobal('fetch', fetchSpy);
+    const { api } = await import('./api');
+    const { login, getToken } = await import('./auth');
+
+    await login('admin@aicc.local');
+    expect(getToken()).toBe('tok-1');
+
+    await api.assets();
+    expect(fetchSpy).toHaveBeenLastCalledWith(
+      '/api/assets',
+      expect.objectContaining({
+        headers: expect.objectContaining({ authorization: 'Bearer tok-1' }),
+      }),
+    );
+
+    await api.assets();
+    expect(getToken()).toBeNull();
+  });
+});

@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell as Layout } from './components/layout/AppShell';
+import { Login } from './routes/Login';
+import { useAuth } from './lib/auth';
 
 // All AionUi screens live in src/routes/ as the project's single
 // page-path convention. S2.6 follow-up (R1 from the S2 retro) moved
@@ -39,7 +41,17 @@ function RouteFallback() {
  *    change: hoist the import above and wrap in <Suspense>.
  *  - 404 catch-all.
  */
+// Mocks stay the default (see lib/api.ts) so the app renders unauthenticated;
+// only gate on login when talking to real services.
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
+
 export default function App() {
+  const { isAuthenticated } = useAuth();
+
+  if (!USE_MOCKS && !isAuthenticated) {
+    return <Login />;
+  }
+
   return (
     <Routes>
       <Route element={<Layout />}>

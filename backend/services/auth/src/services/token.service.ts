@@ -6,14 +6,10 @@
  * authentication design.
  */
 import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
+import { signAccessToken, verifyAccessToken, type AccessTokenClaims } from '@aicc/shared/auth';
 import type { UUID, UserRole } from '@aicc/shared';
 
-export interface AccessTokenPayload {
-  sub: UUID;
-  email: string;
-  role: UserRole;
-  tenantId: UUID;
-}
+export type AccessTokenPayload = AccessTokenClaims & { sub: UUID; tenantId: UUID };
 
 export interface RefreshTokenPayload {
   sub: UUID;
@@ -117,7 +113,12 @@ export function buildTokenService(deps: TokenServiceDeps): TokenService {
 
   return {
     async issue(payload) {
-      const accessToken = signJwt<AccessTokenPayload>(payload, accessSec);
+      const accessToken = signAccessToken(payload, {
+        secret: deps.secret,
+        issuer: deps.issuer,
+        audience: deps.audience,
+        ttlSeconds: accessSec,
+      });
       const jti = randomBytes(16).toString('hex');
       const refreshPayload: RefreshTokenPayload = { sub: payload.sub, jti };
       const refreshToken = signJwt<RefreshTokenPayload>(refreshPayload, refreshSec);
@@ -130,7 +131,7 @@ export function buildTokenService(deps: TokenServiceDeps): TokenService {
       };
     },
     async verifyAccess(token) {
-      return verifyJwt<AccessTokenPayload>(token);
+      return verifyAccessToken(token, deps);
     },
     async rotateRefresh(token) {
       let decoded: RefreshTokenPayload;

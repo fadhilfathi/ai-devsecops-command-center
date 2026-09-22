@@ -12,8 +12,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **S6-2 follow-up: close the tenant-header spoofing gap** — the S6-2
+  auth hook was wired service-wide, but most route handlers in
+  incident-, integration-, security-, compliance-, and agent-service
+  still read `req.headers['x-tenant-id']`/`['x-user-id']` directly, so a
+  valid token for tenant A plus a forged `x-tenant-id: <tenant-B>`
+  header still read tenant B's data. Every route now derives tenant/user
+  identity exclusively from the hook-verified `req.tenantId`/
+  `req.userId`; agent-service also stopped accepting `tenantId` in the
+  task-submission request body. `POST /v1/auth/dev-login` is refused
+  (route not registered, startup warning logged) when
+  `NODE_ENV=production`, and no longer accepts a client-supplied
+  `tenantId` — the token's tenant always comes from the seeded user
+  record. `loadServiceConfig()` now also refuses a secret shorter than
+  32 characters (or empty) in production. `buildAuthHook` gained an
+  optional `onAuthFailure` counter hook (wired for security-service) and
+  always `logger.warn({ reason, path })`s a rejection, never the token.
+  `frontend/src/lib/api.ts` stops retrying the legacy `x-tenant-id`
+  fallback after a 401 (`sessionExpired()` sets a flag `useAuth`
+  exposes so the app shows the login gate instead of silently 401-ing
+  every subsequent call). Added wrong-secret and cross-tenant-header
+  regression tests to all 13 services. See
+  `docs/adr/0013-service-to-service-auth.md`.
+
 ### Added
 
+- **S6-2: auth end-to-end** — every service used to trust a raw
+  `x-tenant-id` header (any caller could impersonate any tenant). Added
+  `@aicc/shared/auth` (`signAccessToken`/`verifyAccessToken`, HS256,
+  constant-time compare, `exp`/`nbf`/`iss`/`aud`/claim checks) and
+  `buildAuthHook()`, a Fastify `onRequest` hook now wired into all 13
+  backend services' `buildServer()`; it derives `tenantId`/`userId`/
+  `userRole` from a verified `Authorization: Bearer` token instead of a
+  client-supplied header. `AUTH_DEV_BYPASS` (on by default outside
+  `NODE_ENV=production`) falls back to the legacy header for existing
+  dev/test flows when no token is present at all — an invalid token is
+  always rejected regardless. `loadServiceConfig()` refuses to boot in
+  production with the shared default secret. security-service's
+  per-service JWT middleware was replaced by the shared hook; its RBAC
+  (`requireRole`/`requireTenantMatch`) stays layered on top.
+  auth-service's token service now delegates access-token
+  sign/verify to the shared implementation (dev-login remains the only
+  login entry point — the user repository is seed-only, no password
+  hashes). Frontend: `frontend/src/lib/auth.ts` (`login`/`logout`/
+  `useAuth`) wraps `POST /v1/auth/dev-login`, `api.ts` sends
+  `Authorization: Bearer` (falling back to the legacy tenant header
+  when logged out), and a new `Login` route gates the app when
+  `VITE_USE_MOCKS=false`. See `docs/adr/0013-service-to-service-auth.md`.
 - **S6-1: frontend wired to real service APIs (mock fallback)** — no
   API gateway exists, so each backend service is proxied under its
   own `/api/<name>` prefix (dev: `vite.config.ts`'s `SERVICE_TABLE`;

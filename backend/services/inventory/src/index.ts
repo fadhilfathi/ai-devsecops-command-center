@@ -10,6 +10,7 @@ import {
   createLogger,
   loadServiceConfig,
   registerGracefulShutdown,
+  buildAuthHook,
   InMemoryEventBus,
   type EventBus,
   type Logger,
@@ -51,10 +52,7 @@ export async function buildServer(deps?: Partial<InventoryServiceDeps>): Promise
   server.decorateRequest('tenantId', '');
   server.decorateRequest('userId', '');
 
-  server.addHook('onRequest', async (req) => {
-    req.tenantId = (req.headers['x-tenant-id'] as string) ?? '';
-    req.userId = (req.headers['x-user-id'] as string) ?? '';
-  });
+  server.addHook('onRequest', buildAuthHook({ ...cfg.auth, logger }));
 
   await server.register(buildHealthRoutes, { logger, cfg });
   await server.register(buildInventoryRoutes, { logger, inventory, engine, bus });

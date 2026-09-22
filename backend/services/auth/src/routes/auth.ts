@@ -25,11 +25,12 @@ interface Deps {
   users: UserRepository;
   tokens: TokenService;
   bus: EventBus;
+  /** Node environment; dev-login is never registered when this is 'production'. */
+  environment: string;
 }
 
 const LoginSchema = z.object({
   email: z.string().email(),
-  tenantId: z.string().uuid().optional(),
 });
 
 const CreateUserSchema = z.object({
@@ -40,33 +41,41 @@ const CreateUserSchema = z.object({
 });
 
 export const buildAuthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
-  const { logger, users, tokens, bus } = opts;
+  const { logger, users, tokens, bus, environment } = opts;
 
-  // POST /v1/auth/dev-login  — sprint 1 helper, removed in sprint 2.
-  server.post('/v1/auth/dev-login', async (req, reply) => {
-    const body = LoginSchema.parse(req.body);
-    const user = await users.findByEmail(body.email);
-    if (!user) throw new NotFoundError('User', body.email);
-    if (!user.active) throw new ForbiddenError('User is inactive');
+  // POST /v1/auth/dev-login  — no credential store exists yet, so this is
+  // the only login path (sprint 1). Never registered in production; the
+  // token's tenant always comes from the seeded user record, never the
+  // client.
+  if (environment === 'production') {
+    logger.warn('dev-login route disabled: NODE_ENV=production');
+  } else {
+    logger.warn('dev-login route enabled: password-less login, do not enable in production');
+    server.post('/v1/auth/dev-login', async (req, reply) => {
+      const body = LoginSchema.parse(req.body);
+      const user = await users.findByEmail(body.email);
+      if (!user) throw new NotFoundError('User', body.email);
+      if (!user.active) throw new ForbiddenError('User is inactive');
 
-    const pair = await tokens.issue({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      tenantId: body.tenantId ?? user.tenantId,
+      const pair = await tokens.issue({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+      });
+
+      await bus.publish({
+        type: EventTypes.AUTH_USER_LOGGED_IN,
+        version: 1,
+        source: 'auth-service',
+        tenantId: user.tenantId,
+        severity: 'info',
+        data: { userId: user.id, email: user.email },
+      });
+
+      reply.code(200).send({ user, ...pair });
     });
-
-    await bus.publish({
-      type: EventTypes.AUTH_USER_LOGGED_IN,
-      version: 1,
-      source: 'auth-service',
-      tenantId: user.tenantId,
-      severity: 'info',
-      data: { userId: user.id, email: user.email },
-    });
-
-    reply.code(200).send({ user, ...pair });
-  });
+  }
 
   // POST /v1/auth/refresh
   server.post('/v1/auth/refresh', async (req, reply) => {
@@ -78,24 +87,22 @@ export const buildAuthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
 
   // POST /v1/auth/logout
   server.post('/v1/auth/logout', async (req) => {
-    const userId = (req.headers['x-user-id'] as string) || 'unknown';
     await bus.publish({
       type: EventTypes.AUTH_USER_LOGGED_OUT,
       version: 1,
       source: 'auth-service',
-      tenantId: (req.headers['x-tenant-id'] as string) || '',
+      tenantId: req.tenantId || '',
       severity: 'info',
-      data: { userId },
+      data: { userId: req.userId || 'unknown' },
     });
     return { ok: true };
   });
 
   // GET /v1/auth/me
   server.get('/v1/auth/me', async (req) => {
-    const userId = req.headers['x-user-id'] as string;
-    if (!userId) throw new UnauthorizedError();
-    const user = await users.findById(userId);
-    if (!user) throw new NotFoundError('User', userId);
+    if (!req.userId) throw new UnauthorizedError();
+    const user = await users.findById(req.userId);
+    if (!user) throw new NotFoundError('User', req.userId);
     return { user };
   });
 

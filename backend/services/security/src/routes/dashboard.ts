@@ -30,7 +30,6 @@ import {
   DEFAULT_RISK_FACTOR_WEIGHTS,
   toJSONSchema,
 } from '@aicc/shared/security';
-import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { dashboardQueryDuration, withService } from '../services/metrics.js';
 import type { SbomRepository } from '../repositories/sbom.repository.js';
 import type { ScanRepository } from '../repositories/scan.repository.js';
@@ -69,10 +68,8 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
     '/security/dashboard',
     {
       // Per Leader's S2.5 spec: all roles can GET the dashboard.
-      // We still require authentication; the optionalAuth hook
-      // accepts anonymous and falls back to no-user data, but the
-      // role check below is effectively "any authenticated user".
-      preHandler: [requireAuth],
+      // Authentication is already enforced service-wide by the
+      // shared auth hook in index.ts; no extra preHandler needed.
       schema: {
         querystring: {
           type: 'object',
@@ -87,7 +84,7 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
     },
     async (req, reply) => {
       const q = QuerySchema.parse(req.query ?? {});
-      const tenantId = q.tenantId ?? req.user?.tenantId ?? '00000000-0000-4000-8000-000000000000';
+      const tenantId = q.tenantId ?? req.tenantId ?? '00000000-0000-4000-8000-000000000000';
       // S2.7 — start the dashboard query duration timer; observe at the end
       // (the histogram label set is fixed at start to avoid cardinality bloat).
       // Note: tenantId is NOT a metric label per metrics-spec.md §5.1.
@@ -284,6 +281,3 @@ function severityToCvss(s: VulnerabilitySeverity): number {
       return 5.0;
   }
 }
-
-// Re-export so the import is used
-void optionalAuth;

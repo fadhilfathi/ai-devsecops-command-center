@@ -17,7 +17,6 @@ interface Deps {
 const TaskSchema = z.object({
   kind: z.string().min(1),
   payload: z.record(z.string(), z.unknown()).default({}),
-  tenantId: z.string().uuid().optional(),
 });
 
 export const buildAgentRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
@@ -29,7 +28,7 @@ export const buildAgentRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
 
   server.post('/v1/agents/tasks', async (req, reply) => {
     const body = TaskSchema.parse(req.body);
-    const tenantId: UUID = body.tenantId ?? (req.headers['x-tenant-id'] as string) ?? '';
+    const tenantId: UUID = req.tenantId ?? '';
     if (!tenantId) {
       reply.code(400);
       return { code: 'VALIDATION_ERROR', message: 'tenantId is required' };
@@ -61,7 +60,7 @@ export const buildAgentRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
   });
 
   server.get('/v1/agents/tasks', async (req) => {
-    const tenantId = (req.headers['x-tenant-id'] as string) || undefined;
+    const tenantId = req.tenantId || undefined;
     const items = await queue.list(tenantId);
     return { items, total: items.length };
   });

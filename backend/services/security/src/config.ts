@@ -16,12 +16,9 @@ const EnvSchema = z.object({
   VULN_INTEL_URL: z.string().url().default('http://localhost:4008'),
   DEPENDENCY_INTEL_URL: z.string().url().default('http://localhost:4009'),
 
-  // Auth (Sprint 1 stub; Sprint 2.1 will swap to RS256/JWKS via @aicc/auth)
-  JWT_ALG: z.enum(['HS256', 'RS256']).default('HS256'),
-  JWT_SECRET: z.string().min(16).default('change-me-in-production-please-use-a-long-random-string'),
-  JWT_PUBLIC_KEY: z.string().optional(),
-  JWT_ISSUER: z.string().default('aicc'),
-  JWT_AUDIENCE: z.string().default('aicc-api'),
+  // Auth: AUTH_JWT_SECRET/ISSUER/AUDIENCE/DEV_BYPASS are read directly from
+  // process.env by `loadServiceConfig()` (@aicc/shared/http) — same
+  // defaults across every service, not duplicated here.
 
   // DB
   DATABASE_URL: z.string().url().optional(),

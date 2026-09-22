@@ -1,6 +1,8 @@
-import { Search, Bell, UserCircle2, Command } from 'lucide-react';
+import { Search, Bell, UserCircle2, Command, LogOut } from 'lucide-react';
+import { useAuth, logout } from '@/lib/auth';
 
 export function Topbar() {
+  const { isAuthenticated } = useAuth();
   return (
     <div className="flex h-14 items-center gap-4 px-4">
       {/* Global search */}
@@ -33,6 +35,16 @@ export function Topbar() {
             <div className="text-xs font-medium text-aion-text">m.chen</div>
             <div className="aion-mono text-[10px]">security-admin</div>
           </div>
+          {isAuthenticated && (
+            <button
+              type="button"
+              aria-label="Log out"
+              onClick={logout}
+              className="ml-1 rounded p-1 text-aion-muted hover:bg-aion-surface hover:text-aion-text"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

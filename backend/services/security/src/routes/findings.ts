@@ -1,11 +1,20 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { NotFoundError, type Logger } from '@aicc/shared';
+import { NotFoundError, type Logger, type UUID } from '@aicc/shared';
 import type { FindingRepository } from '../repositories/finding.repository.js';
 
 interface Deps {
   logger: Logger;
   findings: FindingRepository;
+}
+
+function requireTenant(tenantId: string): UUID {
+  if (!tenantId) {
+    const e = new Error('x-tenant-id header required') as Error & { statusCode?: number };
+    e.statusCode = 400;
+    throw e;
+  }
+  return tenantId as UUID;
 }
 
 const ListQuerySchema = z.object({
@@ -24,21 +33,21 @@ export const buildFindingRoutes: FastifyPluginAsync<Deps> = async (
   const { logger, findings } = opts;
 
   server.get('/v1/findings', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const q = ListQuerySchema.parse(req.query ?? {});
     const items = await findings.list(tenantId, q);
     return { items, total: items.length };
   });
 
   server.get<{ Params: { id: string } }>('/v1/findings/:id', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const f = await findings.findById(req.params.id, tenantId);
     if (!f) throw new NotFoundError('Finding', req.params.id);
     return { finding: f };
   });
 
   server.patch<{ Params: { id: string } }>('/v1/findings/:id/status', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const body = UpdateStatusSchema.parse(req.body);
     const updated = await findings.updateStatus(req.params.id, tenantId, body.status);
     if (!updated) throw new NotFoundError('Finding', req.params.id);

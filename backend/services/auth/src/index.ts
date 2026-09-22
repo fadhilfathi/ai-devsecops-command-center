@@ -11,6 +11,7 @@ import {
   loadServiceConfig,
   registerGracefulShutdown,
   InMemoryEventBus,
+  buildAuthHook,
   type EventBus,
 } from '@aicc/shared';
 import { loadEnv } from './config.js';
@@ -38,9 +39,9 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
   const tokens =
     deps?.tokens ??
     buildTokenService({
-      secret: env.JWT_SECRET,
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE,
+      secret: cfg.auth.secret,
+      issuer: cfg.auth.issuer,
+      audience: cfg.auth.audience,
       accessTtl: env.JWT_ACCESS_TTL,
       refreshTtl: env.JWT_REFRESH_TTL,
     });
@@ -61,14 +62,28 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
   server.decorateRequest('tenantId', '');
   server.decorateRequest('userId', '');
 
+  // dev-login and refresh are how a client gets a token in the first
+  // place, so they can't require one.
+  server.addHook(
+    'onRequest',
+    buildAuthHook({
+      ...cfg.auth,
+      optionalPaths: ['/v1/auth/dev-login', '/v1/auth/refresh'],
+      logger,
+    }),
+  );
   server.addHook('onRequest', async (req) => {
-    req.tenantId = (req.headers['x-tenant-id'] as string) ?? '';
-    req.userId = (req.headers['x-user-id'] as string) ?? '';
     logger.debug({ tenantId: req.tenantId, userId: req.userId, url: req.url }, 'request');
   });
 
   await server.register(buildHealthRoutes, { logger, cfg });
-  await server.register(buildAuthRoutes, { logger, users, tokens, bus });
+  await server.register(buildAuthRoutes, {
+    logger,
+    users,
+    tokens,
+    bus,
+    environment: cfg.environment,
+  });
 
   server.setErrorHandler((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');

@@ -74,12 +74,13 @@ import {
   mockWorkloadCosts,
   mockTopologyGraph,
 } from './infrastructure.mock';
+import { getToken, isAuthRequired, sessionExpired } from './auth';
 
 // Mocks stay the default so the app renders with no backend running; set
 // VITE_USE_MOCKS=false to hit the real services (see frontend/README.md).
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
-// Dev-only shortcut until S6-2 lands real auth — every service requires
-// this header and rejects requests without it.
+// Legacy dev fallback: sent only when logged out (see `getRaw` below) —
+// every service accepts it while AUTH_DEV_BYPASS is on (dev/test default).
 const TENANT_ID = import.meta.env.VITE_TENANT_ID ?? 'demo-tenant';
 
 // ---- Degraded-mode tracking (S6-1) ---------------------------------------
@@ -131,11 +132,24 @@ async function getRaw<Raw, T>(
     await new Promise((r) => setTimeout(r, 80));
     return fallback;
   }
+  // A previous request already 401'd — the app shell shows the login gate;
+  // don't keep hammering the backend with the stale x-tenant-id fallback.
+  if (isAuthRequired()) {
+    return fallback;
+  }
   try {
-    const res = await fetch(`/api${path}`, {
-      credentials: 'include',
-      headers: { 'x-tenant-id': TENANT_ID },
-    });
+    const token = getToken();
+    // Prefer a real bearer token; fall back to the legacy tenant header
+    // (matches every service's AUTH_DEV_BYPASS dev/test default) only
+    // before the first login attempt — keeps the app usable before S6-2's
+    // login screen without silently retrying it after a 401.
+    const headers: Record<string, string> = token
+      ? { authorization: `Bearer ${token}` }
+      : { 'x-tenant-id': TENANT_ID };
+    const res = await fetch(`/api${path}`, { credentials: 'include', headers });
+    if (res.status === 401) {
+      sessionExpired();
+    }
     if (!res.ok) {
       console.warn(`AionUi: ${path} -> HTTP ${res.status}, using fallback`);
       recordFailure(path);

@@ -9,6 +9,15 @@ interface Deps {
   bus: EventBus;
 }
 
+function requireTenant(tenantId: string): UUID {
+  if (!tenantId) {
+    const e = new Error('x-tenant-id header required') as Error & { statusCode?: number };
+    e.statusCode = 400;
+    throw e;
+  }
+  return tenantId as UUID;
+}
+
 const CreateIncidentSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1),
@@ -31,7 +40,7 @@ export const buildIncidentRoutes: FastifyPluginAsync<Deps> = async (
   const { logger, incidents, bus } = opts;
 
   server.get('/v1/incidents', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const status = (req.query as { status?: string }).status as
       'open' | 'acknowledged' | 'mitigating' | 'resolved' | 'closed' | undefined;
     const items = await incidents.list(tenantId, { status });
@@ -39,13 +48,9 @@ export const buildIncidentRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   server.post('/v1/incidents', async (req, reply) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    if (!tenantId) {
-      reply.code(400);
-      return { code: 'VALIDATION_ERROR', message: 'x-tenant-id header required' };
-    }
+    const tenantId = requireTenant(req.tenantId);
     const body = CreateIncidentSchema.parse(req.body);
-    const incident = await incidents.create({ ...body, tenantId: tenantId as UUID });
+    const incident = await incidents.create({ ...body, tenantId });
     await bus.publish({
       type: EventTypes.INCIDENT_CREATED,
       version: 1,
@@ -58,14 +63,14 @@ export const buildIncidentRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   server.get<{ Params: { id: string } }>('/v1/incidents/:id', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const i = await incidents.findById(req.params.id, tenantId);
     if (!i) throw new NotFoundError('Incident', req.params.id);
     return { incident: i };
   });
 
   server.patch<{ Params: { id: string } }>('/v1/incidents/:id', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const body = UpdateIncidentSchema.parse(req.body);
     const updated = await incidents.update(req.params.id, tenantId, body);
     if (!updated) throw new NotFoundError('Incident', req.params.id);

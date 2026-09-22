@@ -14,6 +14,17 @@
 
 ---
 
+> **Implementation status (2026-09-22, Sprint 6 / S6-2):** this document
+> is the aspirational Sprint 1 design (RS256 + JWKS, mTLS/SPIFFE mesh,
+> Vault, per-tenant RLS, MFA, SSO — none of which exist yet). What's
+> actually implemented today is the minimum slice: HS256 access tokens
+> issued by `auth-service`, verified by every service via the shared
+> `@aicc/shared/auth` hook (`tenantId`/`userId`/`role` derived from the
+> verified token, not a client header), with a `AUTH_DEV_BYPASS` dev/test
+> escape hatch. See [ADR 0013](../adr/0013-service-to-service-auth.md)
+> for what's real; treat everything else in this document as target
+> state, not current state.
+
 ## 1. Purpose & Scope
 
 This document is the **detailed Authentication & Security Design** for the AI-DevSecOps Command Center. It is the engineering reference that implements the architecture-level overview in [`security-model.md`](./security-model.md) and provides the concrete specifications, algorithms, and configurations that backend services must follow.

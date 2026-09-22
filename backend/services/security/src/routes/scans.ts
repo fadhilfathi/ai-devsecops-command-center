@@ -13,6 +13,15 @@ interface Deps {
   bus: EventBus;
 }
 
+function requireTenant(tenantId: string): UUID {
+  if (!tenantId) {
+    const e = new Error('x-tenant-id header required') as Error & { statusCode?: number };
+    e.statusCode = 400;
+    throw e;
+  }
+  return tenantId as UUID;
+}
+
 const StartScanSchema = z.object({
   assetId: z.string().uuid(),
   scanner: z.enum(['trivy', 'grype', 'syft']).default('trivy'),
@@ -36,24 +45,20 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
   const { logger, assets, scans, findings, bus } = opts;
 
   server.get('/v1/scans', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const items = await scans.list(tenantId);
     return { items, total: items.length };
   });
 
   server.post('/v1/scans', async (req, reply) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    if (!tenantId) {
-      reply.code(400);
-      return { code: 'VALIDATION_ERROR', message: 'x-tenant-id header required' };
-    }
+    const tenantId = requireTenant(req.tenantId);
     const body = StartScanSchema.parse(req.body);
     const asset = await assets.findById(body.assetId, tenantId);
     if (!asset) throw new NotFoundError('Asset', body.assetId);
 
     const scan = await scans.create({
       assetId: body.assetId,
-      tenantId: tenantId as UUID,
+      tenantId,
       scanner: body.scanner,
     });
     await bus.publish({
@@ -81,14 +86,14 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
   });
 
   server.post<{ Params: { id: string } }>('/v1/scans/:id/complete', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const body = CompleteScanSchema.parse(req.body);
     const scan = await scans.findById(req.params.id, tenantId);
     if (!scan) throw new NotFoundError('Scan', req.params.id);
 
     const created = [];
     for (const seed of body.findings) {
-      const f = await findings.create({ ...seed, scanId: scan.id, tenantId: tenantId as UUID });
+      const f = await findings.create({ ...seed, scanId: scan.id, tenantId });
       created.push(f);
       await bus.publish({
         type: EventTypes.VULNERABILITY_DETECTED,
@@ -112,7 +117,7 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
   });
 
   server.get<{ Params: { id: string } }>('/v1/scans/:id', async (req) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = requireTenant(req.tenantId);
     const scan = await scans.findById(req.params.id, tenantId);
     if (!scan) throw new NotFoundError('Scan', req.params.id);
     return { scan };

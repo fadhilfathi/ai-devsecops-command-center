@@ -14,7 +14,7 @@ export const buildFrameworkRoutes: FastifyPluginAsync<Deps> = async (
   const { logger, frameworks } = opts;
 
   server.get('/v1/frameworks', async (req) => {
-    const tenantId = (req.headers['x-tenant-id'] as string) ?? '';
+    const tenantId = req.tenantId ?? '';
     return { items: await frameworks.list(tenantId) };
   });
 
