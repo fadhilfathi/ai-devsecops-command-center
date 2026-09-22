@@ -139,9 +139,6 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build contracts first
-        run: pnpm -r --filter "...{./backend/packages/shared}" build
-
       - name: Build all
         run: pnpm -r build
 
