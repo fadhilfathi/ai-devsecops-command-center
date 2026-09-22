@@ -58,6 +58,11 @@ export interface ReportSection {
   bullets?: string[];
 }
 
+export interface ReportChart {
+  title: string;
+  items: Array<{ label: string; value: number }>;
+}
+
 export interface Report {
   id: string;
   kind: ReportKind;
@@ -69,6 +74,7 @@ export interface Report {
   summary: string;
   sections: ReportSection[];
   tables: ReportTable[];
+  charts?: ReportChart[];
   generatedAt: string;
 }
 
@@ -163,6 +169,29 @@ export function buildReportEngine(): ReportEngine {
           .slice(0, 10)
           .map((r) => `[${r.priority.toUpperCase()}] ${r.title} — ${r.detail}`),
       });
+      const severityCounts = clusterHealth.reduce(
+        (a, h) => ({
+          critical: a.critical + h.score.counts.critical,
+          high: a.high + h.score.counts.high,
+          medium: a.medium + h.score.counts.medium,
+          low: a.low + h.score.counts.low,
+        }),
+        { critical: 0, high: 0, medium: 0, low: 0 },
+      );
+      const charts =
+        clusterHealth.length > 0
+          ? [
+              {
+                title: 'Findings by severity',
+                items: [
+                  { label: 'Critical', value: severityCounts.critical },
+                  { label: 'High', value: severityCounts.high },
+                  { label: 'Medium', value: severityCounts.medium },
+                  { label: 'Low', value: severityCounts.low },
+                ],
+              },
+            ]
+          : undefined;
       return {
         id: randomUUID(),
         kind: 'cluster_health',
@@ -173,6 +202,7 @@ export function buildReportEngine(): ReportEngine {
         summary: `${clusters.length} cluster(s) analysed; average score ${Math.round(clusterHealth.reduce((a, h) => a + h.score.score, 0) / Math.max(1, clusterHealth.length))}/100.`,
         sections,
         tables,
+        charts,
         generatedAt: new Date().toISOString(),
       };
     },
@@ -226,6 +256,17 @@ export function buildReportEngine(): ReportEngine {
             f.message,
           ]),
       });
+      const byLevel = new Map<string, number>();
+      for (const f of runtimeFindings) byLevel.set(f.level, (byLevel.get(f.level) ?? 0) + 1);
+      const charts =
+        byLevel.size > 0
+          ? [
+              {
+                title: 'Runtime findings by level',
+                items: Array.from(byLevel.entries()).map(([label, value]) => ({ label, value })),
+              },
+            ]
+          : undefined;
       return {
         id: randomUUID(),
         kind: 'infrastructure_risk',
@@ -236,6 +277,7 @@ export function buildReportEngine(): ReportEngine {
         summary: `Combined infrastructure risk: ${runtimeFindings.length} runtime finding(s) + ${costFindings.length} cost finding(s) + ${allIssues.length} health issue(s).`,
         sections,
         tables,
+        charts,
         generatedAt: new Date().toISOString(),
       };
     },
@@ -280,6 +322,19 @@ export function buildReportEngine(): ReportEngine {
           rows: r.recommendations.map((rec) => [rec.title, rec.level, fmt(rec.affectedCount)]),
         });
       }
+      const charts = r
+        ? [
+            {
+              title: 'Findings by severity',
+              items: [
+                { label: 'Critical', value: r.counts.critical },
+                { label: 'High', value: r.counts.high },
+                { label: 'Medium', value: r.counts.medium },
+                { label: 'Low', value: r.counts.low },
+              ],
+            },
+          ]
+        : undefined;
       return {
         id: randomUUID(),
         kind: 'runtime_security',
@@ -293,6 +348,7 @@ export function buildReportEngine(): ReportEngine {
           : 'No runtime security data available.',
         sections,
         tables,
+        charts,
         generatedAt: new Date().toISOString(),
       };
     },
@@ -350,6 +406,22 @@ export function buildReportEngine(): ReportEngine {
           ]),
         });
       }
+      const byNamespace = new Map<string, number>();
+      for (const w of c?.workloads ?? []) {
+        byNamespace.set(w.namespace, (byNamespace.get(w.namespace) ?? 0) + w.currentMonthlyUsd);
+      }
+      const charts =
+        byNamespace.size > 0
+          ? [
+              {
+                title: 'Monthly cost by namespace',
+                items: Array.from(byNamespace.entries()).map(([label, value]) => ({
+                  label,
+                  value: Math.round(value),
+                })),
+              },
+            ]
+          : undefined;
       return {
         id: randomUUID(),
         kind: 'cost_optimization',
@@ -363,6 +435,7 @@ export function buildReportEngine(): ReportEngine {
           : 'No cost data available.',
         sections,
         tables,
+        charts,
         generatedAt: new Date().toISOString(),
       };
     },
@@ -378,6 +451,7 @@ export function buildReportEngine(): ReportEngine {
           ? `${t.nodes.length} node(s) and ${t.edges.length} edge(s) in the topology graph.`
           : 'No topology data available.',
       });
+      let charts: Report['charts'];
       if (t) {
         const byKind = new Map<string, number>();
         for (const n of t.nodes) byKind.set(n.kind, (byKind.get(n.kind) ?? 0) + 1);
@@ -393,6 +467,12 @@ export function buildReportEngine(): ReportEngine {
           columns: ['Kind', 'Count'],
           rows: Array.from(byEdge.entries()).map(([k, v]) => [k, v]),
         });
+        charts = [
+          {
+            title: 'Node distribution',
+            items: Array.from(byKind.entries()).map(([label, value]) => ({ label, value })),
+          },
+        ];
       }
       return {
         id: randomUUID(),
@@ -407,6 +487,7 @@ export function buildReportEngine(): ReportEngine {
           : 'No topology data available.',
         sections,
         tables,
+        charts,
         generatedAt: new Date().toISOString(),
       };
     },

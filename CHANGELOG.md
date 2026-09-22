@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-8: multi-page PDF reports (pdfkit)
+
+- Replaced the hand-rolled single-page PDF writer in
+  `reporting-service` with `pdfkit`: running header/footer with
+  page numbers (`Page N of M`), tables with wrapped cells,
+  zebra striping, and repeated header rows across page breaks,
+  and a vector bar-chart helper for report kinds with an
+  obvious numeric series (severity counts, cost by namespace,
+  node distribution). `Report` gained an optional `charts` field
+  populated by the report engine.
+
 ### Sprint 5 — S5-7: cost utilisation from Prometheus
 
 - Added `UtilisationSource` abstraction in `cost-intelligence`:

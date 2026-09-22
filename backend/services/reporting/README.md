@@ -19,8 +19,9 @@ query parameter:
 
 - `json` (default) — the structured payload
 - `md` — Markdown
-- `pdf` — minimal PDF (text-only, Sprint 4); full visual PDF
-  is scheduled for Sprint 5
+- `pdf` — multi-page PDF (pdfkit): running header/footer with
+  page numbers, wrapped tables, and a bar chart for report
+  kinds with an obvious numeric series
 
 All reports are tenant-scoped and can be filtered by
 `clusterId` / `namespace` query parameters.

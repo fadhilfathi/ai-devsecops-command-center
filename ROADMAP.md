@@ -88,8 +88,9 @@ Status: **planned**.
 - ✅ S5-7: replace the heuristic utilisation estimates in the cost
   engine with real Prometheus queries (kubelet/cAdvisor metrics),
   falling back to the synthetic values when `PROMETHEUS_URL` isn't set.
-- Upgrade the PDF report formatter (charts, headers,
-  footers).
+- ✅ S5-8: upgrade the PDF report formatter to pdfkit — multi-page
+  layout, running headers/footers with page numbers, wrapped
+  tables, and vector bar charts.
 
 ## Sprint 6 — Compliance automation
 

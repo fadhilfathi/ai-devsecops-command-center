@@ -44,7 +44,7 @@ function contentType(format: ReportFormat): string {
   return 'application/pdf';
 }
 
-function sendReport(reply: any, report: Report, format: ReportFormat, filename: string) {
+async function sendReport(reply: any, report: Report, format: ReportFormat, filename: string) {
   if (format === 'json') {
     reply.header('content-type', contentType(format));
     return toJson(report);
@@ -55,7 +55,7 @@ function sendReport(reply: any, report: Report, format: ReportFormat, filename: 
   }
   reply.header('content-type', contentType(format));
   reply.header('content-disposition', `inline; filename="${filename}.pdf"`);
-  return reply.send(toPdf(report));
+  return reply.send(await toPdf(report));
 }
 
 export const buildReportRoutes: FastifyPluginAsync<Deps> = async (

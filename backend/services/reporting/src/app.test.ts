@@ -36,3 +36,16 @@ test('GET /v1/reports/cluster-health with x-tenant-id returns a report', async (
   expect(typeof body.kind).toBe('string');
   await server.close();
 });
+
+test('GET /v1/reports/cluster-health?format=pdf returns a PDF', async () => {
+  const server = await buildServer();
+  const res = await server.inject({
+    method: 'GET',
+    url: '/v1/reports/cluster-health?format=pdf',
+    headers: { 'x-tenant-id': 'tenant-1' },
+  });
+  expect(res.statusCode).toBe(200);
+  expect(res.headers['content-type']).toBe('application/pdf');
+  expect(res.rawPayload.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  await server.close();
+});
