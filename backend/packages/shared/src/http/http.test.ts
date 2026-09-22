@@ -10,6 +10,8 @@ const ENV_KEYS = [
   'AUTH_JWT_ISSUER',
   'AUTH_JWT_AUDIENCE',
   'AUTH_DEV_BYPASS',
+  'EVENT_BUS_DRIVER',
+  'REDIS_URL',
 ] as const;
 const savedEnv: Record<string, string | undefined> = {};
 
@@ -40,7 +42,15 @@ test('loadServiceConfig applies defaults when no env is set', () => {
       audience: 'aicc-api',
       devBypass: true,
     },
+    eventBus: { driver: 'memory', redisUrl: undefined },
   });
+});
+
+test('loadServiceConfig defaults to the redis driver only when EVENT_BUS_DRIVER=redis', () => {
+  process.env.EVENT_BUS_DRIVER = 'redis';
+  process.env.REDIS_URL = 'redis://localhost:6379';
+  const cfg = loadServiceConfig('agent-service', '0.1.0');
+  expect(cfg.eventBus).toEqual({ driver: 'redis', redisUrl: 'redis://localhost:6379' });
 });
 
 test('loadServiceConfig unknown service defaults to port 4000', () => {

@@ -5,6 +5,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from '../logger/index.js';
+import type { EventBusConfig } from '../events/index.js';
 
 // Every service decorates the request with `tenantId`/`userId` from the
 // verified access token via the shared `buildAuthHook` `onRequest` hook
@@ -37,6 +38,8 @@ export interface ServiceConfig {
   databaseUrl?: string;
   /** Shared HS256 secret/issuer/audience every service verifies tokens against. */
   auth: ServiceAuthConfig;
+  /** `EVENT_BUS_DRIVER` (memory|redis, default memory) + `REDIS_URL`. */
+  eventBus: EventBusConfig;
 }
 
 /** Dev-only default secret. Every service refuses to boot with this in production. */
@@ -66,6 +69,11 @@ function loadAuthConfig(environment: string): ServiceAuthConfig {
   return { secret, issuer, audience, devBypass };
 }
 
+function loadEventBusConfig(): EventBusConfig {
+  const driver = process.env.EVENT_BUS_DRIVER === 'redis' ? 'redis' : 'memory';
+  return { driver, redisUrl: process.env.REDIS_URL };
+}
+
 export function loadServiceConfig(name: string, version: string): ServiceConfig {
   const environment = process.env.NODE_ENV ?? 'development';
   return {
@@ -77,6 +85,7 @@ export function loadServiceConfig(name: string, version: string): ServiceConfig 
     logLevel: process.env.LOG_LEVEL ?? 'info',
     databaseUrl: process.env.DATABASE_URL,
     auth: loadAuthConfig(environment),
+    eventBus: loadEventBusConfig(),
   };
 }
 

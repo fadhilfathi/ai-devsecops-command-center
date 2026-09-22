@@ -80,6 +80,8 @@ services:
     environment:
       PORT: 3001
       DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_auth
+      EVENT_BUS_DRIVER: redis
+      REDIS_URL: redis://redis:6379
     ports:
       - '3001:3001'
     depends_on:
@@ -99,6 +101,8 @@ services:
     container_name: cc-agent
     environment:
       PORT: 3002
+      EVENT_BUS_DRIVER: redis
+      REDIS_URL: redis://redis:6379
     ports:
       - '3002:3002'
     depends_on:
@@ -119,6 +123,8 @@ services:
     environment:
       PORT: 3003
       DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_security
+      EVENT_BUS_DRIVER: redis
+      REDIS_URL: redis://redis:6379
     ports:
       - '3003:3003'
     depends_on:
@@ -139,6 +145,8 @@ services:
     environment:
       PORT: 3004
       DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_incident
+      EVENT_BUS_DRIVER: redis
+      REDIS_URL: redis://redis:6379
     ports:
       - '3004:3004'
     depends_on:
@@ -159,6 +167,8 @@ services:
     environment:
       PORT: 3005
       DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_compliance
+      EVENT_BUS_DRIVER: redis
+      REDIS_URL: redis://redis:6379
     ports:
       - '3005:3005'
     depends_on:
@@ -179,6 +189,8 @@ services:
     environment:
       PORT: 3006
       DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_integration
+      EVENT_BUS_DRIVER: redis
+      REDIS_URL: redis://redis:6379
     ports:
       - '3006:3006'
     depends_on:

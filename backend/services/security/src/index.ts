@@ -27,7 +27,7 @@ import {
   createLogger,
   loadServiceConfig,
   registerGracefulShutdown,
-  InMemoryEventBus,
+  createEventBus,
   buildAuthHook,
   type EventBus,
   type Logger,
@@ -72,7 +72,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger =
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
-  const bus = deps?.bus ?? new InMemoryEventBus();
+  const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
   const assets = buildAssetRepository();
   const scans = buildScanRepository();
@@ -179,7 +179,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   });
 
   // ---------- Routes ----------
-  await server.register(buildHealthRoutes, { logger, cfg });
+  await server.register(buildHealthRoutes, { logger, cfg, bus });
 
   // Sprint 1 routes
   await server.register(buildAssetRoutes, { logger, assets });
@@ -232,6 +232,10 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
 
   // Reference unused to keep tree-shake honest
   void z;
+
+  server.addHook('onClose', async () => {
+    await bus.close();
+  });
 
   return server;
 }

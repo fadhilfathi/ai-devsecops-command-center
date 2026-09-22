@@ -10,8 +10,12 @@
  */
 
 import type { UUID, ISOTimestamp, Severity } from '../types/index.js';
+import type { Logger } from '../logger/index.js';
+import { RedisStreamsEventBus } from './redis.js';
 
 export type { UUID, ISOTimestamp, Severity };
+export { RedisStreamsEventBus } from './redis.js';
+export type { RedisStreamsEventBusOptions } from './redis.js';
 
 export interface EventEnvelope<T = unknown> {
   /** Unique event id, useful for idempotency. */
@@ -40,6 +44,9 @@ export interface EventBus {
   publish<T>(event: Omit<EventEnvelope<T>, 'eventId' | 'occurredAt'>): Promise<void>;
   subscribe<T>(type: string, handler: EventHandler<T>): Promise<void>;
   close(): Promise<void>;
+  /** Optional connectivity probe for /readyz. Drivers without a real
+   * connection (e.g. in-memory) omit it. */
+  ping?(): Promise<void>;
 }
 
 function newId(): UUID {
@@ -55,6 +62,20 @@ function newId(): UUID {
 }
 
 /**
+ * Fills in `eventId`/`occurredAt`. Shared by every `EventBus` implementation
+ * so they can't drift on envelope shape.
+ */
+export function sealEnvelope<T>(
+  event: Omit<EventEnvelope<T>, 'eventId' | 'occurredAt'>,
+): EventEnvelope<T> {
+  return {
+    eventId: newId(),
+    occurredAt: new Date().toISOString(),
+    ...event,
+  };
+}
+
+/**
  * In-memory event bus. Useful for tests, local dev, and as the
  * default when no broker is configured.
  */
@@ -66,11 +87,7 @@ export class InMemoryEventBus implements EventBus {
     if (this.closed) {
       throw new Error('EventBus is closed');
     }
-    const envelope: EventEnvelope<T> = {
-      eventId: newId(),
-      occurredAt: new Date().toISOString(),
-      ...event,
-    };
+    const envelope = sealEnvelope(event);
     const set = this.handlers.get(envelope.type);
     if (!set || set.size === 0) return;
     // Fan out; errors are isolated to each handler.
@@ -124,3 +141,33 @@ export const EventTypes = {
 } as const;
 
 export type EventType = (typeof EventTypes)[keyof typeof EventTypes];
+
+export interface EventBusConfig {
+  driver: 'memory' | 'redis';
+  redisUrl?: string;
+}
+
+export interface CreateEventBusOptions extends EventBusConfig {
+  serviceName: string;
+  logger: Logger;
+}
+
+/**
+ * Builds the configured `EventBus` implementation. `memory` (default) is
+ * the Sprint 1 in-process bus; `redis` uses Redis Streams (S6-3). Every
+ * service does `deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName, logger })`
+ * so switching drivers is a one-line env var change, never a code change.
+ */
+export function createEventBus(opts: CreateEventBusOptions): EventBus {
+  if (opts.driver === 'redis') {
+    if (!opts.redisUrl) {
+      throw new Error('EVENT_BUS_DRIVER=redis requires REDIS_URL to be set');
+    }
+    return new RedisStreamsEventBus({
+      url: opts.redisUrl,
+      serviceName: opts.serviceName,
+      logger: opts.logger,
+    });
+  }
+  return new InMemoryEventBus();
+}

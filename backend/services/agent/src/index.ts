@@ -16,7 +16,7 @@ import {
   loadServiceConfig,
   registerGracefulShutdown,
   buildAuthHook,
-  InMemoryEventBus,
+  createEventBus,
   type EventBus,
   type Logger,
 } from '@aicc/shared';
@@ -37,7 +37,7 @@ export async function buildServer(deps?: Partial<AgentServiceDeps>): Promise<Fas
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger =
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
-  const bus = deps?.bus ?? new InMemoryEventBus();
+  const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
   const queue = buildTaskQueue();
   const registry = buildAgentRegistry({ bus, queue, logger });
 
@@ -57,7 +57,7 @@ export async function buildServer(deps?: Partial<AgentServiceDeps>): Promise<Fas
 
   server.addHook('onRequest', buildAuthHook({ ...cfg.auth, logger }));
 
-  await server.register(buildHealthRoutes, { logger, cfg, queue, registry });
+  await server.register(buildHealthRoutes, { logger, cfg, queue, registry, bus });
   await server.register(buildAgentRoutes, { logger, registry, queue, bus });
 
   server.setErrorHandler((err, _req, reply) => {
@@ -67,6 +67,10 @@ export async function buildServer(deps?: Partial<AgentServiceDeps>): Promise<Fas
       code: err.code ?? 'INTERNAL_ERROR',
       message: err.message ?? 'Internal Server Error',
     });
+  });
+
+  server.addHook('onClose', async () => {
+    await bus.close();
   });
 
   return server;

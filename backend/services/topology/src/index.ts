@@ -11,7 +11,7 @@ import {
   loadServiceConfig,
   registerGracefulShutdown,
   buildAuthHook,
-  InMemoryEventBus,
+  createEventBus,
   type EventBus,
   type Logger,
 } from '@aicc/shared';
@@ -32,7 +32,7 @@ export async function buildServer(deps?: Partial<TopologyServiceDeps>): Promise<
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger =
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
-  const bus = deps?.bus ?? new InMemoryEventBus();
+  const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
   const inventory = buildInventoryClient({ logger });
   const engine = buildTopologyEngine();
@@ -63,6 +63,10 @@ export async function buildServer(deps?: Partial<TopologyServiceDeps>): Promise<
       code: err.code ?? 'INTERNAL_ERROR',
       message: err.message ?? 'Internal Server Error',
     });
+  });
+
+  server.addHook('onClose', async () => {
+    await bus.close();
   });
 
   return server;

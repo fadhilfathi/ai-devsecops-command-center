@@ -39,6 +39,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S6-3: Redis Streams event bus driver** — `@aicc/shared/events` gained
+  `RedisStreamsEventBus` (`ioredis`), a durable alternative to the
+  Sprint 1 `InMemoryEventBus` behind the same `EventBus` interface: one
+  Redis Stream per event type, one consumer group per subscribing
+  service (fan-out), at-least-once delivery (a throwing handler leaves
+  its message pending rather than acking or dropping it).
+  `createEventBus({ driver, redisUrl, serviceName, logger })` picks the
+  implementation from `EVENT_BUS_DRIVER` (`memory` default, or `redis`
+  plus `REDIS_URL`); every service now does
+  `deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName, logger })`
+  and closes it on shutdown. `auth-`, `agent-`, `security-`, `incident-`,
+  `compliance-`, and `integration-service` (the ones that actually
+  publish/subscribe) run with `EVENT_BUS_DRIVER=redis` in
+  docker-compose; their `/readyz` now also probes the bus. Deferred:
+  dead-letter queue, `XAUTOCLAIM` reclaim of stale pending entries, a
+  NATS driver. See `docs/adr/0014-redis-streams-event-bus.md`.
+
 - **S6-2: auth end-to-end** — every service used to trust a raw
   `x-tenant-id` header (any caller could impersonate any tenant). Added
   `@aicc/shared/auth` (`signAccessToken`/`verifyAccessToken`, HS256,

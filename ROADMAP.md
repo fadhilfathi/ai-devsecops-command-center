@@ -110,9 +110,10 @@ Status: **planned**.
   `@aicc/shared`, and the frontend gets a real login flow (replacing
   the `x-tenant-id`-header development shortcut). See
   [ADR 0013](./docs/adr/0013-service-to-service-auth.md).
-- **S6-3**: event bus driver beyond in-memory — Redis Streams,
+- ✅ **S6-3**: event bus driver beyond in-memory — Redis Streams,
   using the existing compose `redis` container, behind the same
-  `EventBus` interface.
+  `EventBus` interface. See
+  [ADR 0014](./docs/adr/0014-redis-streams-event-bus.md).
 - **S6-4**: compliance auto-mapping of K8s runtime risks to CIS /
   NIST controls, with evidence attachment from inventory, health,
   and runtime services, and continuous compliance scoring per

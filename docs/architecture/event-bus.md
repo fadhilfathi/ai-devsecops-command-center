@@ -8,7 +8,33 @@
 > See also: [`../adr/0001-event-bus-transport.md`](../adr/0001-event-bus-transport.md),
 > [`../adr/0002-agent-to-agent-communication.md`](../adr/0002-agent-to-agent-communication.md),
 > [`../adr/0003-event-schema-format.md`](../adr/0003-event-schema-format.md),
-> [`../adr/0008-shared-sub-paths.md`](../adr/0008-shared-sub-paths.md) (Sprint 2 — sub-path exports).
+> [`../adr/0008-shared-sub-paths.md`](../adr/0008-shared-sub-paths.md) (Sprint 2 — sub-path exports),
+> [`../adr/0014-redis-streams-event-bus.md`](../adr/0014-redis-streams-event-bus.md) (S6-3 — what actually shipped).
+
+## Current implementation state (S6-3)
+
+Everything below this section is the target design; what actually
+ships as of S6-3 is smaller. The real `EventEnvelope`
+(`backend/packages/shared/src/events/index.ts`) is
+`{ eventId, type, version, source, occurredAt, tenantId, correlationId?, data, severity? }`
+— no `subject`/ULID/`schema`/`trace`/`actor`/`auth` fields, no DLQ, no
+per-key ordering guarantee beyond "one Redis Stream per event `type`".
+`EventBus.publish/subscribe/close` is driver-agnostic; two drivers
+exist today:
+
+- `InMemoryEventBus` (default, `EVENT_BUS_DRIVER=memory`) — in-process,
+  Sprint 1, used by every service unless `REDIS_URL` + `EVENT_BUS_DRIVER=redis`
+  are set.
+- `RedisStreamsEventBus` (`EVENT_BUS_DRIVER=redis`) — one Redis Stream
+  per event `type`, one consumer group per service (fan-out), at-least-once
+  with no ack on handler failure. No dead-letter queue, no
+  `XAUTOCLAIM` reclaim of stale pending entries, no NATS driver. See
+  ADR 0014 for the rationale and what's deliberately deferred.
+
+The subject-naming convention, envelope shape, consumer-group-per-topic
+list, and delivery-guarantee sections below describe the intended
+end state, not the current wire format — do not treat them as
+authoritative until they match `EventEnvelope` above.
 
 ## Purpose
 

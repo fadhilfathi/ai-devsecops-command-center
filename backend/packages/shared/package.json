@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@aicc/models": "workspace:*",
+    "ioredis": "^6.0.0",
     "pg": "^8.23.0",
     "pino": "^9.0.0",
     "zod": "^4.0.0"

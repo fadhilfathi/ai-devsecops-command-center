@@ -14,7 +14,7 @@ import {
   loadServiceConfig,
   registerGracefulShutdown,
   buildAuthHook,
-  InMemoryEventBus,
+  createEventBus,
   type EventBus,
   type Logger,
 } from '@aicc/shared';
@@ -48,7 +48,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger =
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
-  const bus = deps?.bus ?? new InMemoryEventBus();
+  const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
   const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
   if (db) await migrate(db, MIGRATIONS);
@@ -72,7 +72,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
 
   server.addHook('onRequest', buildAuthHook({ ...cfg.auth, logger }));
 
-  await server.register(buildHealthRoutes, { logger, cfg, db });
+  await server.register(buildHealthRoutes, { logger, cfg, db, bus });
   await server.register(buildIncidentRoutes, { logger, incidents, bus });
   await server.register(buildRunbookRoutes, { logger, runbooks });
   await server.register(buildChainRoutes, { logger, chains });
@@ -100,6 +100,9 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
       await db.end();
     });
   }
+  server.addHook('onClose', async () => {
+    await bus.close();
+  });
 
   return server;
 }
