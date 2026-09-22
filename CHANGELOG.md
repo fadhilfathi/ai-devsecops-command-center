@@ -12,6 +12,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-6: Dockerfiles + compose for all 13 services
+
+- Added one generic multi-stage `backend/Dockerfile` (`ARG SERVICE`) for
+  every Node/Fastify backend service: `pnpm install` the whole workspace,
+  `pnpm --filter "@aicc/<service>-service..." build`, then
+  `pnpm --filter "@aicc/<service>-service" deploy --prod /out` for a
+  self-contained production tree (workspace deps inlined, dev deps
+  pruned) copied into a non-root `node:22-alpine` runtime stage.
+- Added `frontend/Dockerfile` (Vite build, `nginx:alpine` runtime with
+  SPA fallback) and `frontend/nginx.conf`.
+- `docker-compose.yml`: builds and wires all 13 backend services plus
+  the frontend; Postgres now runs as `aicc`/`aicc`/`aicc` with
+  `infra/docker/init/postgres-databases.sql` mounted (matches the
+  per-service `DATABASE_URL` convention already in every service's
+  `.env.example`); moved Grafana's host port to `3011` (was colliding
+  with `auth-service:3001`).
+- Deleted the stale `infra/docker/docker-compose.yml` duplicate (never
+  wired to the current `backend/services/*` layout; the root
+  `docker-compose.yml` has always been the documented local stack).
+- Prometheus `backend-services-compose` job now scrapes all 13 services.
+- `.github/workflows/ci.yml` Docker job: matrix covers all 13 services +
+  frontend, fixed the missing `REGISTRY` env var and hardcoded image
+  path so pushes go to `ghcr.io/<repo>/<service>`.
+- Makefile: added `dev-*` targets for the 7 Sprint-4/5 services, dropped
+  `db-migrate`/`db-rollback`/`db-seed` (no `@aicc/db-migrations` package —
+  every service runs its own migrations at startup).
+
 ### Sprint 5 — S5-5: network-policy inference + mesh detection
 
 - Added `NetworkPolicy` model (`@aicc/models`, matchLabels-only selectors,

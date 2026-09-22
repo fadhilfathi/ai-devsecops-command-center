@@ -52,7 +52,7 @@ scrape_configs:
           service: otel-collector
 
   # ---- Backend services — local docker-compose stack (S5-4) ----
-  # Static targets for `docker-compose.yml`'s 6 backend services, each
+  # Static targets for `docker-compose.yml`'s 13 backend services, each
   # exposing GET /metrics via @aicc/observability's registerHttpMetrics.
   # The k8s SD job below covers the cluster deployment.
   - job_name: backend-services-compose
@@ -75,6 +75,27 @@ scrape_configs:
       - targets: ['integration-service:3006']
         labels:
           service: integration-service
+      - targets: ['kubernetes-service:4006']
+        labels:
+          service: kubernetes-service
+      - targets: ['k8s-health-service:4007']
+        labels:
+          service: k8s-health-service
+      - targets: ['runtime-security-service:4008']
+        labels:
+          service: runtime-security-service
+      - targets: ['inventory-service:4009']
+        labels:
+          service: inventory-service
+      - targets: ['cost-intelligence-service:4010']
+        labels:
+          service: cost-intelligence-service
+      - targets: ['topology-service:4011']
+        labels:
+          service: topology-service
+      - targets: ['reporting-service:4012']
+        labels:
+          service: reporting-service
 
   # ---- Backend services — generic scrape (Kubernetes deployment) ----
   # Every service exposes :9090/metrics. Service name is added by relabeling

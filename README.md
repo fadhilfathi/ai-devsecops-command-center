@@ -203,7 +203,7 @@ make up
 
 # 6. Open
 # - AionUi (frontend):    http://localhost:5173
-# - Grafana:              http://localhost:3001  (admin / admin)
+# - Grafana:              http://localhost:3011  (admin / admin)
 # - Prometheus:           http://localhost:9090
 ```
 

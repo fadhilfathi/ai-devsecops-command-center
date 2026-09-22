@@ -1,7 +1,7 @@
 # =============================================================================
 # AI-DevSecOps-Command-Center - Local Development Stack
 # =============================================================================
-# Brings up Postgres, Redis, the six backend services, the frontend, and
+# Brings up Postgres, Redis, all 13 backend services, the frontend, and
 # the observability toolchain (Prometheus, Grafana, Loki, OTel collector).
 # Use `make up` / `make down` for the common cases.
 #
@@ -33,15 +33,16 @@ services:
     image: postgres:16-alpine
     container_name: cc-postgres
     environment:
-      POSTGRES_USER: aionrs
-      POSTGRES_PASSWORD: aionrs
-      POSTGRES_DB: command_center
+      POSTGRES_USER: aicc
+      POSTGRES_PASSWORD: aicc
+      POSTGRES_DB: aicc
     ports:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./infra/docker/init/postgres-databases.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U aionrs -d command_center']
+      test: ['CMD-SHELL', 'pg_isready -U aicc -d aicc']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,8 +72,14 @@ services:
     <<: *service-base
     build:
       context: .
-      dockerfile: backend/services/auth/Dockerfile
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: auth
+        PORT: 3001
     container_name: cc-auth
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_auth
     ports:
       - '3001:3001'
     depends_on:
@@ -85,8 +92,13 @@ services:
     <<: *service-base
     build:
       context: .
-      dockerfile: backend/services/agent/Dockerfile
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: agent
+        PORT: 3002
     container_name: cc-agent
+    environment:
+      PORT: 3002
     ports:
       - '3002:3002'
     depends_on:
@@ -99,8 +111,14 @@ services:
     <<: *service-base
     build:
       context: .
-      dockerfile: backend/services/security/Dockerfile
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: security
+        PORT: 3003
     container_name: cc-security
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_security
     ports:
       - '3003:3003'
     depends_on:
@@ -113,8 +131,14 @@ services:
     <<: *service-base
     build:
       context: .
-      dockerfile: backend/services/incident/Dockerfile
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: incident
+        PORT: 3004
     container_name: cc-incident
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_incident
     ports:
       - '3004:3004'
     depends_on:
@@ -127,8 +151,14 @@ services:
     <<: *service-base
     build:
       context: .
-      dockerfile: backend/services/compliance/Dockerfile
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: compliance
+        PORT: 3005
     container_name: cc-compliance
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_compliance
     ports:
       - '3005:3005'
     depends_on:
@@ -141,8 +171,14 @@ services:
     <<: *service-base
     build:
       context: .
-      dockerfile: backend/services/integration/Dockerfile
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: integration
+        PORT: 3006
     container_name: cc-integration
+    environment:
+      PORT: 3006
+      DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_integration
     ports:
       - '3006:3006'
     depends_on:
@@ -151,18 +187,121 @@ services:
       redis:
         condition: service_healthy
 
+  kubernetes-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: kubernetes
+        PORT: 4006
+    container_name: cc-kubernetes
+    environment:
+      PORT: 4006
+      DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_kubernetes
+    ports:
+      - '4006:4006'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  k8s-health-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: k8s-health
+        PORT: 4007
+    container_name: cc-k8s-health
+    environment:
+      PORT: 4007
+    ports:
+      - '4007:4007'
+
+  runtime-security-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: runtime-security
+        PORT: 4008
+    container_name: cc-runtime-security
+    environment:
+      PORT: 4008
+    ports:
+      - '4008:4008'
+
+  inventory-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: inventory
+        PORT: 4009
+    container_name: cc-inventory
+    environment:
+      PORT: 4009
+    ports:
+      - '4009:4009'
+
+  cost-intelligence-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: cost-intelligence
+        PORT: 4010
+    container_name: cc-cost-intelligence
+    environment:
+      PORT: 4010
+    ports:
+      - '4010:4010'
+
+  topology-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: topology
+        PORT: 4011
+    container_name: cc-topology
+    environment:
+      PORT: 4011
+      KUBERNETES_SERVICE_URL: http://kubernetes-service:4006
+    ports:
+      - '4011:4011'
+    depends_on:
+      - kubernetes-service
+
+  reporting-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE: reporting
+        PORT: 4012
+    container_name: cc-reporting
+    environment:
+      PORT: 4012
+    ports:
+      - '4012:4012'
+
   # ---------------------------------------------------------------------------
   # Frontend (AionUi)
   # ---------------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: cc-frontend
     ports:
-      - '5173:5173'
-    env_file:
-      - .env
+      - '5173:80'
     depends_on:
       - auth-service
       - agent-service
@@ -170,6 +309,13 @@ services:
       - incident-service
       - compliance-service
       - integration-service
+      - kubernetes-service
+      - k8s-health-service
+      - runtime-security-service
+      - inventory-service
+      - cost-intelligence-service
+      - topology-service
+      - reporting-service
     networks:
       - ccnet
 
@@ -218,7 +364,7 @@ services:
       - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - '3001:3000'
+      - '3011:3000'
     depends_on:
       - prometheus
     networks:

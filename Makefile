@@ -16,7 +16,7 @@ endif
 COMPOSE        ?= docker compose
 PNPM           ?= pnpm
 NODE           ?= node
-SERVICES       := auth agent security incident compliance integration
+SERVICES       := auth agent security incident compliance integration kubernetes k8s-health runtime-security inventory cost-intelligence topology reporting
 SERVICES_DIR   := backend/services
 
 # ----------------------------------------------------------------------------
@@ -34,7 +34,7 @@ help: ## Show this help
 
 up: ## Bring the local stack up (docker compose)
 	$(COMPOSE) up -d
-	@echo "Stack is up. Frontend: http://localhost:5173  Grafana: http://localhost:3001 (admin/admin)"
+	@echo "Stack is up. Frontend: http://localhost:5173  Grafana: http://localhost:3011 (admin/admin)"
 
 down: ## Tear the local stack down
 	$(COMPOSE) down
@@ -108,30 +108,45 @@ dev-compliance: ## Run compliance service in dev mode
 dev-integration: ## Run integration service in dev mode
 	$(PNPM) --filter @aicc/integration-service dev
 
+dev-kubernetes: ## Run kubernetes service in dev mode
+	$(PNPM) --filter @aicc/kubernetes-service dev
+
+dev-k8s-health: ## Run k8s-health service in dev mode
+	$(PNPM) --filter @aicc/k8s-health-service dev
+
+dev-runtime-security: ## Run runtime-security service in dev mode
+	$(PNPM) --filter @aicc/runtime-security-service dev
+
+dev-inventory: ## Run inventory service in dev mode
+	$(PNPM) --filter @aicc/inventory-service dev
+
+dev-cost-intelligence: ## Run cost-intelligence service in dev mode
+	$(PNPM) --filter @aicc/cost-intelligence-service dev
+
+dev-topology: ## Run topology service in dev mode
+	$(PNPM) --filter @aicc/topology-service dev
+
+dev-reporting: ## Run reporting service in dev mode
+	$(PNPM) --filter @aicc/reporting-service dev
+
 dev-frontend: ## Run frontend in dev mode
-	$(PNPM) --filter @aicc/frontend dev
+	$(PNPM) --filter ai-devsecops-frontend dev
 
 # ----------------------------------------------------------------------------
 # Database
 # ----------------------------------------------------------------------------
-.PHONY: db-migrate db-rollback db-seed db-reset db-shell
+# Each service runs its own migrations at startup (see `@aicc/shared/db`'s
+# `migrate()`, called from every service's `buildServer()`) — there is no
+# separate db-migrations package.
+.PHONY: db-reset db-shell
 
-db-migrate: ## Run database migrations
-	$(PNPM) --filter @aicc/db-migrations run migrate
-
-db-rollback: ## Roll back the last migration
-	$(PNPM) --filter @aicc/db-migrations run rollback
-
-db-seed: ## Seed the database with demo data
-	$(PNPM) --filter @aicc/db-migrations run seed
-
-db-reset: ## Drop, recreate, migrate, and seed the database (DESTRUCTIVE)
+db-reset: ## Drop and recreate the Postgres volume (DESTRUCTIVE)
 	@echo "This will DESTROY all data in your local database." && \
-	read -p "Are you sure? [y/N] " ans && [[ $$ans == y ]] && $(COMPOSE) down -v && $(COMPOSE) up -d postgres && \
-	sleep 5 && $(MAKE) db-migrate && $(MAKE) db-seed || echo "Aborted."
+	read -p "Are you sure? [y/N] " ans && [[ $$ans == y ]] && \
+	$(COMPOSE) down -v postgres && $(COMPOSE) up -d postgres || echo "Aborted."
 
 db-shell: ## Open a psql shell against the dev database
-	$(COMPOSE) exec postgres psql -U aionrs -d command_center
+	$(COMPOSE) exec postgres psql -U aicc -d aicc
 
 # ----------------------------------------------------------------------------
 # Release

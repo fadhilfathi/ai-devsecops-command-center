@@ -28,5 +28,5 @@ kubernetes/
 ```
 
 The Helm chart will ship in Sprint 3 alongside the production-readiness
-milestone. Until then, [`infra/docker/docker-compose.yml`](../../docker/docker-compose.yml)
-is the local development story.
+milestone. Until then, [`docker-compose.yml`](../../docker-compose.yml)
+at the repo root is the local development story.

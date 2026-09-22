@@ -40,7 +40,7 @@ location**:
 | Variable                | Dev (docker-compose)                         | Prod (k8s)                 |
 | ----------------------- | -------------------------------------------- | -------------------------- |
 | `RUNBOOK_BASE_URL`      | `https://runbooks.example.com/observability` | real host                  |
-| `DASHBOARD_BASE_URL`    | `http://localhost:3001`                      | real Grafana host          |
+| `DASHBOARD_BASE_URL`    | `http://localhost:3011`                      | real Grafana host          |
 | `LOKI_URL`              | `http://loki:3100`                           | real Loki endpoint         |
 | `TEMPO_URL`             | `http://tempo:4317`                          | real Tempo endpoint        |
 | `PROM_REMOTE_WRITE_URL` | `http://prometheus:9090/api/v1/write`        | real remote write          |
@@ -56,7 +56,7 @@ location**:
 - **Prometheus** scrapes every service's `/metrics` endpoint and the
   event bus's internal metrics. UI on `:9090`.
 - **Grafana** is pre-provisioned with datasources (Prometheus, Loki) and
-  a starter dashboard set. UI on `:3001` (default `admin` / `admin`).
+  a starter dashboard set. UI on `:3011` (default `admin` / `admin`).
 - **Loki** aggregates logs from every service. UI is Grafana → Explore.
 - **OpenTelemetry collector** receives OTLP (gRPC `:4317`, HTTP `:4318`)
   and exports traces, metrics, and logs to the configured backends.

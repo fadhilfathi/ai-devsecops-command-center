@@ -82,6 +82,9 @@ Status: **planned**.
   a source of truth).
 - ✅ S5-5: add network-policy inference and Istio / Linkerd
   service-mesh edge discovery to the topology engine.
+- ✅ S5-6: containerise all 13 backend services + frontend
+  (`backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`,
+  CI Docker build matrix).
 - Replace the heuristic utilisation estimates in the cost
   engine with real Prometheus queries.
 - Upgrade the PDF report formatter (charts, headers,
