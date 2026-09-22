@@ -30,7 +30,7 @@
     "@opentelemetry/sdk-metrics": "^2.11.0",
     "@opentelemetry/sdk-node": "^0.222.0",
     "@opentelemetry/semantic-conventions": "^1.28.0",
-    "fastify": "^4.27.0",
+    "fastify": "^5.12.1",
     "nats": "^2.29.3",
     "pg": "^8.23.0",
     "pino": "^9.0.0",
