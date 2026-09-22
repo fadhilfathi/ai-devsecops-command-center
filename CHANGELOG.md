@@ -12,169 +12,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Sprint 5 — S5-8: multi-page PDF reports (pdfkit)
+## [0.2.0] - 2026-09-22
 
-- Replaced the hand-rolled single-page PDF writer in
-  `reporting-service` with `pdfkit`: running header/footer with
-  page numbers (`Page N of M`), tables with wrapped cells,
-  zebra striping, and repeated header rows across page breaks,
-  and a vector bar-chart helper for report kinds with an
-  obvious numeric series (severity counts, cost by namespace,
-  node distribution). `Report` gained an optional `charts` field
-  populated by the report engine.
+Sprint 5 — live Kubernetes, persistence, observability, containerisation.
 
-### Sprint 5 — S5-7: cost utilisation from Prometheus
+### Added
 
-- Added `UtilisationSource` abstraction in `cost-intelligence`:
-  `buildSyntheticUtilisationSource()` (Sprint 4 deterministic values,
-  unchanged) and `buildPrometheusUtilisationSource()`, which queries
-  kubelet/cAdvisor's `container_cpu_usage_seconds_total` /
-  `container_memory_working_set_bytes` via `quantile_over_time`,
-  batched one query per metric/quantile per namespace. Selected via
+- **S5-0/S5-1: build and test baseline** — monorepo now installs and
+  builds cleanly: package manifests for `@aicc/shared`, `@aicc/models`,
+  `@aicc/observability`, `workspace:*` deps everywhere, `zod` unified to
+  v4, `pnpm-lock.yaml` committed. Added `vitest` (+
+  `@vitest/coverage-v8`) as a root devDependency; every backend
+  service's `"test"` script now runs `vitest run --passWithNoTests`.
+  Added `src/app.test.ts` to all 13 services (health route + one
+  domain route each, including tenant-header enforcement), plus tests
+  for `@aicc/shared` (`loadServiceConfig`, `InMemoryEventBus`) and
+  `@aicc/models` (Zod schema parsing) and rewrote the stale
+  `compliance-service` control-mapper/poam tests. Baseline: **198
+  tests**, all green (`pnpm -r test`); CI's test matrix covers all 13
+  services + `backend/models` with `--if-present`.
+- **S5-2: live Kubernetes provider** — `LiveProvider`
+  (`backend/services/kubernetes/src/providers/live.provider.ts`) wired
+  to `@kubernetes/client-node`: one cached client set per cluster,
+  `testConnection` via `VersionApi.getCode()`, `list*` calls mapped
+  through pure, schema-validated mappers (`k8s-mappers.ts`).
+  `ClusterRepository` gained `getConnection()`;
+  `getProviderIdForCluster()` now routes onboarded clusters to `live`
+  based on their actual `ClusterProvider`. Default provider stays
+  `fixture` (`AICC_K8S_PROVIDER`). See
+  `docs/adr/0009-live-kubernetes-provider.md`.
+- **S5-3: Postgres persistence** — `@aicc/shared/db`: a minimal
+  `Queryable` interface, `createPool()`, and a hand-rolled `migrate()`
+  (tracks applied migrations in `schema_migrations`, one transaction
+  each) — no ORM. `kubernetes-service` gained
+  `buildPgClusterRepository()`; `incident-service` gained
+  `buildPgIncidentRepository()`, `buildPgRunbookRepository()`, and
+  `buildPgChainRepository()`; all select Postgres when `DATABASE_URL`
+  is set, in-memory otherwise. Migrations live as TS modules
+  (`src/db/migrations.ts`, ship in `dist/`, no copy step);
+  nested/variable-shape data is `jsonb`. Tests run the in-memory and
+  Postgres implementations through the same `describe.each` suite
+  against `@electric-sql/pglite` (in-process Postgres, no Docker). See
+  `docs/adr/0010-postgres-persistence.md`.
+- **S5-4: Prometheus `/metrics` on every service** —
+  `registerHttpMetrics()` in `@aicc/observability`: a Fastify plugin
+  exposing `http_request_duration_seconds` / `http_requests_total`
+  (`service`, `method`, `route`, `status_code` labels — `route` is
+  always the matched Fastify pattern) plus `GET /metrics`. Wired into
+  all 13 backend services right after `helmet`/`cors`/`sensible`;
+  `security-service` and `compliance-service` share the plugin's
+  `/metrics` route with their existing domain metrics. Split
+  `@aicc/observability`'s OTel bootstrap into a `./otel` subpath export.
+  Added a `backend-services-compose` Prometheus scrape job.
+- **S5-5: network-policy inference + mesh detection** — `NetworkPolicy`
+  model (`@aicc/models`, matchLabels-only selectors, ingress/egress
+  rules) and optional `mesh` (`istio`/`linkerd`) fields on `Namespace`
+  and `Pod`. `kubernetes-service`: `listNetworkPolicies()` on the
+  provider interface (fixture + live `NetworkingV1Api`), mesh detection
+  in the namespace/pod mappers, `GET /v1/kubernetes/network-policies`.
+  `topology-service`: `InventoryClient` gained an HTTP implementation
+  (`KUBERNETES_SERVICE_URL`); `inferNetworkPolicy()` annotates
+  `routes_to`/`calls`/`selects` edges with `unrestricted` / `allowed` /
+  `denied` and tags nodes with their mesh; `TopologyGraph` gained an
+  optional `networkPolicySummary`. See
+  `docs/adr/0011-network-policy-inference.md`.
+- **S5-6: Dockerfiles + compose for all 13 services** — one generic
+  multi-stage `backend/Dockerfile` (`ARG SERVICE`) for every
+  Node/Fastify backend service (`pnpm deploy --prod /out` into a
+  non-root `node:22-alpine` runtime stage); `frontend/Dockerfile` (Vite
+  build, `nginx:alpine` runtime with SPA fallback) and
+  `frontend/nginx.conf`. `docker-compose.yml` builds and wires all 13
+  backend services plus the frontend, Postgres (`aicc`/`aicc`/`aicc`,
+  one database per service), Grafana moved to host port `3011`. CI's
+  Docker job matrix covers all 13 services + frontend.
+- **S5-7: cost utilisation from Prometheus** — `UtilisationSource`
+  abstraction in `cost-intelligence`:
+  `buildSyntheticUtilisationSource()` (unchanged Sprint 4 behaviour) and
+  `buildPrometheusUtilisationSource()`, which queries kubelet/cAdvisor's
+  `container_cpu_usage_seconds_total` /
+  `container_memory_working_set_bytes` via `quantile_over_time`, one
+  query per metric/quantile per namespace. Selected via
   `PROMETHEUS_URL`; degrades to synthetic on any failure or missing
-  series.
-- Added an HTTP `KubernetesProvider` for `cost-intelligence` (mirrors
-  the topology-service pattern), enabled via `KUBERNETES_SERVICE_URL`.
-- `CostAnalysis.utilisationSource` (`'prometheus' | 'synthetic'`) now
-  surfaces which source produced the estimates.
-- `docker-compose.yml`: `cost-intelligence-service` now points
-  `PROMETHEUS_URL`/`KUBERNETES_SERVICE_URL` at the compose Prometheus
-  and kubernetes-service containers.
-- ADR 0012.
+  series. Added an HTTP `KubernetesProvider` for `cost-intelligence`
+  (`KUBERNETES_SERVICE_URL`). `CostAnalysis.utilisationSource`
+  (`'prometheus' | 'synthetic'`) surfaces which source produced the
+  estimates. See `docs/adr/0012-cost-utilisation-from-prometheus.md`.
+- **S5-8: multi-page PDF reports (pdfkit)** — replaced the hand-rolled
+  single-page PDF writer in `reporting-service` with `pdfkit`: running
+  header/footer with page numbers (`Page N of M`), tables with wrapped
+  cells, zebra striping, and repeated header rows across page breaks,
+  and a vector bar-chart helper for report kinds with an obvious
+  numeric series (severity counts, cost by namespace, node
+  distribution). `Report` gained an optional `charts` field populated
+  by the report engine.
 
-### Sprint 5 — S5-6: Dockerfiles + compose for all 13 services
+### Changed
 
-- Added one generic multi-stage `backend/Dockerfile` (`ARG SERVICE`) for
-  every Node/Fastify backend service: `pnpm install` the whole workspace,
-  `pnpm --filter "@aicc/<service>-service..." build`, then
-  `pnpm --filter "@aicc/<service>-service" deploy --prod /out` for a
-  self-contained production tree (workspace deps inlined, dev deps
-  pruned) copied into a non-root `node:22-alpine` runtime stage.
-- Added `frontend/Dockerfile` (Vite build, `nginx:alpine` runtime with
-  SPA fallback) and `frontend/nginx.conf`.
-- `docker-compose.yml`: builds and wires all 13 backend services plus
-  the frontend; Postgres now runs as `aicc`/`aicc`/`aicc` with
-  `infra/docker/init/postgres-databases.sql` mounted (matches the
-  per-service `DATABASE_URL` convention already in every service's
-  `.env.example`); moved Grafana's host port to `3011` (was colliding
-  with `auth-service:3001`).
+- Makefile: added `dev-*` targets for the 7 Sprint-4/5 services,
+  dropped `db-migrate`/`db-rollback`/`db-seed` (no
+  `@aicc/db-migrations` package — every service runs its own
+  migrations at startup).
 - Deleted the stale `infra/docker/docker-compose.yml` duplicate (never
   wired to the current `backend/services/*` layout; the root
   `docker-compose.yml` has always been the documented local stack).
-- Prometheus `backend-services-compose` job now scrapes all 13 services.
-- `.github/workflows/ci.yml` Docker job: matrix covers all 13 services +
-  frontend, fixed the missing `REGISTRY` env var and hardcoded image
-  path so pushes go to `ghcr.io/<repo>/<service>`.
-- Makefile: added `dev-*` targets for the 7 Sprint-4/5 services, dropped
-  `db-migrate`/`db-rollback`/`db-seed` (no `@aicc/db-migrations` package —
-  every service runs its own migrations at startup).
 
-### Sprint 5 — S5-5: network-policy inference + mesh detection
+### Fixed
 
-- Added `NetworkPolicy` model (`@aicc/models`, matchLabels-only selectors,
-  ingress/egress rules) and optional `mesh` (`istio`/`linkerd`) fields on
-  `Namespace` and `Pod`.
-- `kubernetes-service`: `listNetworkPolicies()` on the provider interface,
-  fixture + live (`NetworkingV1Api`) implementations, mesh detection in the
-  namespace/pod mappers (injection labels / sidecar container name), and
-  `GET /v1/kubernetes/network-policies`.
-- `topology-service`: `InventoryClient` gained an HTTP implementation
-  (`KUBERNETES_SERVICE_URL`) alongside the fixture default; `inferNetworkPolicy()`
-  annotates `routes_to`/`calls`/`selects` edges with `unrestricted` /
-  `allowed` / `denied` and tags nodes with their mesh; `TopologyGraph` now
-  carries an optional `networkPolicySummary`.
-
-### Sprint 5 — S5-4: Prometheus /metrics on every service
-
-- Added `registerHttpMetrics()` to `@aicc/observability`: a Fastify plugin
-  exposing `http_request_duration_seconds` / `http_requests_total`
-  (`service`, `method`, `route`, `status_code` labels — `route` is always
-  the matched Fastify route pattern, never the raw URL) plus `GET /metrics`.
-  Split `@aicc/observability`'s OTel bootstrap into a `./otel` subpath
-  export so importing the package root no longer pulls in the OTel SDK.
-- Wired `registerHttpMetrics(server)` into all 13 backend services, right
-  after `helmet`/`cors`/`sensible`. `security-service` and
-  `compliance-service` now share the plugin's `/metrics` route instead of
-  hand-rolled ones; their domain metrics stay on the same registry.
-- Added a static `backend-services-compose` Prometheus scrape job for the
-  6 services in `docker-compose.yml`.
-
-### Sprint 5 — S5-3: Postgres persistence (clusters, incidents, runbooks, chains)
-
-- Added `@aicc/shared/db`: a minimal `Queryable` interface, `createPool()`,
-  and a hand-rolled `migrate()` (tracks applied migrations in
-  `schema_migrations`, applies the rest in a transaction each) — no ORM.
-- `kubernetes-service`: `buildPgClusterRepository()` backs the cluster
-  registry when `DATABASE_URL` is set; in-memory stays the default.
-- `incident-service`: `buildPgIncidentRepository()`,
-  `buildPgRunbookRepository()`, and `buildPgChainRepository()`, wired the
-  same way.
-- Migrations live as TS modules (`src/db/migrations.ts`) so they ship in
-  `dist/` with no copy step. Every table's nested/variable-shape data is
-  `jsonb`; only filter/sort keys get real columns.
-- Tests run the in-memory and Postgres implementations through the same
-  `describe.each` suite against `@electric-sql/pglite` (in-process
-  Postgres, no Docker).
-- Added `aicc_kubernetes` to `infra/docker/init/postgres-databases.sql`;
-  `DATABASE_URL` in each service's `.env.example`.
-- See `docs/adr/0010-postgres-persistence.md`.
-
-### Sprint 5 — S5-0: build baseline
-
-- Monorepo now installs and builds: added package manifests for
-  `@aicc/shared`, `@aicc/models`, `@aicc/observability`; services use
-  `workspace:*` deps; removed tsconfig `paths` aliases and dead
-  `backend/package.json`; committed `pnpm-lock.yaml`.
-- Unified `zod` to v4 across all packages; fixed `z.record` call sites.
-- Fixed pre-existing compile and logic errors surfaced by the first real
-  build: Fastify v4 `logger` option, missing `return` in route handlers,
-  duplicate model exports, k8s-health pods-per-workload lookup,
-  runtime-security hostPath severity override, `useFetch` signature,
-  `date-fns` dependency, dead `frontend/src/routes.tsx`.
-- Rewrote `compliance-service` entrypoint to the shared `buildServer()`
-  pattern used by every other service.
-- CI: fixed workspace paths and dependency-aware contracts build filter.
-- CI: lint/format/typecheck green, Node 22, contract tests in workspace.
-
-### Sprint 5 — S5-1: vitest test baseline
-
-- Added `vitest` (+ `@vitest/coverage-v8`) as a root devDependency; every
-  backend service's `"test"` script now runs `vitest run --passWithNoTests`
-  instead of the `echo` stub.
-- Added `src/app.test.ts` to all 13 services (health route + one
-  representative domain route, including tenant-header enforcement where
-  the route requires it), `backend/packages/shared` (`loadServiceConfig`,
-  `InMemoryEventBus`), and `backend/models` (vulnerability + cluster Zod
-  schema parsing) — 65 tests total.
-- Rewrote the stale `backend/services/compliance/test/{control-mapper,poam}.test.ts`
-  (previously untested `node:test` files exercising an API that no longer
-  exists) against the real `control-mapper`/`poam` modules.
-- Fixed two latent security-service bugs surfaced by actually booting
+- Compile and logic errors surfaced by the first real build: Fastify
+  v4 `logger` option, missing `return` in route handlers, duplicate
+  model exports, k8s-health pods-per-workload lookup, runtime-security
+  hostPath severity override, `useFetch` signature, `date-fns`
+  dependency, dead `frontend/src/routes.tsx`. Rewrote
+  `compliance-service`'s entrypoint to the shared `buildServer()`
+  pattern used by every other service. CI: fixed workspace paths and
+  the dependency-aware contracts build filter; lint/format/typecheck
+  green on Node 22.
+- Two latent security-service bugs surfaced by actually booting
   `buildServer()` in tests: `@aicc/models` `toJSONSchema()` now targets
   `draft-07` (fastify's bundled ajv doesn't know the `draft-2020-12`
-  meta-schema), the server disables ajv strict mode (`ajv.customOptions.strict`)
-  for the same reason, and `/sbom/generate`/`/sbom/analyze` drop their
-  `response` schema (the recursive `SbomComponentSchema` blew fast-json-stringify's
-  call stack). Trade-off: those two proxied responses are no longer
-  shape-enforced on the wire; the payload is still validated via
-  `SbomServiceResponseSchema.safeParse` before the event is emitted.
-- CI test matrix now covers all 13 services + `backend/models`; the test
-  step uses `--if-present` so workspaces without a test script skip honestly.
-- Every service `tsconfig.json` now excludes `**/*.test.ts` from the `tsc`
-  build.
-
-### Sprint 5 — S5-2: live Kubernetes provider
-
-- Wired `LiveProvider` (`backend/services/kubernetes/src/providers/live.provider.ts`)
-  to `@kubernetes/client-node`: one cached client set per cluster,
-  `testConnection` via `VersionApi.getCode()`, and `list*` calls mapped
-  through pure, schema-validated mappers (`k8s-mappers.ts`).
-- `ClusterRepository` gained `getConnection()`; `getProviderIdForCluster()`
-  now routes onboarded clusters to `live` based on their actual
-  `ClusterProvider`, instead of always returning `fixture`.
-- `buildProviderRegistry()` takes `clusters` in its context; default
-  provider stays `fixture` (`AICC_K8S_PROVIDER`).
-- See `docs/adr/0009-live-kubernetes-provider.md`.
+  meta-schema), and `/sbom/generate`/`/sbom/analyze` drop their
+  `response` schema (the recursive `SbomComponentSchema` blew
+  fast-json-stringify's call stack) — the payload is still validated
+  via `SbomServiceResponseSchema.safeParse` before the event is
+  emitted.
+- `.github/workflows/ci.yml` Docker job: fixed the missing `REGISTRY`
+  env var and hardcoded image path so pushes go to
+  `ghcr.io/<repo>/<service>` (push itself stays disabled).
 
 ## [Unreleased]
 
@@ -535,9 +498,10 @@ for the operator runbook (triage, override, rollback).
 
 ## Release history
 
-| Version | Date       | Notes                       |
-| ------- | ---------- | --------------------------- |
-| 0.0.0   | 2026-06-12 | Initial repository skeleton |
+| Version | Date       | Notes                                                         |
+| ------- | ---------- | ------------------------------------------------------------- |
+| 0.2.0   | 2026-09-22 | Live Kubernetes, persistence, observability, containerisation |
+| 0.0.0   | 2026-06-12 | Initial repository skeleton                                   |
 
 <!--
 ## [0.1.0] - YYYY-MM-DD

@@ -70,16 +70,21 @@ Status: **complete** (2026-06-16).
 
 ## Sprint 5 — Live Kubernetes + Persistence
 
-Status: **planned**.
+Status: **complete** (2026-09-22). See
+[`docs/architecture/sprint-5/`](./docs/architecture/sprint-5/).
 
+- ✅ S5-0: build baseline — monorepo installs and builds cleanly,
+  CI lint/format/typecheck green.
+- ✅ S5-1: vitest test baseline — 198 tests across 13 services +
+  `@aicc/shared` + `@aicc/models`, CI test matrix green.
 - ✅ S5-2: wire the live `KubernetesProvider` using
   `@kubernetes/client-node`.
-- ✅ S5-4: add Prometheus `/metrics` (HTTP request histogram/counter) to
-  every service via `@aicc/observability`'s `registerHttpMetrics`.
 - ✅ S5-3: move the cluster registry, incidents, runbooks, and
   chain repository to Postgres (in-memory stays the default;
   correlation buffer stays in-memory — sliding window, not
   a source of truth).
+- ✅ S5-4: add Prometheus `/metrics` (HTTP request histogram/counter) to
+  every service via `@aicc/observability`'s `registerHttpMetrics`.
 - ✅ S5-5: add network-policy inference and Istio / Linkerd
   service-mesh edge discovery to the topology engine.
 - ✅ S5-6: containerise all 13 backend services + frontend
@@ -92,12 +97,28 @@ Status: **planned**.
   layout, running headers/footers with page numbers, wrapped
   tables, and vector bar charts.
 
-## Sprint 6 — Compliance automation
+## Sprint 6 — Frontend integration, auth, event bus, compliance automation
 
-- Auto-mapping of K8s runtime risks to CIS / NIST controls.
-- Evidence attachment from inventory, health, and runtime
-  services.
-- Continuous compliance scoring per cluster / per tenant.
+Status: **planned**.
+
+- **S6-1**: wire the frontend to the real service APIs instead of
+  `src/lib/*.mock.ts`, starting with the infrastructure pages
+  (clusters, namespaces, workloads, runtime security, topology,
+  cost, health).
+- **S6-2**: auth end-to-end — `auth-service` issues JWTs, every
+  backend service verifies them via a shared middleware in
+  `@aicc/shared`, and the frontend gets a real login flow (replacing
+  the `x-tenant-id`-header development shortcut).
+- **S6-3**: event bus driver beyond in-memory — Redis Streams,
+  using the existing compose `redis` container, behind the same
+  `EventBus` interface.
+- **S6-4**: compliance auto-mapping of K8s runtime risks to CIS /
+  NIST controls, with evidence attachment from inventory, health,
+  and runtime services, and continuous compliance scoring per
+  cluster / per tenant.
+- **S6-5**: encrypt cluster credentials (`kubernetes-service`'s
+  `clusters` table `token`/`ca_bundle` columns) at rest — follow-up
+  from [ADR 0010](./docs/adr/0010-postgres-persistence.md).
 
 ## Sprint 7 — Hardening, security review, OpenSSF Scorecard pass
 

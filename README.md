@@ -13,16 +13,19 @@
 [![CodeQL](https://img.shields.io/badge/CodeQL-pending-lightgrey)](./.github/workflows/codeql.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 4 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 5 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
 
-**Sprint 4 just shipped**: Kubernetes & Infrastructure Intelligence —
-clusters, namespaces, workloads, pods, services, ingresses,
-deployments, statefulsets, daemonsets, runtime security, cost
-optimization, topology, and 6 infrastructure reports. See
-[`docs/architecture/sprint-4/`](./docs/architecture/sprint-4/) and
+**Sprint 5 just shipped**: live Kubernetes, persistence, observability,
+containerisation — a live `KubernetesProvider` on
+`@kubernetes/client-node`, Postgres-backed cluster/incident/runbook/chain
+repositories, Prometheus `/metrics` on all 13 services, network-policy
+inference + service-mesh detection in the topology engine,
+Prometheus-derived cost utilisation, multi-page PDF reports, and
+Dockerfiles + `docker-compose.yml` for the full stack. See
+[`docs/architecture/sprint-5/`](./docs/architecture/sprint-5/) and
 [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
@@ -144,22 +147,30 @@ tracking, evidence collection, audit answers. We build a system that
 │   ├── runbooks/         Operator procedures
 │   └── operations/       SLOs, on-call, dashboards
 ├── frontend/             AionUi SPA (Vite + React + TypeScript)
-├── backend/              Six Fastify services in TypeScript
+├── backend/              13 Fastify services in TypeScript
 │   ├── services/
-│   │   ├── auth/         Port 3001
-│   │   ├── agent/        Port 3002
-│   │   ├── security/     Port 3003
-│   │   ├── incident/     Port 3004
-│   │   ├── compliance/   Port 3005
-│   │   └── integration/  Port 3006
-│   ├── packages/         # Shared libraries (contracts, events, types, utils)
-│   └── common/           # Cross-cutting modules (observability, etc.)
+│   │   ├── auth/                 Port 3001
+│   │   ├── agent/                Port 3002
+│   │   ├── security/             Port 3003
+│   │   ├── incident/             Port 3004
+│   │   ├── compliance/           Port 3005
+│   │   ├── integration/          Port 3006
+│   │   ├── kubernetes/           Port 4006
+│   │   ├── k8s-health/           Port 4007
+│   │   ├── runtime-security/     Port 4008
+│   │   ├── inventory/            Port 4009
+│   │   ├── cost-intelligence/    Port 4010
+│   │   ├── topology/             Port 4011
+│   │   └── reporting/            Port 4012
+│   ├── packages/shared/  Shared types, contracts, events
+│   ├── models/           Zod schemas (@aicc/models)
+│   └── common/           observability (TS), observability-py (Python reference)
 ├── agents/               Agent definitions
-│   ├── roles/            security, incident, compliance, integration
+│   ├── roles/security/   Python agents: sbom-generator, vuln-intel, dependency-intel
 │   └── skills/           Reusable skills
 ├── infra/                Kubernetes, Terraform, observability
 ├── scripts/              Setup, deploy, CI, dev helpers
-├── tests/                e2e, integration, load
+├── tests/                contracts/ — wire-format schema validation
 ├── .env.example          Environment variables template
 ├── .gitignore
 ├── .editorconfig
@@ -209,19 +220,17 @@ make up
 
 ### Common commands
 
-| Command            | What it does              |
-| ------------------ | ------------------------- |
-| `make up`          | Bring the local stack up  |
-| `make down`        | Tear the local stack down |
-| `make logs`        | Tail logs                 |
-| `make lint`        | Lint everything           |
-| `make typecheck`   | Type-check everything     |
-| `make test`        | Run unit tests            |
-| `make test-e2e`    | Run e2e tests             |
-| `make db-migrate`  | Run database migrations   |
-| `make db-shell`    | Open a psql shell         |
-| `make release-dry` | Dry-run a release         |
-| `make help`        | List all targets          |
+| Command            | What it does                                              |
+| ------------------ | --------------------------------------------------------- |
+| `make up`          | Bring the local stack up                                  |
+| `make down`        | Tear the local stack down                                 |
+| `make logs`        | Tail logs                                                 |
+| `make lint`        | Lint everything                                           |
+| `make typecheck`   | Type-check everything                                     |
+| `make test`        | Run unit tests                                            |
+| `make db-shell`    | Open a psql shell (migrations run per-service at startup) |
+| `make release-dry` | Dry-run a release                                         |
+| `make help`        | List all targets                                          |
 
 ## Documentation
 
