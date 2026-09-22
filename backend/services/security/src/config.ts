@@ -34,8 +34,6 @@ const EnvSchema = z.object({
   EVENT_BUS_DRIVER: z.enum(['memory', 'nats', 'redis-streams']).default('memory'),
 
   // Observability / metrics (S2.7 — security-service :4003 proxy layer)
-  /** Master switch for prom-client metric registration. */
-  METRICS_ENABLED: z.coerce.boolean().default(true),
   /**
    * OTel-style service name. The `@aicc/observability` helper reads
    * `OTEL_SERVICE_NAME` from `process.env` (default: `service.name`).
@@ -44,8 +42,6 @@ const EnvSchema = z.object({
    * per metrics-spec.md §5.1.
    */
   OTEL_SERVICE_NAME: z.string().min(1).default('security-service'),
-  /** Expose /metrics endpoint. Disable in tests that don't need it. */
-  METRICS_EXPOSE_ENDPOINT: z.coerce.boolean().default(true),
 });
 
 export type SecurityServiceEnv = z.infer<typeof EnvSchema>;

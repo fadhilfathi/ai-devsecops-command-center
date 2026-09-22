@@ -11,6 +11,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
+import { registerHttpMetrics } from '@aicc/observability';
 import {
   createLogger,
   loadServiceConfig,
@@ -58,6 +59,7 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
   await server.register(helmet, { contentSecurityPolicy: false });
   await server.register(cors, { origin: true, credentials: true });
   await server.register(sensible);
+  registerHttpMetrics(server);
 
   server.decorateRequest('tenantId', '');
   server.decorateRequest('userId', '');

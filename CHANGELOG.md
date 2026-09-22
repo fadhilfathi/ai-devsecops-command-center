@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-4: Prometheus /metrics on every service
+
+- Added `registerHttpMetrics()` to `@aicc/observability`: a Fastify plugin
+  exposing `http_request_duration_seconds` / `http_requests_total`
+  (`service`, `method`, `route`, `status_code` labels — `route` is always
+  the matched Fastify route pattern, never the raw URL) plus `GET /metrics`.
+  Split `@aicc/observability`'s OTel bootstrap into a `./otel` subpath
+  export so importing the package root no longer pulls in the OTel SDK.
+- Wired `registerHttpMetrics(server)` into all 13 backend services, right
+  after `helmet`/`cors`/`sensible`. `security-service` and
+  `compliance-service` now share the plugin's `/metrics` route instead of
+  hand-rolled ones; their domain metrics stay on the same registry.
+- Added a static `backend-services-compose` Prometheus scrape job for the
+  6 services in `docker-compose.yml`.
+
 ### Sprint 5 — S5-3: Postgres persistence (clusters, incidents, runbooks, chains)
 
 - Added `@aicc/shared/db`: a minimal `Queryable` interface, `createPool()`,

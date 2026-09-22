@@ -166,7 +166,7 @@ under the new `security_stack.audit_emission` group, severity **P2
 **Cardinality:** the metric is `audit_log_emission_total{service, result}`
 with `result in {success, error}` = **2 series per service**. Compliance-
 service emits ~22 series total (2 audit + ~20 default process metrics
-with `compliance_service_` prefix). Well under the 50k cap.
+on the shared `devsecops_node_`-prefixed default registry). Well under the 50k cap.
 
 **Runbook:** `docs/runbooks/compliance-audit-log.md` (**created 2026-06-12** by ComplianceOfficer; alert annotation `{{ $labels.runbook_base_url }}/compliance-audit-log` resolves correctly via the standard runbook_base_url pattern). 130 lines; 3-step decision tree (bus connection → schema validation → structured log filter) with the `event.type` vs `audit_kind` confusion callout.
 

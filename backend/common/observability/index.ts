@@ -12,7 +12,9 @@
 // =============================================================================
 
 // ---------- OpenTelemetry bootstrap ----------
-export { startOtel, shutdownOtel, type OtelBootstrapOptions } from './otel.js';
+// Moved to the `@aicc/observability/otel` subpath (S5-4) so importing the
+// package root doesn't eagerly pull in the OTel SDK dependency tree for
+// services that only need metrics/logging/health.
 
 // ---------- Structured logging ----------
 export { createLogger, withTenant, withUser, LogEntrySchema, type LoggerConfig } from './logger.js';
@@ -41,3 +43,6 @@ export {
   type CreateCounterOptions,
   type CreateHistogramOptions,
 } from './metrics.js';
+
+// ---------- Fastify HTTP metrics plugin (S5-4) ----------
+export { registerHttpMetrics, type RegisterHttpMetricsOptions } from './fastify-metrics.js';

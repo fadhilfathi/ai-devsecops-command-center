@@ -17,30 +17,21 @@
 //
 // Cardinality: 1 service × 2 result = 2 series. Negligible.
 //
-// TODO(sre): When the shared @aicc/observability package lands (task
-// 019ebbea…), replace the local Registry with `metricsRegistry` re-exported
-// from there. The `recordAudit` signature is the public surface; the
-// underlying counter can move to a different registry without breaking
-// call sites.
-
-import { Counter, Registry } from 'prom-client';
+import { Counter } from 'prom-client';
 import { randomUUID } from 'node:crypto';
 
 import { createLogger } from '@aicc/shared/logger';
+import { defaultRegistry } from '@aicc/observability';
 
 const log = createLogger({ service: 'compliance-service', version: '0.1.0', level: 'info' });
 
 // ---------------------------------------------------------------------------
-// Local Prometheus registry (one per service process).
-// Flushed by the /metrics route in src/index.ts.
+// Shared Prometheus registry (S5-4). Also carries the HTTP request metrics
+// registered by `registerHttpMetrics` in src/index.ts, and default Node.js
+// process metrics (collected once by @aicc/observability/metrics.ts).
 // ---------------------------------------------------------------------------
 
-export const metricsRegistry = new Registry();
-
-// Default process metrics (event-loop lag, GC, RSS, FD count) — these come
-// for free and are part of the S2.7 baseline.
-import { collectDefaultMetrics } from 'prom-client';
-collectDefaultMetrics({ register: metricsRegistry, prefix: 'compliance_service_' });
+export const metricsRegistry = defaultRegistry;
 
 // ---------------------------------------------------------------------------
 // The single canonical SLO counter for audit emission.

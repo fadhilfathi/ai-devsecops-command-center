@@ -400,9 +400,22 @@ metrics-spec §5.1.
 
 **Why a separate gauge (and not a derived staleness computation in PromQL):** the `VulnIngestionLag` alerts need a stable, low-cardinality input that survives a full ingestion-service restart. A gauge emitted from `vulnerability-service` is observable from the metric endpoint and can be scraped independently of the ingestion's internal state. The PromQL is then simply `time() - devsecops_vuln_feed_last_refresh_timestamp_seconds{source="ghsa"} > 900`. **This is the same pattern Grafana uses for "last successful sync" tiles.**
 
+### 3.12 Common HTTP request metrics (S5-4, every service)
+
+| Attribute          | Value                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Type**           | `http_request_duration_seconds` (Histogram), `http_requests_total` (Counter)                                                                            |
+| **Owner**          | `@aicc/observability`'s `registerHttpMetrics()` Fastify plugin — every backend service                                                                  |
+| **Purpose**        | Fleet-wide HTTP request latency/volume, independent of any service's domain metrics                                                                     |
+| **Labels**         | `service`, `method`, `route`, `status_code`                                                                                                             |
+| **`route` values** | The matched Fastify route pattern (e.g. `/v1/assets/:id`), never the raw URL/query string — path params keep cardinality bounded. `unmatched` for 404s. |
+| **Cardinality**    | Bounded per service by (route count × ~6 status codes × ~7 methods); well under the 50k soft cap.                                                       |
+
 ## 4. Naming Convention Rules (apply to ALL future metrics)
 
 1. **Format:** `devsecops_{domain}_{noun}_{unit_suffix}` in `snake_case`, all lowercase.
+   Sanctioned exception: the shared HTTP RED metrics `http_request_duration_seconds` and
+   `http_requests_total` (§3.12) keep the ecosystem-standard names so stock dashboards work.
 2. **Unit suffixes are mandatory** and follow Prometheus convention:
    - `_seconds` (durations — **never** `_ms` or `_duration`)
    - `_total` (counters, monotonically increasing)

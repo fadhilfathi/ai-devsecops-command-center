@@ -49,8 +49,9 @@ import { buildScanRepository } from './repositories/scan.repository.js';
 import { buildFindingRepository } from './repositories/finding.repository.js';
 import { buildSbomRepository } from './repositories/sbom.repository.js';
 import { InMemoryEventLog } from './services/event-log.js';
+import { registerHttpMetrics } from '@aicc/observability';
+
 import {
-  renderMetrics,
   serviceName,
   withService,
   metricsRegistry,
@@ -100,6 +101,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   await server.register(helmet, { contentSecurityPolicy: false });
   await server.register(cors, { origin: true, credentials: true });
   await server.register(sensible);
+  registerHttpMetrics(server, { registry: metricsRegistry });
 
   // Global rate limit (10 req/s) — overridden per route where needed.
   // onExceeded hook increments devsecops_rate_limit_rejections_total{route, bucket}.
@@ -183,16 +185,6 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
 
   // ---------- Routes ----------
   await server.register(buildHealthRoutes, { logger, cfg });
-
-  // Prometheus metrics endpoint (S2.7) — gated by env flag for tests.
-  // Uses the @aicc/observability renderMetrics helper (content-type, body).
-  if (env.METRICS_ENABLED && env.METRICS_EXPOSE_ENDPOINT) {
-    server.get('/metrics', async (_req, reply) => {
-      const { body, contentType } = await renderMetrics(metricsRegistry);
-      reply.header('Content-Type', contentType);
-      return body;
-    });
-  }
 
   // Sprint 1 routes
   await server.register(buildAssetRoutes, { logger, assets });

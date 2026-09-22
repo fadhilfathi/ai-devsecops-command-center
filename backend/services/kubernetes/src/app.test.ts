@@ -9,6 +9,14 @@ test('GET /healthz returns ok', async () => {
   await server.close();
 });
 
+test('GET /metrics returns Prometheus metrics', async () => {
+  const server = await buildServer();
+  const res = await server.inject({ method: 'GET', url: '/metrics' });
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toContain('http_requests_total');
+  await server.close();
+});
+
 test('GET /v1/kubernetes/providers lists available providers', async () => {
   const server = await buildServer();
   const res = await server.inject({ method: 'GET', url: '/v1/kubernetes/providers' });

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aicc/models": "workspace:*",
+    "@aicc/observability": "workspace:*",
     "@aicc/shared": "workspace:*",
     "@kubernetes/client-node": "^1.4.0",
     "@fastify/cors": "^9.0.1",

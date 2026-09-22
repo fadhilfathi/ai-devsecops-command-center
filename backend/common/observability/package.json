@@ -9,12 +9,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./otel": {
+      "types": "./dist/otel.d.ts",
+      "default": "./dist/otel.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
-    "test": "echo \"no tests yet\""
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

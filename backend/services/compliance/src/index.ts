@@ -8,6 +8,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
+import { registerHttpMetrics } from '@aicc/observability';
 import {
   createLogger,
   loadServiceConfig,
@@ -71,6 +72,7 @@ export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promis
   await server.register(helmet, { contentSecurityPolicy: false });
   await server.register(cors, { origin: true, credentials: true });
   await server.register(sensible);
+  registerHttpMetrics(server, { registry: metricsRegistry });
 
   server.decorateRequest('tenantId', '');
   server.decorateRequest('userId', '');
@@ -98,11 +100,6 @@ export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promis
   // Bus subscription: attach evidence automatically when a scan completes.
   const scanListener = buildScanListener(evidenceAttacher);
   await bus.subscribe(scanListener.topic, scanListener.handler);
-
-  server.get('/metrics', async (_req, reply) => {
-    reply.type('text/plain; version=0.0.4; charset=utf-8');
-    return metricsRegistry.metrics();
-  });
 
   server.setErrorHandler((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');

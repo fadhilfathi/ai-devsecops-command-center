@@ -74,7 +74,8 @@ Status: **planned**.
 
 - ✅ S5-2: wire the live `KubernetesProvider` using
   `@kubernetes/client-node`.
-- Add Prometheus metrics to every service.
+- ✅ S5-4: add Prometheus `/metrics` (HTTP request histogram/counter) to
+  every service via `@aicc/observability`'s `registerHttpMetrics`.
 - ✅ S5-3: move the cluster registry, incidents, runbooks, and
   chain repository to Postgres (in-memory stays the default;
   correlation buffer stays in-memory — sliding window, not
