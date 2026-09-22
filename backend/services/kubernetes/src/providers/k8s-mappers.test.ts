@@ -7,6 +7,7 @@ import type {
   V1Namespace,
   V1StatefulSet,
   V1DaemonSet,
+  V1NetworkPolicy,
 } from '@kubernetes/client-node';
 import {
   mapNamespace,
@@ -16,6 +17,7 @@ import {
   mapDeployment,
   mapStatefulSet,
   mapDaemonSet,
+  mapNetworkPolicy,
   parseCpuMillicores,
   parseMemoryBytes,
 } from './k8s-mappers.js';
@@ -50,6 +52,19 @@ test('mapNamespace parses to a valid Namespace', () => {
   const mapped = mapNamespace(TENANT, CLUSTER, CLUSTER_NAME, ns);
   expect(mapped.name).toBe('default');
   expect(mapped.phase).toBe('active');
+  expect(mapped.mesh).toBeUndefined();
+});
+
+test('mapNamespace detects istio and linkerd mesh from injection labels', () => {
+  const istioNs: V1Namespace = {
+    metadata: { name: 'istio-ns', labels: { 'istio-injection': 'enabled' } },
+  };
+  expect(mapNamespace(TENANT, CLUSTER, CLUSTER_NAME, istioNs).mesh).toBe('istio');
+
+  const linkerdNs: V1Namespace = {
+    metadata: { name: 'linkerd-ns', labels: { 'linkerd.io/inject': 'enabled' } },
+  };
+  expect(mapNamespace(TENANT, CLUSTER, CLUSTER_NAME, linkerdNs).mesh).toBe('linkerd');
 });
 
 test('mapPod derives phase, restarts, and crash reason', () => {
@@ -92,6 +107,33 @@ test('mapPod derives phase, restarts, and crash reason', () => {
   expect(mapped.restarts).toBe(8);
   expect(mapped.containers[0]?.lastTerminationReason).toBe('crash_loop_back_off');
   expect(mapped.node).toBe('node-1');
+  expect(mapped.mesh).toBeUndefined();
+});
+
+test('mapPod detects istio-proxy and linkerd-proxy sidecars as mesh', () => {
+  const withIstio: V1Pod = {
+    metadata: { name: 'app-1', namespace: 'default' },
+    spec: {
+      containers: [
+        { name: 'app', image: 'app:1' },
+        { name: 'istio-proxy', image: 'istio:1' },
+      ],
+    },
+    status: { phase: 'Running' },
+  };
+  expect(mapPod(TENANT, CLUSTER, CLUSTER_NAME, withIstio).mesh).toBe('istio');
+
+  const withLinkerd: V1Pod = {
+    metadata: { name: 'app-2', namespace: 'default' },
+    spec: {
+      containers: [
+        { name: 'app', image: 'app:1' },
+        { name: 'linkerd-proxy', image: 'linkerd:1' },
+      ],
+    },
+    status: { phase: 'Running' },
+  };
+  expect(mapPod(TENANT, CLUSTER, CLUSTER_NAME, withLinkerd).mesh).toBe('linkerd');
 });
 
 test('mapService maps type, ports, and namespace filtering fqdn', () => {
@@ -208,4 +250,28 @@ test('mapStatefulSet and mapDaemonSet parse to valid workloads', () => {
   const mappedDs = mapDaemonSet(TENANT, CLUSTER, CLUSTER_NAME, ds);
   expect(mappedDs.desiredNumberScheduled).toBe(3);
   expect(mappedDs.replicas.desired).toBe(3);
+});
+
+test('mapNetworkPolicy maps selectors, rules, and ports', () => {
+  const np: V1NetworkPolicy = {
+    metadata: {
+      uid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      name: 'allow-from-same-ns',
+      namespace: 'default',
+    },
+    spec: {
+      podSelector: { matchLabels: { app: 'orders-api' } },
+      policyTypes: ['Ingress'],
+      ingress: [
+        {
+          _from: [{ podSelector: { matchLabels: {} } }],
+          ports: [{ protocol: 'TCP', port: 80 }],
+        },
+      ],
+    },
+  };
+  const mapped = mapNetworkPolicy(TENANT, CLUSTER, np);
+  expect(mapped.podSelector).toEqual({ app: 'orders-api' });
+  expect(mapped.ingress[0]?.from[0]?.podSelector).toEqual({});
+  expect(mapped.ingress[0]?.ports[0]).toEqual({ protocol: 'TCP', port: 80 });
 });

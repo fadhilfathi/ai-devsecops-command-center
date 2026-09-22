@@ -81,6 +81,7 @@ export interface Namespace {
   failedPods: number;
   serviceCount: number;
   restartsLast1h: number;
+  mesh?: 'istio' | 'linkerd';
   labels: Record<string, string>;
   lastSyncedAt?: string;
 }
@@ -151,6 +152,7 @@ export interface Pod {
   }>;
   restarts: number;
   lastTerminationReason: string;
+  mesh?: 'istio' | 'linkerd';
   labels: Record<string, string>;
 }
 
@@ -456,6 +458,13 @@ export interface TopologyGraph {
   group?: string;
   nodes: TopologyNode[];
   edges: TopologyEdge[];
+  networkPolicySummary?: {
+    policies: number;
+    unrestrictedEdges: number;
+    allowedEdges: number;
+    deniedEdges: number;
+    meshes: string[];
+  };
   generatedAt: string;
 }
 

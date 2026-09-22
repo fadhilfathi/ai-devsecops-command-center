@@ -41,6 +41,8 @@ import type {
   Deployment,
   StatefulSet,
   DaemonSet,
+  NetworkPolicy,
+  LabelSelector,
   TopologyGraph,
   TopologyNode,
   TopologyEdge,
@@ -58,6 +60,187 @@ export interface TopologyEngineInput {
   statefulsets: StatefulSet[];
   daemonsets: DaemonSet[];
   ingresses: Ingress[];
+  networkPolicies: NetworkPolicy[];
+}
+
+export type NetworkPolicyVerdict = 'unrestricted' | 'allowed' | 'denied';
+
+export interface NetworkPolicySummary {
+  policies: number;
+  unrestrictedEdges: number;
+  allowedEdges: number;
+  deniedEdges: number;
+  meshes: string[];
+}
+
+export interface InferNetworkPolicyInput {
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
+  pods: Pod[];
+  namespaces: Namespace[];
+  policies: NetworkPolicy[];
+}
+
+export interface InferNetworkPolicyResult {
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
+  summary: NetworkPolicySummary;
+}
+
+const POLICY_RELEVANT_EDGE_KINDS: TopologyEdgeKind[] = ['routes_to', 'calls', 'selects'];
+
+/** matchLabels-only subset match; `matchExpressions` is out of scope (ADR 0011). */
+function selectorMatches(
+  selector: LabelSelector | undefined,
+  labels: Record<string, string>,
+): boolean {
+  if (!selector) return true;
+  return Object.entries(selector).every(([k, v]) => labels[k] === v);
+}
+
+/** Resolves the pod-label set that "represents" a node, for selector evaluation. */
+function labelsForNode(node: TopologyNode, pods: Pod[]): Record<string, string> {
+  if (node.kind === 'pod') {
+    return pods.find((p) => p.id === node.id)?.labels ?? {};
+  }
+  if (node.kind === 'workload') {
+    const pod = pods.find(
+      (p) =>
+        p.clusterId === node.clusterId &&
+        p.namespace === node.namespace &&
+        p.ownerName === node.label,
+    );
+    return pod?.labels ?? {};
+  }
+  return {};
+}
+
+function namespaceLabels(
+  clusterId: string | undefined,
+  namespace: string | undefined,
+  namespaces: Namespace[],
+): Record<string, string> {
+  return namespaces.find((n) => n.clusterId === clusterId && n.name === namespace)?.labels ?? {};
+}
+
+function meshForNode(
+  node: TopologyNode,
+  pods: Pod[],
+  namespaces: Namespace[],
+): 'istio' | 'linkerd' | undefined {
+  if (node.kind === 'pod') {
+    const pod = pods.find((p) => p.id === node.id);
+    return pod?.mesh ?? namespaceMesh(node, namespaces);
+  }
+  if (node.kind === 'workload') {
+    const pod = pods.find(
+      (p) =>
+        p.clusterId === node.clusterId &&
+        p.namespace === node.namespace &&
+        p.ownerName === node.label,
+    );
+    return pod?.mesh ?? namespaceMesh(node, namespaces);
+  }
+  if (node.kind === 'namespace') {
+    return namespaces.find((n) => n.clusterId === node.clusterId && n.name === node.namespace)
+      ?.mesh;
+  }
+  return undefined;
+}
+
+function namespaceMesh(
+  node: TopologyNode,
+  namespaces: Namespace[],
+): 'istio' | 'linkerd' | undefined {
+  return namespaces.find((n) => n.clusterId === node.clusterId && n.name === node.namespace)?.mesh;
+}
+
+/**
+ * Annotates `routes_to`/`calls`/`selects` edges with the effective
+ * network-policy verdict between their source and target, and tags
+ * every node with the mesh sidecar it runs (if any).
+ *
+ * Ingress-only: egress policy evaluation is deferred (ADR 0011).
+ * Peer matching is matchLabels-only; `ipBlock` peers never match
+ * (no synthetic source IP is available for in-graph edges).
+ */
+export function inferNetworkPolicy(input: InferNetworkPolicyInput): InferNetworkPolicyResult {
+  const { nodes, edges, pods, namespaces, policies } = input;
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+  const meshes = new Set<string>();
+
+  const taggedNodes = nodes.map((n) => {
+    const mesh = meshForNode(n, pods, namespaces);
+    if (mesh) meshes.add(mesh);
+    return mesh ? { ...n, metadata: { ...n.metadata, mesh } } : n;
+  });
+
+  let unrestrictedEdges = 0;
+  let allowedEdges = 0;
+  let deniedEdges = 0;
+
+  const taggedEdges = edges.map((edge) => {
+    if (!POLICY_RELEVANT_EDGE_KINDS.includes(edge.kind)) return edge;
+    const target = nodeById.get(edge.target);
+    const source = nodeById.get(edge.source);
+    if (!target || !source || (target.kind !== 'workload' && target.kind !== 'pod')) return edge;
+
+    const targetLabels = labelsForNode(target, pods);
+    const selectingPolicies = policies.filter(
+      (p) =>
+        p.clusterId === target.clusterId &&
+        p.namespace === target.namespace &&
+        p.policyTypes.includes('Ingress') &&
+        selectorMatches(p.podSelector, targetLabels),
+    );
+
+    if (selectingPolicies.length === 0) {
+      unrestrictedEdges++;
+      return { ...edge, metadata: { ...edge.metadata, networkPolicy: 'unrestricted' } };
+    }
+
+    const sourceLabels = labelsForNode(source, pods);
+    const sourceNsLabels = namespaceLabels(source.clusterId, source.namespace, namespaces);
+    const sameNamespace =
+      source.namespace === target.namespace && source.clusterId === target.clusterId;
+
+    const permitted = selectingPolicies.some((policy) =>
+      policy.ingress.some((rule) => {
+        if (rule.from.length === 0) return true; // empty `from` = allow all
+        return rule.from.some((peer) => {
+          if (peer.ipBlock) return false; // ponytail: no synthetic source IP to match against
+          // k8s semantics: namespaceSelector scopes which namespaces the peer
+          // may come from (absent = the policy's own namespace); podSelector
+          // then filters pods within that scope. Both present = AND.
+          const nsOk = peer.namespaceSelector
+            ? selectorMatches(peer.namespaceSelector, sourceNsLabels)
+            : sameNamespace;
+          if (!nsOk) return false;
+          if (peer.podSelector) return selectorMatches(peer.podSelector, sourceLabels);
+          return peer.namespaceSelector !== undefined;
+        });
+      }),
+    );
+
+    if (permitted) {
+      allowedEdges++;
+      return { ...edge, metadata: { ...edge.metadata, networkPolicy: 'allowed' } };
+    }
+    deniedEdges++;
+    return { ...edge, metadata: { ...edge.metadata, networkPolicy: 'denied' } };
+  });
+
+  return {
+    nodes: taggedNodes,
+    edges: taggedEdges,
+    summary: {
+      policies: policies.length,
+      unrestrictedEdges,
+      allowedEdges,
+      deniedEdges,
+      meshes: [...meshes],
+    },
+  };
 }
 
 export interface TopologyEngine {
@@ -247,7 +430,21 @@ export function buildTopologyEngine(): TopologyEngine {
           }
         }
       }
-      return wrapGraph(input.clusters[0]?.tenantId ?? '', name, clusterId, nodes, edges);
+      const inferred = inferNetworkPolicy({
+        nodes,
+        edges,
+        pods: input.pods,
+        namespaces: input.namespaces,
+        policies: input.networkPolicies,
+      });
+      const graph = wrapGraph(
+        input.clusters[0]?.tenantId ?? '',
+        name,
+        clusterId,
+        inferred.nodes,
+        inferred.edges,
+      );
+      return { ...graph, networkPolicySummary: inferred.summary };
     },
 
     namespaceView(input, namespace, name, clusterId) {

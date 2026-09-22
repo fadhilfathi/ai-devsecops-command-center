@@ -9,12 +9,14 @@ import type {
   StatefulSet,
   DaemonSet,
   Ingress,
+  NetworkPolicy,
 } from '@aicc/models';
 import {
   buildFixtureProvider,
   type KubernetesProvider,
   type ListOptions,
 } from '../providers/index.js';
+import { buildHttpKubernetesProvider } from './http.provider.js';
 
 export interface InventorySnapshot {
   clusters: Cluster[];
@@ -26,6 +28,7 @@ export interface InventorySnapshot {
   statefulsets: StatefulSet[];
   daemonsets: DaemonSet[];
   ingresses: Ingress[];
+  networkPolicies: NetworkPolicy[];
 }
 
 export interface InventoryClient {
@@ -33,7 +36,10 @@ export interface InventoryClient {
 }
 
 export function buildInventoryClient(deps: { logger: Logger }): InventoryClient {
-  const provider: KubernetesProvider = buildFixtureProvider(deps.logger);
+  const kubernetesServiceUrl = process.env.KUBERNETES_SERVICE_URL;
+  const provider: KubernetesProvider = kubernetesServiceUrl
+    ? buildHttpKubernetesProvider({ baseUrl: kubernetesServiceUrl, logger: deps.logger })
+    : buildFixtureProvider(deps.logger);
   return {
     async fetch(tenantId, clusterId) {
       const clusters = await provider.listClusters(tenantId);
@@ -46,16 +52,18 @@ export function buildInventoryClient(deps: { logger: Logger }): InventoryClient 
       const statefulsets: StatefulSet[] = [];
       const daemonsets: DaemonSet[] = [];
       const ingresses: Ingress[] = [];
+      const networkPolicies: NetworkPolicy[] = [];
       for (const cluster of target) {
         namespaces.push(...(await provider.listNamespaces(tenantId, cluster.id)));
         const opts: ListOptions = { clusterId: cluster.id };
-        const [d, s, da, p, sv, ing] = await Promise.all([
+        const [d, s, da, p, sv, ing, np] = await Promise.all([
           provider.listDeployments(tenantId, opts),
           provider.listStatefulSets(tenantId, opts),
           provider.listDaemonSets(tenantId, opts),
           provider.listPods(tenantId, opts),
           provider.listServices(tenantId, opts),
           provider.listIngresses(tenantId, opts),
+          provider.listNetworkPolicies(tenantId, opts),
         ]);
         deployments.push(...d);
         statefulsets.push(...s);
@@ -63,6 +71,7 @@ export function buildInventoryClient(deps: { logger: Logger }): InventoryClient 
         pods.push(...p);
         services.push(...sv);
         ingresses.push(...ing);
+        networkPolicies.push(...np);
         workloads.push(...d, ...s, ...da);
       }
       return {
@@ -75,6 +84,7 @@ export function buildInventoryClient(deps: { logger: Logger }): InventoryClient 
         statefulsets,
         daemonsets,
         ingresses,
+        networkPolicies,
       };
     },
   };

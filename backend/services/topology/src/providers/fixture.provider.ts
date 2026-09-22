@@ -29,6 +29,7 @@ import type {
   DeploymentRolloutStatus,
   PodManagementPolicy,
   IngressClass,
+  NetworkPolicy,
 } from '@aicc/models';
 import type {
   KubernetesProvider,
@@ -408,6 +409,57 @@ function makeIngresses(tenantId: string, opts: ListOptions): Ingress[] {
   ];
 }
 
+function makeNetworkPolicies(tenantId: string, opts: ListOptions): NetworkPolicy[] {
+  const ns = opts.namespace ?? 'default';
+  if (ns !== 'default') return [];
+  return [
+    {
+      id: uuid(),
+      tenantId,
+      clusterId: opts.clusterId,
+      namespace: 'default',
+      name: 'default-deny',
+      podSelector: {},
+      policyTypes: ['Ingress'],
+      ingress: [],
+      egress: [],
+      labels: {},
+      createdAt: NOW(),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      clusterId: opts.clusterId,
+      namespace: 'default',
+      name: 'allow-same-namespace',
+      podSelector: { app: 'orders-api' },
+      policyTypes: ['Ingress'],
+      ingress: [{ from: [{ podSelector: {} }], ports: [{ protocol: 'TCP', port: 80 }] }],
+      egress: [],
+      labels: {},
+      createdAt: NOW(),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      clusterId: opts.clusterId,
+      namespace: 'default',
+      name: 'allow-from-ingress-controller',
+      podSelector: { app: 'payments-api' },
+      policyTypes: ['Ingress'],
+      ingress: [
+        {
+          from: [{ namespaceSelector: { 'kubernetes.io/metadata.name': 'ingress-nginx' } }],
+          ports: [{ protocol: 'TCP', port: 8080 }],
+        },
+      ],
+      egress: [],
+      labels: {},
+      createdAt: NOW(),
+    },
+  ];
+}
+
 export function buildFixtureProvider(_logger: Logger): KubernetesProvider {
   void _logger;
   return {
@@ -465,6 +517,9 @@ export function buildFixtureProvider(_logger: Logger): KubernetesProvider {
     },
     async listDaemonSets(tenantId, opts) {
       return makeDaemonSets(tenantId, opts);
+    },
+    async listNetworkPolicies(tenantId, opts) {
+      return makeNetworkPolicies(tenantId, opts);
     },
   };
 }

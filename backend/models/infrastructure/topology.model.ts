@@ -84,6 +84,16 @@ export const TopologyGraphSchema = z.object({
   group: z.string().optional(),
   nodes: z.array(TopologyNodeSchema),
   edges: z.array(TopologyEdgeSchema),
+  /** Network-policy inference summary (Sprint 5); omitted when not computed. */
+  networkPolicySummary: z
+    .object({
+      policies: z.number().int().nonnegative(),
+      unrestrictedEdges: z.number().int().nonnegative(),
+      allowedEdges: z.number().int().nonnegative(),
+      deniedEdges: z.number().int().nonnegative(),
+      meshes: z.array(z.string()),
+    })
+    .optional(),
   generatedAt: z.string().datetime({ offset: true }),
 });
 export type TopologyGraph = z.infer<typeof TopologyGraphSchema>;

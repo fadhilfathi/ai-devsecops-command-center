@@ -8,6 +8,7 @@ import type {
   Deployment,
   StatefulSet,
   DaemonSet,
+  NetworkPolicy,
 } from '@aicc/models';
 export interface ListOptions {
   clusterId: string;
@@ -42,4 +43,5 @@ export interface KubernetesProvider {
   listDeployments(tenantId: string, opts: ListOptions): Promise<Deployment[]>;
   listStatefulSets(tenantId: string, opts: ListOptions): Promise<StatefulSet[]>;
   listDaemonSets(tenantId: string, opts: ListOptions): Promise<DaemonSet[]>;
+  listNetworkPolicies(tenantId: string, opts: ListOptions): Promise<NetworkPolicy[]>;
 }

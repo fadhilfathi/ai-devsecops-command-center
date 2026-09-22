@@ -80,7 +80,7 @@ Status: **planned**.
   chain repository to Postgres (in-memory stays the default;
   correlation buffer stays in-memory — sliding window, not
   a source of truth).
-- Add network-policy inference and Istio / Linkerd
+- ✅ S5-5: add network-policy inference and Istio / Linkerd
   service-mesh edge discovery to the topology engine.
 - Replace the heuristic utilisation estimates in the cost
   engine with real Prometheus queries.

@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-5: network-policy inference + mesh detection
+
+- Added `NetworkPolicy` model (`@aicc/models`, matchLabels-only selectors,
+  ingress/egress rules) and optional `mesh` (`istio`/`linkerd`) fields on
+  `Namespace` and `Pod`.
+- `kubernetes-service`: `listNetworkPolicies()` on the provider interface,
+  fixture + live (`NetworkingV1Api`) implementations, mesh detection in the
+  namespace/pod mappers (injection labels / sidecar container name), and
+  `GET /v1/kubernetes/network-policies`.
+- `topology-service`: `InventoryClient` gained an HTTP implementation
+  (`KUBERNETES_SERVICE_URL`) alongside the fixture default; `inferNetworkPolicy()`
+  annotates `routes_to`/`calls`/`selects` edges with `unrestricted` /
+  `allowed` / `denied` and tags nodes with their mesh; `TopologyGraph` now
+  carries an optional `networkPolicySummary`.
+
 ### Sprint 5 — S5-4: Prometheus /metrics on every service
 
 - Added `registerHttpMetrics()` to `@aicc/observability`: a Fastify plugin

@@ -38,6 +38,8 @@ export const NamespaceSchema = z.object({
   serviceCount: z.number().int().nonnegative().default(0),
   /** Last 1h restart count across all pods in the namespace. */
   restartsLast1h: z.number().int().nonnegative().default(0),
+  /** Service mesh detected from namespace injection labels, if any. */
+  mesh: z.enum(['istio', 'linkerd']).optional(),
   /** Labels propagated from the namespace. */
   labels: z.record(z.string(), z.string()).default({}),
   /** Annotations propagated from the namespace. */

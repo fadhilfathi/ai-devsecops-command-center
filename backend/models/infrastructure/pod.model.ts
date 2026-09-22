@@ -112,6 +112,8 @@ export const PodSchema = z.object({
   startedAt: z.string().datetime({ offset: true }).optional(),
   /** Aggregate of `lastTerminationReason` across containers. */
   lastTerminationReason: PodTerminationReasonSchema.default('unknown'),
+  /** Service mesh detected from a sidecar proxy container, if any. */
+  mesh: z.enum(['istio', 'linkerd']).optional(),
   labels: z.record(z.string(), z.string()).default({}),
   annotations: z.record(z.string(), z.string()).default({}),
   createdAt: z.string().datetime({ offset: true }),

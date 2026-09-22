@@ -35,6 +35,7 @@ import {
   DeploymentRolloutStatusSchema,
   type StatefulSet,
   type DaemonSet,
+  type NetworkPolicy,
 } from '@aicc/models';
 import type { Logger } from '@aicc/shared';
 import type { ClusterRepository } from '../repositories/cluster.repository.js';
@@ -75,6 +76,7 @@ export interface KubernetesProvider {
   listDeployments(tenantId: string, opts: ListOptions): Promise<Deployment[]>;
   listStatefulSets(tenantId: string, opts: ListOptions): Promise<StatefulSet[]>;
   listDaemonSets(tenantId: string, opts: ListOptions): Promise<DaemonSet[]>;
+  listNetworkPolicies(tenantId: string, opts: ListOptions): Promise<NetworkPolicy[]>;
 }
 
 export interface TestConnectionInput {
@@ -157,6 +159,9 @@ class FixtureProvider implements KubernetesProvider {
   }
   async listDaemonSets(tenantId: string, opts: ListOptions): Promise<DaemonSet[]> {
     return buildFixtureDaemonSets(tenantId, opts);
+  }
+  async listNetworkPolicies(tenantId: string, opts: ListOptions): Promise<NetworkPolicy[]> {
+    return buildFixtureNetworkPolicies(tenantId, opts);
   }
 }
 
@@ -728,6 +733,56 @@ function buildFixtureServices(tenantId: string, opts: ListOptions): Service[] {
       createdAt: NOW(),
       updatedAt: NOW(),
       lastSyncedAt: NOW(),
+    },
+  ];
+}
+
+function buildFixtureNetworkPolicies(tenantId: string, opts: ListOptions): NetworkPolicy[] {
+  const namespace = opts.namespace ?? 'default';
+  return [
+    {
+      id: uuid(),
+      tenantId,
+      clusterId: opts.clusterId,
+      namespace,
+      name: 'default-deny',
+      podSelector: {},
+      policyTypes: ['Ingress'],
+      ingress: [],
+      egress: [],
+      labels: {},
+      createdAt: NOW(),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      clusterId: opts.clusterId,
+      namespace,
+      name: 'allow-same-namespace',
+      podSelector: { app: 'orders-api' },
+      policyTypes: ['Ingress'],
+      ingress: [{ from: [{ podSelector: {} }], ports: [{ protocol: 'TCP', port: 80 }] }],
+      egress: [],
+      labels: {},
+      createdAt: NOW(),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      clusterId: opts.clusterId,
+      namespace,
+      name: 'allow-from-ingress-controller',
+      podSelector: { app: 'payments-api' },
+      policyTypes: ['Ingress'],
+      ingress: [
+        {
+          from: [{ namespaceSelector: { 'kubernetes.io/metadata.name': 'ingress-nginx' } }],
+          ports: [{ protocol: 'TCP', port: 8080 }],
+        },
+      ],
+      egress: [],
+      labels: {},
+      createdAt: NOW(),
     },
   ];
 }

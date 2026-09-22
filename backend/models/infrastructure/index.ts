@@ -15,6 +15,7 @@ export * from './deployment.model.js';
 export * from './statefulset.model.js';
 export * from './daemonset.model.js';
 export * from './ingres.model.js';
+export * from './network-policy.model.js';
 export * from './runtime-risk.model.js';
 export * from './topology.model.js';
 export * from './infrastructure-health.model.js';

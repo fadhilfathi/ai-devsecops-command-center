@@ -24,6 +24,7 @@ import type {
   Deployment,
   StatefulSet,
   DaemonSet,
+  NetworkPolicy,
 } from '@aicc/models';
 import type { Logger } from '@aicc/shared';
 import {
@@ -42,6 +43,7 @@ import {
   mapDeployment,
   mapStatefulSet,
   mapDaemonSet,
+  mapNetworkPolicy,
 } from './k8s-mappers.js';
 
 export interface K8sClients {
@@ -246,5 +248,16 @@ export class LiveProvider implements KubernetesProvider {
       this.listDaemonSets(tenantId, opts),
     ]);
     return [...deployments, ...statefulSets, ...daemonSets];
+  }
+
+  async listNetworkPolicies(tenantId: string, opts: ListOptions): Promise<NetworkPolicy[]> {
+    const { networking } = await this.clientsFor(opts.clusterId, tenantId);
+    const res = opts.namespace
+      ? await networking.listNamespacedNetworkPolicy({
+          namespace: opts.namespace,
+          labelSelector: opts.labelSelector,
+        })
+      : await networking.listNetworkPolicyForAllNamespaces({ labelSelector: opts.labelSelector });
+    return res.items.map((np) => mapNetworkPolicy(tenantId, opts.clusterId, np));
   }
 }

@@ -11,6 +11,7 @@
  *   GET /v1/kubernetes/deployments
  *   GET /v1/kubernetes/statefulsets
  *   GET /v1/kubernetes/daemonsets
+ *   GET /v1/kubernetes/network-policies
  *   GET /v1/kubernetes/providers   — auxiliary, lists available providers
  *
  * All routes are tenant-scoped. The `clusterId` query parameter
@@ -39,6 +40,8 @@ import type {
   StatefulSetListResponse,
   DaemonSet,
   DaemonSetListResponse,
+  NetworkPolicy,
+  NetworkPolicyListResponse,
 } from '@aicc/models';
 import type { ClusterRepository } from '../repositories/cluster.repository.js';
 import type { KubernetesProvider, ProviderRegistry } from '../providers/registry.js';
@@ -252,6 +255,24 @@ export const buildKubernetesRoutes: FastifyPluginAsync<Deps> = async (
     const cluster = pickCluster<Cluster>(all, q.clusterId);
     const p = await getProvider(providers, cluster.id, clusters, tenantId, q.provider);
     const items: DaemonSet[] = await p.listDaemonSets(tenantId, {
+      clusterId: cluster.id,
+      namespace: q.namespace,
+      labelSelector: q.labelSelector,
+    });
+    return { items, total: items.length };
+  });
+
+  // ---- network policies -------------------------------------------------
+  server.get<{
+    Querystring: z.infer<typeof ListQuerySchema>;
+    Reply: NetworkPolicyListResponse;
+  }>('/v1/kubernetes/network-policies', async (req) => {
+    const tenantId = requireTenant(req.tenantId);
+    const q = ListQuerySchema.parse(req.query ?? {});
+    const all = await clusters.list(tenantId);
+    const cluster = pickCluster<Cluster>(all, q.clusterId);
+    const p = await getProvider(providers, cluster.id, clusters, tenantId, q.provider);
+    const items: NetworkPolicy[] = await p.listNetworkPolicies(tenantId, {
       clusterId: cluster.id,
       namespace: q.namespace,
       labelSelector: q.labelSelector,

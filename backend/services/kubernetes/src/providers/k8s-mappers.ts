@@ -15,6 +15,9 @@ import type {
   V1Deployment,
   V1StatefulSet,
   V1DaemonSet,
+  V1NetworkPolicy,
+  V1NetworkPolicyPeer,
+  V1NetworkPolicyPort,
 } from '@kubernetes/client-node';
 import {
   NamespaceSchema,
@@ -37,6 +40,8 @@ import {
   StatefulSetSchema,
   type StatefulSet,
   type WorkloadHealth,
+  NetworkPolicySchema,
+  type NetworkPolicy,
 } from '@aicc/models';
 
 const NOW = (): string => new Date().toISOString();
@@ -192,6 +197,25 @@ const POD_CONDITION_TYPE_MAP: Record<string, string> = {
   ContainersReady: 'containers_ready',
 };
 
+/** Detects a service mesh from injection labels (namespace) or a sidecar container name (pod). */
+function meshFromLabels(
+  labels: Record<string, string> | undefined,
+): 'istio' | 'linkerd' | undefined {
+  if (!labels) return undefined;
+  if (labels['istio-injection'] === 'enabled') return 'istio';
+  if (labels['linkerd.io/inject'] === 'enabled') return 'linkerd';
+  return undefined;
+}
+
+function meshFromContainers(
+  containers: V1Container[] | undefined,
+): 'istio' | 'linkerd' | undefined {
+  const names = new Set((containers ?? []).map((c) => c.name));
+  if (names.has('istio-proxy')) return 'istio';
+  if (names.has('linkerd-proxy')) return 'linkerd';
+  return undefined;
+}
+
 export function mapNamespace(
   tenantId: string,
   clusterId: string,
@@ -206,6 +230,7 @@ export function mapNamespace(
     name: ns.metadata?.name ?? 'unknown',
     uid: ns.metadata?.uid,
     phase: ns.status?.phase === 'Terminating' ? 'terminating' : 'active',
+    mesh: meshFromLabels(ns.metadata?.labels),
     labels: ns.metadata?.labels ?? {},
     annotations: ns.metadata?.annotations ?? {},
     createdAt: isoOrNow(ns.metadata?.creationTimestamp),
@@ -257,6 +282,7 @@ export function mapPod(tenantId: string, clusterId: string, clusterName: string,
     restarts,
     startedAt: pod.status?.startTime ? isoOrNow(pod.status.startTime) : undefined,
     lastTerminationReason: podTerminationReason,
+    mesh: meshFromContainers(pod.spec?.containers),
     labels: pod.metadata?.labels ?? {},
     annotations: pod.metadata?.annotations ?? {},
     createdAt: isoOrNow(pod.metadata?.creationTimestamp),
@@ -488,6 +514,40 @@ export function mapStatefulSet(
     })),
     currentRevision: sts.status?.currentRevision,
     updateRevision: sts.status?.updateRevision,
+  });
+}
+
+export function mapNetworkPolicy(
+  tenantId: string,
+  clusterId: string,
+  np: V1NetworkPolicy,
+): NetworkPolicy {
+  const mapPeers = (peers: V1NetworkPolicyPeer[] | undefined) =>
+    (peers ?? []).map((p) => ({
+      podSelector: p.podSelector?.matchLabels ?? undefined,
+      namespaceSelector: p.namespaceSelector?.matchLabels ?? undefined,
+      ipBlock: p.ipBlock ? { cidr: p.ipBlock.cidr, except: p.ipBlock.except ?? [] } : undefined,
+    }));
+  const mapPorts = (ports: V1NetworkPolicyPort[] | undefined) =>
+    (ports ?? []).map((p) => ({ protocol: p.protocol, port: p.port }));
+  return NetworkPolicySchema.parse({
+    id: toId(np.metadata?.uid),
+    tenantId,
+    clusterId,
+    namespace: np.metadata?.namespace ?? 'default',
+    name: np.metadata?.name ?? 'unknown',
+    podSelector: np.spec?.podSelector?.matchLabels ?? {},
+    policyTypes: np.spec?.policyTypes ?? ['Ingress'],
+    ingress: (np.spec?.ingress ?? []).map((rule) => ({
+      from: mapPeers(rule._from),
+      ports: mapPorts(rule.ports),
+    })),
+    egress: (np.spec?.egress ?? []).map((rule) => ({
+      to: mapPeers(rule.to),
+      ports: mapPorts(rule.ports),
+    })),
+    labels: np.metadata?.labels ?? {},
+    createdAt: isoOrNow(np.metadata?.creationTimestamp),
   });
 }
 
