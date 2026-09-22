@@ -43,7 +43,10 @@ milestone.
 - **Credentials stored in plain columns.** The kubernetes-service
   `clusters` table has `token`/`ca_bundle` text columns, matching the
   Sprint 4 in-memory behaviour exactly. Encryption-at-rest for these
-  fields is a follow-up ticket, not in scope here.
+  fields is a follow-up ticket, not in scope here. **Resolved in
+  ADR-0016** (Sprint 6): AES-256-GCM envelope encryption into new
+  `token_enc`/`ca_bundle_enc` columns, with the plain columns kept
+  temporarily for backward compatibility.
 - **The correlation buffer is not persisted.** `correlation-engine.ts`'s
   in-memory event buckets are a sliding time window used to _produce_
   chains, not a source of truth — only the resulting `IncidentChain`s

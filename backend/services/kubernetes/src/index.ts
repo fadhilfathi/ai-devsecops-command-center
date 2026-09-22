@@ -30,7 +30,8 @@ import {
   buildClusterRepository,
   buildPgClusterRepository,
 } from './repositories/cluster.repository.js';
-import { MIGRATIONS } from './db/migrations.js';
+import { MIGRATIONS, migrateCredentials, reencryptCredentials } from './db/migrations.js';
+import { loadCredentialKeyring } from './config.js';
 
 const SERVICE_NAME = 'kubernetes-service';
 const SERVICE_VERSION = '0.1.0';
@@ -46,9 +47,19 @@ export async function buildServer(deps?: Partial<KubernetesServiceDeps>): Promis
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
+  const credentialKeyring = loadCredentialKeyring(cfg.environment, logger);
+
   const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
-  if (db) await migrate(db, MIGRATIONS);
-  const clusters = db ? buildPgClusterRepository(db) : buildClusterRepository();
+  if (db) {
+    await migrate(db, MIGRATIONS);
+    if (credentialKeyring) {
+      await migrateCredentials(db, credentialKeyring, logger);
+      await reencryptCredentials(db, credentialKeyring, logger);
+    }
+  }
+  const clusters = db
+    ? buildPgClusterRepository(db, credentialKeyring, logger)
+    : buildClusterRepository(credentialKeyring);
   const providers = buildProviderRegistry({ logger, clusters });
 
   const server = Fastify({

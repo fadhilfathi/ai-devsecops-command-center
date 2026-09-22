@@ -33,6 +33,10 @@
       "types": "./dist/db/index.d.ts",
       "default": "./dist/db/index.js"
     },
+    "./crypto": {
+      "types": "./dist/crypto/index.d.ts",
+      "default": "./dist/crypto/index.js"
+    },
     "./security": {
       "types": "./dist/security/index.d.ts",
       "default": "./dist/security/index.js"

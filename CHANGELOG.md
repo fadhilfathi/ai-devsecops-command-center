@@ -39,6 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S6-5: cluster credentials encrypted at rest** — `kubernetes-service`
+  no longer stores onboarded-cluster `token`/`ca_bundle` values in
+  plaintext. `@aicc/shared/crypto` adds AES-256-GCM envelope helpers
+  (`encryptSecret`/`decryptSecret`/`parseKeyring`/`generateKey`) backed
+  by `node:crypto`, keyed off a new `AICC_CREDENTIAL_KEYS` env var
+  (`keyId:base64key[,...]`, rotation-friendly — old keys stay
+  decryptable). Migration `002_cluster_credential_columns` adds
+  `token_enc`/`ca_bundle_enc`/`credential_key_id`; a one-shot
+  `migrateCredentials()` re-encrypts any existing plaintext rows on
+  boot. Production refuses to start without a valid keyring; dev falls
+  back to plaintext with a one-time warning. Also fixed a leak where
+  the in-memory repository's `list()`/`findById()`/`create()` returned
+  the internal `_credentials` field. See
+  `docs/adr/0016-credential-encryption-at-rest.md`.
+
 - **S6-4: runtime + health findings auto-mapped to CIS/NIST** —
   `runtime-security-service` (`POST /v1/runtime-security/scan`) and
   `k8s-health-service` (`GET /v1/health/issues`) now publish

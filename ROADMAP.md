@@ -120,9 +120,10 @@ Status: **planned**.
   [ADR 0015](./docs/adr/0015-infrastructure-compliance-mapping.md).
   Deferred: continuous compliance scoring per cluster / per tenant,
   control-scoring weights, drift/attestation.
-- **S6-5**: encrypt cluster credentials (`kubernetes-service`'s
+- ✅ **S6-5**: encrypt cluster credentials (`kubernetes-service`'s
   `clusters` table `token`/`ca_bundle` columns) at rest — follow-up
-  from [ADR 0010](./docs/adr/0010-postgres-persistence.md).
+  from [ADR 0010](./docs/adr/0010-postgres-persistence.md). See
+  [ADR 0016](./docs/adr/0016-credential-encryption-at-rest.md).
 
 ## Sprint 7 — Hardening, security review, OpenSSF Scorecard pass
 
