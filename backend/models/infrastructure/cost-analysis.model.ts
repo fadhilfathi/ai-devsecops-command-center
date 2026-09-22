@@ -142,6 +142,8 @@ export const CostAnalysisSchema = z.object({
   findings: z.array(CostFindingSchema),
   /** Actionable recommendations (sorted by priority). */
   recommendations: z.array(CostRecommendationSchema),
+  /** Where the utilisation estimates came from — for UI provenance. */
+  utilisationSource: z.enum(['prometheus', 'synthetic']).optional(),
   generatedAt: z.string().datetime({ offset: true }),
 });
 export type CostAnalysis = z.infer<typeof CostAnalysisSchema>;

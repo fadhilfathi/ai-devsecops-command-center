@@ -18,6 +18,10 @@ import { buildHealthRoutes } from './routes/health.js';
 import { buildCostRoutes } from './routes/cost.js';
 import { buildCostEngine } from './engine/cost.engine.js';
 import { buildInventoryClient } from './inventory/client.js';
+import {
+  buildPrometheusUtilisationSource,
+  buildSyntheticUtilisationSource,
+} from './utilisation/source.js';
 
 const SERVICE_NAME = 'cost-intelligence-service';
 const SERVICE_VERSION = '0.1.0';
@@ -40,6 +44,10 @@ export async function buildServer(
     cpuUsdPerHour: Number(process.env.AICC_COST_CPU_USD_PER_HOUR ?? 0.041),
     memoryUsdPerHour: Number(process.env.AICC_COST_MEMORY_USD_PER_HOUR ?? 0.005),
   });
+  const prometheusUrl = process.env.PROMETHEUS_URL;
+  const utilisationSource = prometheusUrl
+    ? buildPrometheusUtilisationSource({ baseUrl: prometheusUrl, logger })
+    : buildSyntheticUtilisationSource();
 
   const server = Fastify({
     logger: logger,
@@ -61,7 +69,13 @@ export async function buildServer(
   });
 
   await server.register(buildHealthRoutes, { logger, cfg });
-  await server.register(buildCostRoutes, { logger, inventory, engine, bus });
+  await server.register(buildCostRoutes, {
+    logger,
+    inventory,
+    engine,
+    bus,
+    utilisationSource,
+  });
 
   server.setErrorHandler((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');

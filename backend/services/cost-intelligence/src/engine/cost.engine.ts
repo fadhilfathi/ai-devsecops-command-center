@@ -18,10 +18,12 @@
  *   - `cold_workload`           — p95 < 5% for 7 days
  *
  * Utilisation estimates:
- *   In Sprint 4 we don't have a metrics backend wired; we use
- *   *deterministic synthetic values* (the inventory snapshot
- *   exposes a `utilisation` field for that purpose). Sprint 5
- *   will swap this for real Prometheus queries.
+ *   The engine is metrics-agnostic — it takes a `utilisation` map
+ *   (p50/p95 ratios per workload id) supplied by the caller via a
+ *   `UtilisationSource` (see `../utilisation/source.ts`): either real
+ *   Prometheus queries or deterministic synthetic values when no
+ *   metrics backend is configured. A workload missing from the map
+ *   falls back to the defaults below.
  */
 import { randomUUID } from 'node:crypto';
 import type {
@@ -45,6 +47,8 @@ export interface CostEngineInput {
     string,
     { cpuP50: number; cpuP95: number; memoryP50: number; memoryP95: number }
   >;
+  /** Where `utilisation` came from — surfaced on `CostAnalysis` for UI provenance. */
+  utilisationSource?: 'prometheus' | 'synthetic';
 }
 
 export interface CostEngine {
@@ -311,6 +315,7 @@ export function buildCostEngine(deps: CostEngineDeps): CostEngine {
         workloads: workloadCosts,
         findings,
         recommendations,
+        utilisationSource: input.utilisationSource,
         generatedAt: new Date().toISOString(),
       };
     },

@@ -12,6 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 5 — S5-7: cost utilisation from Prometheus
+
+- Added `UtilisationSource` abstraction in `cost-intelligence`:
+  `buildSyntheticUtilisationSource()` (Sprint 4 deterministic values,
+  unchanged) and `buildPrometheusUtilisationSource()`, which queries
+  kubelet/cAdvisor's `container_cpu_usage_seconds_total` /
+  `container_memory_working_set_bytes` via `quantile_over_time`,
+  batched one query per metric/quantile per namespace. Selected via
+  `PROMETHEUS_URL`; degrades to synthetic on any failure or missing
+  series.
+- Added an HTTP `KubernetesProvider` for `cost-intelligence` (mirrors
+  the topology-service pattern), enabled via `KUBERNETES_SERVICE_URL`.
+- `CostAnalysis.utilisationSource` (`'prometheus' | 'synthetic'`) now
+  surfaces which source produced the estimates.
+- `docker-compose.yml`: `cost-intelligence-service` now points
+  `PROMETHEUS_URL`/`KUBERNETES_SERVICE_URL` at the compose Prometheus
+  and kubernetes-service containers.
+- ADR 0012.
+
 ### Sprint 5 — S5-6: Dockerfiles + compose for all 13 services
 
 - Added one generic multi-stage `backend/Dockerfile` (`ARG SERVICE`) for

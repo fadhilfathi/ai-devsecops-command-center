@@ -18,6 +18,7 @@ import {
   type KubernetesProvider,
   type ListOptions,
 } from '../providers/index.js';
+import { buildHttpKubernetesProvider } from './http.provider.js';
 
 export interface InventorySnapshot {
   clusters: Cluster[];
@@ -36,7 +37,10 @@ export interface InventoryClient {
 }
 
 export function buildInventoryClient(deps: { logger: Logger }): InventoryClient {
-  const provider: KubernetesProvider = buildFixtureProvider(deps.logger);
+  const kubernetesServiceUrl = process.env.KUBERNETES_SERVICE_URL;
+  const provider: KubernetesProvider = kubernetesServiceUrl
+    ? buildHttpKubernetesProvider({ baseUrl: kubernetesServiceUrl, logger: deps.logger })
+    : buildFixtureProvider(deps.logger);
   return {
     async fetch(tenantId, clusterId) {
       const clusters = await provider.listClusters(tenantId);

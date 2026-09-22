@@ -18,13 +18,15 @@ import type {
   CostRecommendation,
 } from '@aicc/models';
 import type { CostEngine, CostEngineInput } from '../engine/cost.engine.js';
-import type { InventoryClient } from '../inventory/client.js';
+import type { InventoryClient, InventorySnapshot } from '../inventory/client.js';
+import type { UtilisationSource } from '../utilisation/source.js';
 
 interface Deps {
   logger: Logger;
   inventory: InventoryClient;
   engine: CostEngine;
   bus: EventBus;
+  utilisationSource: UtilisationSource;
 }
 
 const QuerySchema = z.object({
@@ -48,7 +50,35 @@ function window(): { start: string; end: string } {
 }
 
 export const buildCostRoutes: FastifyPluginAsync<Deps> = async (server: FastifyInstance, opts) => {
-  const { logger, inventory, engine, bus } = opts;
+  const { logger, inventory, engine, bus, utilisationSource } = opts;
+
+  async function analyseCluster(
+    tenantId: string,
+    cluster: { id: string; name: string },
+    snap: InventorySnapshot,
+    start: string,
+    end: string,
+  ): Promise<CostAnalysis> {
+    const workloads = snap.workloads.filter((w) => w.clusterId === cluster.id);
+    const pods = snap.pods.filter((p) => p.clusterId === cluster.id);
+    const { utilisation, kind } = await utilisationSource.fetch({
+      tenantId,
+      clusterId: cluster.id,
+      workloads,
+      pods,
+      windowStart: start,
+      windowEnd: end,
+    });
+    const input: CostEngineInput = {
+      tenantId,
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      workloads,
+      utilisation,
+      utilisationSource: kind,
+    };
+    return engine.analyse(input, start, end);
+  }
 
   server.get<{ Querystring: z.infer<typeof QuerySchema>; Reply: CostAnalysisListResponse }>(
     '/v1/cost/analysis',
@@ -57,17 +87,8 @@ export const buildCostRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
       const q = QuerySchema.parse(req.query ?? {});
       const snap = await inventory.fetch(tenantId, q.clusterId);
       const { start, end } = window();
-      const items: CostAnalysis[] = snap.clusters.map((c) =>
-        engine.analyse(
-          {
-            tenantId,
-            clusterId: c.id,
-            clusterName: c.name,
-            workloads: snap.workloads.filter((w) => w.clusterId === c.id),
-          },
-          start,
-          end,
-        ),
+      const items: CostAnalysis[] = await Promise.all(
+        snap.clusters.map((c) => analyseCluster(tenantId, c, snap, start, end)),
       );
       return { items, total: items.length };
     },
@@ -83,16 +104,7 @@ export const buildCostRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
       throw e;
     }
     const { start, end } = window();
-    return engine.analyse(
-      {
-        tenantId,
-        clusterId: cluster.id,
-        clusterName: cluster.name,
-        workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
-      },
-      start,
-      end,
-    );
+    return analyseCluster(tenantId, cluster, snap, start, end);
   });
 
   server.get<{
@@ -103,18 +115,11 @@ export const buildCostRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
     const q = QuerySchema.parse(req.query ?? {});
     const snap = await inventory.fetch(tenantId, q.clusterId);
     const { start, end } = window();
+    const analyses = await Promise.all(
+      snap.clusters.map((cluster) => analyseCluster(tenantId, cluster, snap, start, end)),
+    );
     const items: WorkloadCost[] = [];
-    for (const cluster of snap.clusters) {
-      const a = engine.analyse(
-        {
-          tenantId,
-          clusterId: cluster.id,
-          clusterName: cluster.name,
-          workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
-        },
-        start,
-        end,
-      );
+    for (const a of analyses) {
       for (const wc of a.workloads) {
         if (q.namespace && wc.namespace !== q.namespace) continue;
         items.push(wc);
@@ -131,20 +136,10 @@ export const buildCostRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
     const q = QuerySchema.parse(req.query ?? {});
     const snap = await inventory.fetch(tenantId, q.clusterId);
     const { start, end } = window();
-    const items: CostFinding[] = [];
-    for (const cluster of snap.clusters) {
-      const a = engine.analyse(
-        {
-          tenantId,
-          clusterId: cluster.id,
-          clusterName: cluster.name,
-          workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
-        },
-        start,
-        end,
-      );
-      items.push(...a.findings);
-    }
+    const analyses = await Promise.all(
+      snap.clusters.map((cluster) => analyseCluster(tenantId, cluster, snap, start, end)),
+    );
+    const items: CostFinding[] = analyses.flatMap((a) => a.findings);
     return { items, total: items.length };
   });
 
@@ -156,20 +151,10 @@ export const buildCostRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
     const q = QuerySchema.parse(req.query ?? {});
     const snap = await inventory.fetch(tenantId, q.clusterId);
     const { start, end } = window();
-    const allRecs: CostRecommendation[] = [];
-    for (const cluster of snap.clusters) {
-      const a = engine.analyse(
-        {
-          tenantId,
-          clusterId: cluster.id,
-          clusterName: cluster.name,
-          workloads: snap.workloads.filter((w) => w.clusterId === cluster.id),
-        },
-        start,
-        end,
-      );
-      allRecs.push(...a.recommendations);
-    }
+    const analyses = await Promise.all(
+      snap.clusters.map((cluster) => analyseCluster(tenantId, cluster, snap, start, end)),
+    );
+    const allRecs: CostRecommendation[] = analyses.flatMap((a) => a.recommendations);
     // Dedup by (title, action) keeping the highest-priority entry.
     const map = new Map<string, CostRecommendation>();
     for (const r of allRecs) {

@@ -258,8 +258,13 @@ services:
     container_name: cc-cost-intelligence
     environment:
       PORT: 4010
+      PROMETHEUS_URL: http://prometheus:9090
+      KUBERNETES_SERVICE_URL: http://kubernetes-service:4006
     ports:
       - '4010:4010'
+    depends_on:
+      - kubernetes-service
+      - prometheus
 
   topology-service:
     <<: *service-base

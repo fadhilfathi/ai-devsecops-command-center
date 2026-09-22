@@ -85,8 +85,9 @@ Status: **planned**.
 - ✅ S5-6: containerise all 13 backend services + frontend
   (`backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`,
   CI Docker build matrix).
-- Replace the heuristic utilisation estimates in the cost
-  engine with real Prometheus queries.
+- ✅ S5-7: replace the heuristic utilisation estimates in the cost
+  engine with real Prometheus queries (kubelet/cAdvisor metrics),
+  falling back to the synthetic values when `PROMETHEUS_URL` isn't set.
 - Upgrade the PDF report formatter (charts, headers,
   footers).
 

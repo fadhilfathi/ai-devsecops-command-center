@@ -408,6 +408,7 @@ export interface CostAnalysis {
   workloads: WorkloadCost[];
   findings: CostFinding[];
   recommendations: CostRecommendation[];
+  utilisationSource?: 'prometheus' | 'synthetic';
   generatedAt: string;
 }
 
