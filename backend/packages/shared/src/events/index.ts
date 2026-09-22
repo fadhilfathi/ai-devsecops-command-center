@@ -138,6 +138,8 @@ export const EventTypes = {
   COMPLIANCE_POAM_CLOSED: 'compliance.poam.closed',
   COMPLIANCE_POAM_OVERDUE: 'compliance.poam.overdue',
   INTEGRATION_SYNC_COMPLETED: 'integration.sync.completed',
+  RUNTIME_RISK_DETECTED: 'runtime.risk.detected',
+  CLUSTER_HEALTH_ISSUE_DETECTED: 'cluster.health.issue.detected',
 } as const;
 
 export type EventType = (typeof EventTypes)[keyof typeof EventTypes];

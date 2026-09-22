@@ -67,6 +67,15 @@ export function evaluatePredicate(predicate: Predicate, input: MappingInput): bo
       if (!input.componentId) return false;
       return compileRegex(predicate.value).test(input.componentId);
 
+    case 'subject_kind_is':
+      return (input.subjectKind ?? 'vulnerability') === predicate.value;
+
+    case 'rule_id_in':
+      return input.ruleId !== undefined && predicate.value.includes(input.ruleId);
+
+    case 'resource_kind_is':
+      return input.resourceKind === predicate.value;
+
     case 'and':
       return predicate.clauses.every((c) => evaluatePredicate(c, input));
 

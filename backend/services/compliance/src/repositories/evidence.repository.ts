@@ -14,6 +14,8 @@ export interface EvidenceRecord {
 export interface EvidenceRepository {
   list(tenantId: UUID, controlId?: UUID): Promise<EvidenceRecord[]>;
   findById(id: UUID, tenantId: UUID): Promise<EvidenceRecord | undefined>;
+  /** Look up an existing evidence row by its content-addressed blob ref, for dedup. */
+  findByRef(tenantId: UUID, controlId: UUID, ref: string): Promise<EvidenceRecord | undefined>;
   create(input: Omit<EvidenceRecord, 'id' | 'collectedAt'>): Promise<EvidenceRecord>;
 }
 
@@ -39,6 +41,11 @@ export function buildEvidenceRepository(): EvidenceRepository {
       const e = store.get(id);
       if (!e || e.tenantId !== tenantId) return undefined;
       return e;
+    },
+    async findByRef(tenantId, controlId, ref) {
+      return Array.from(store.values()).find(
+        (e) => e.tenantId === tenantId && e.controlId === controlId && e.ref === ref,
+      );
     },
     async create(input) {
       const record: EvidenceRecord = {

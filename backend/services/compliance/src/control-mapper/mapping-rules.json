@@ -1,7 +1,7 @@
 {
   "$schema": "./mapping-rules.schema.json",
-  "version": "1.0.0",
-  "description": "Per-control rules for mapping vulnerability findings to compliance controls. Each rule defines a predicate that is evaluated against a vulnerability input. Multiple rules can match the same vuln (a vuln can map to multiple controls). Predicates are pure data, evaluated by the mapping-engine.",
+  "version": "1.1.0",
+  "description": "Per-control rules for mapping vulnerability and infrastructure (runtime-security / k8s-health) findings to compliance controls. Each rule defines a predicate that is evaluated against a mapping input. Multiple rules can match the same finding (a finding can map to multiple controls). Predicates are pure data, evaluated by the mapping-engine. Rules that predate the `subjectKind` discriminator (S6-4) are guarded with `subject_kind_is: vulnerability` so they only match vulnerability findings, exactly as before.",
   "rules": [
     {
       "ruleId": "cis-7-continuous-vuln-management",
@@ -10,8 +10,11 @@
       "title": "Continuous Vulnerability Management",
       "description": "Any CVE with severity >= Medium is in scope of CIS Control 7 (Continuous Vulnerability Management).",
       "predicate": {
-        "type": "severity_gte",
-        "value": "medium"
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "vulnerability" },
+          { "type": "severity_gte", "value": "medium" }
+        ]
       },
       "slaDays": 30,
       "priority": 100,
@@ -24,8 +27,11 @@
       "title": "Application Software Security",
       "description": "Any CVE discovered through Software Composition Analysis (SCA) is in scope of CIS Control 16 (Application Software Security).",
       "predicate": {
-        "type": "kind_eq",
-        "value": "sca"
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "vulnerability" },
+          { "type": "kind_eq", "value": "sca" }
+        ]
       },
       "slaDays": 30,
       "priority": 110,
@@ -38,7 +44,8 @@
       "title": "Flaw Remediation",
       "description": "All CVEs are subject to NIST SI-2 (Flaw Remediation). This is the default catch-all rule.",
       "predicate": {
-        "type": "always"
+        "type": "subject_kind_is",
+        "value": "vulnerability"
       },
       "slaDays": 30,
       "priority": 1,
@@ -51,7 +58,8 @@
       "title": "Vulnerability Monitoring and Scanning",
       "description": "All CVEs detected by the platform's scanning are evidence of NIST RA-5 (Vulnerability Monitoring and Scanning) operating.",
       "predicate": {
-        "type": "always"
+        "type": "subject_kind_is",
+        "value": "vulnerability"
       },
       "slaDays": 30,
       "priority": 2,
@@ -64,8 +72,11 @@
       "title": "Software, Firmware, and Information Integrity",
       "description": "CVEs flagged as Known Exploited Vulnerabilities (KEV) — actively exploited in the wild — escalate to NIST SI-7 (Software/Firmware Integrity) for integrity-verification and emergency remediation.",
       "predicate": {
-        "type": "kev",
-        "value": true
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "vulnerability" },
+          { "type": "kev", "value": true }
+        ]
       },
       "slaDays": 7,
       "priority": 200,
@@ -78,11 +89,323 @@
       "title": "Developer Testing and Evaluation",
       "description": "CVEs introduced into the codebase within the last 30 days imply a gap in NIST SA-11 (Developer Testing and Evaluation) — pre-commit and CI tests should have caught them.",
       "predicate": {
-        "type": "introduced_within_days",
-        "value": 30
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "vulnerability" },
+          { "type": "introduced_within_days", "value": 30 }
+        ]
       },
       "slaDays": 14,
       "priority": 150,
+      "enabled": true
+    },
+    {
+      "ruleId": "cis-4-secure-config-workload",
+      "framework": "cis_v8",
+      "controlId": "4",
+      "title": "Secure Configuration of Enterprise Assets and Software",
+      "description": "Privileged containers, root execution, dangerous capabilities, or a weak/missing SecurityContext are secure-configuration gaps in scope of CIS Control 4.",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          {
+            "type": "rule_id_in",
+            "value": ["AICC-RT-001", "AICC-RT-003", "AICC-RT-004", "AICC-RT-005"]
+          }
+        ]
+      },
+      "slaDays": 30,
+      "priority": 110,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-cm-6-configuration-settings",
+      "framework": "nist_800_53",
+      "controlId": "CM-6",
+      "title": "Configuration Settings",
+      "description": "Privileged containers, root execution, dangerous capabilities, or a weak SecurityContext are configuration-settings deviations from the platform baseline (NIST CM-6).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          {
+            "type": "rule_id_in",
+            "value": ["AICC-RT-001", "AICC-RT-003", "AICC-RT-004", "AICC-RT-005"]
+          }
+        ]
+      },
+      "slaDays": 30,
+      "priority": 90,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-ac-6-least-privilege-workload",
+      "framework": "nist_800_53",
+      "controlId": "AC-6",
+      "title": "Least Privilege",
+      "description": "Privileged containers, root execution, dangerous capabilities, hostPath mounts, and risky ServiceAccount/RBAC bindings all grant more privilege than least-privilege (NIST AC-6) allows.",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          {
+            "type": "rule_id_in",
+            "value": [
+              "AICC-RT-001",
+              "AICC-RT-002",
+              "AICC-RT-003",
+              "AICC-RT-004",
+              "AICC-RT-006",
+              "AICC-RT-007"
+            ]
+          }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 130,
+      "enabled": true
+    },
+    {
+      "ruleId": "cis-3-data-protection-hostpath",
+      "framework": "cis_v8",
+      "controlId": "3",
+      "title": "Data Protection",
+      "description": "A hostPath volume mount can expose the node filesystem (and any data on it) to the container, in scope of CIS Control 3 (Data Protection).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-002"] }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 120,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-sc-7-boundary-protection",
+      "framework": "nist_800_53",
+      "controlId": "SC-7",
+      "title": "Boundary Protection",
+      "description": "A hostPath volume mount crosses the container/host boundary, in scope of NIST SC-7 (Boundary Protection).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-002"] }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 100,
+      "enabled": true
+    },
+    {
+      "ruleId": "cis-6-access-control-management",
+      "framework": "cis_v8",
+      "controlId": "6",
+      "title": "Access Control Management",
+      "description": "Pods using the default ServiceAccount or risky RBAC bindings are access-control-management gaps in scope of CIS Control 6.",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-006", "AICC-RT-007"] }
+        ]
+      },
+      "slaDays": 21,
+      "priority": 105,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-ac-2-account-management-sa",
+      "framework": "nist_800_53",
+      "controlId": "AC-2",
+      "title": "Account Management",
+      "description": "The `default` ServiceAccount and risky RBAC bindings are unmanaged/over-broad accounts in scope of NIST AC-2 (Account Management).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-006", "AICC-RT-007"] }
+        ]
+      },
+      "slaDays": 21,
+      "priority": 85,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-ac-3-access-enforcement-sa",
+      "framework": "nist_800_53",
+      "controlId": "AC-3",
+      "title": "Access Enforcement",
+      "description": "Risky ServiceAccount and RBAC bindings weaken the platform's access-enforcement guarantees (NIST AC-3).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-006", "AICC-RT-007"] }
+        ]
+      },
+      "slaDays": 21,
+      "priority": 85,
+      "enabled": true
+    },
+    {
+      "ruleId": "cis-2-software-asset-inventory",
+      "framework": "cis_v8",
+      "controlId": "2",
+      "title": "Inventory and Control of Software Assets",
+      "description": "A container image that is not pinned to a digest cannot be reliably inventoried or verified, in scope of CIS Control 2.",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-009"] }
+        ]
+      },
+      "slaDays": 30,
+      "priority": 80,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-cm-2-baseline-configuration-image",
+      "framework": "nist_800_53",
+      "controlId": "CM-2",
+      "title": "Baseline Configuration",
+      "description": "An unpinned image tag can drift from the approved baseline image without detection (NIST CM-2).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-009"] }
+        ]
+      },
+      "slaDays": 30,
+      "priority": 70,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-cm-8-system-component-inventory-image",
+      "framework": "nist_800_53",
+      "controlId": "CM-8",
+      "title": "System Component Inventory",
+      "description": "A mutable image tag breaks the SBOM-based component inventory's ability to track exactly what is deployed (NIST CM-8).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-009"] }
+        ]
+      },
+      "slaDays": 30,
+      "priority": 70,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-sc-5-dos-protection-runtime",
+      "framework": "nist_800_53",
+      "controlId": "SC-5",
+      "title": "Denial-of-Service Protection",
+      "description": "A container with no CPU/memory limits can exhaust node resources, in scope of NIST SC-5 (Denial-of-Service Protection).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "runtime_risk" },
+          { "type": "rule_id_in", "value": ["AICC-RT-008"] }
+        ]
+      },
+      "slaDays": 30,
+      "priority": 60,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-si-4-system-monitoring-health",
+      "framework": "nist_800_53",
+      "controlId": "SI-4",
+      "title": "System Monitoring",
+      "description": "CrashLoopBackOff, OOMKilled, restart storms, node pressure, image pull failures, and unschedulable/pending/failed pods are workload-availability anomalies that NIST SI-4 (System Monitoring) is responsible for detecting.",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "health_issue" },
+          {
+            "type": "rule_id_in",
+            "value": [
+              "crash_loop_back_off",
+              "oom_killed",
+              "restart_storm",
+              "node_pressure",
+              "image_pull_back_off",
+              "pending_pod",
+              "failed_pod",
+              "unschedulable_workload"
+            ]
+          }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 90,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-cp-10-system-recovery-health",
+      "framework": "nist_800_53",
+      "controlId": "CP-10",
+      "title": "System Recovery and Reconstitution",
+      "description": "CrashLoopBackOff, OOMKilled, and pending/failed/unschedulable pods require the platform to restore the workload to an operational state, in scope of NIST CP-10 (System Recovery and Reconstitution).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "health_issue" },
+          {
+            "type": "rule_id_in",
+            "value": [
+              "crash_loop_back_off",
+              "oom_killed",
+              "pending_pod",
+              "failed_pod",
+              "unschedulable_workload"
+            ]
+          }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 85,
+      "enabled": true
+    },
+    {
+      "ruleId": "nist-sc-5-dos-protection-health",
+      "framework": "nist_800_53",
+      "controlId": "SC-5",
+      "title": "Denial-of-Service Protection",
+      "description": "Restart storms, OOMKilled containers, and node pressure indicate resource exhaustion in scope of NIST SC-5 (Denial-of-Service Protection).",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "health_issue" },
+          { "type": "rule_id_in", "value": ["restart_storm", "oom_killed", "node_pressure"] }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 90,
+      "enabled": true
+    },
+    {
+      "ruleId": "cis-12-network-infra-mgmt-node-pressure",
+      "framework": "cis_v8",
+      "controlId": "12",
+      "title": "Network Infrastructure Management",
+      "description": "A node reporting pressure or an unschedulable condition is an unmanaged piece of network/compute infrastructure, in scope of CIS Control 12.",
+      "predicate": {
+        "type": "and",
+        "clauses": [
+          { "type": "subject_kind_is", "value": "health_issue" },
+          { "type": "rule_id_in", "value": ["node_pressure"] }
+        ]
+      },
+      "slaDays": 14,
+      "priority": 95,
       "enabled": true
     }
   ]

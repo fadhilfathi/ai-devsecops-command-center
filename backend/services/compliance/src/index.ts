@@ -32,6 +32,7 @@ import mappingRules from './control-mapper/mapping-rules.json' with { type: 'jso
 import { InMemoryBlobStore } from './evidence/blob-store.memory.js';
 import { EvidenceAttacher } from './evidence/evidence-attacher.js';
 import { buildScanListener } from './evidence/scan-listener.js';
+import { buildInfrastructureListener } from './evidence/infrastructure-listener.js';
 import { metricsRegistry } from './observability/audit.js';
 
 const SERVICE_NAME = 'compliance-service';
@@ -98,6 +99,12 @@ export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promis
   // Bus subscription: attach evidence automatically when a scan completes.
   const scanListener = buildScanListener(evidenceAttacher);
   await bus.subscribe(scanListener.topic, scanListener.handler);
+
+  // Bus subscription: attach evidence automatically for runtime-security
+  // and k8s-health findings (S6-4).
+  for (const listener of buildInfrastructureListener(evidenceAttacher)) {
+    await bus.subscribe(listener.topic, listener.handler);
+  }
 
   server.setErrorHandler((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');

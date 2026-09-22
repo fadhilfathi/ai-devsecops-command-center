@@ -10,7 +10,7 @@
  */
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { type EventBus, type Logger, type UUID } from '@aicc/shared';
+import { EventTypes, type EventBus, type Logger, type UUID } from '@aicc/shared';
 import type { RuntimeRisk, RuntimeRiskListResponse, RuntimeSecurityReport } from '@aicc/models';
 import type { RuntimeSecurityEngine } from '../engine/runtime-security.engine.js';
 import type { InventoryClient } from '../inventory/client.js';
@@ -123,7 +123,8 @@ export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (
     const tenantId = requireTenant(req.tenantId);
     const body = z.object({ clusterId: z.string().uuid().optional() }).parse(req.body ?? {});
     const snap = await inventory.fetch(tenantId, body.clusterId);
-    const totalFindings = snap.clusters.reduce((acc, cluster) => {
+    const findings: RuntimeRisk[] = [];
+    for (const cluster of snap.clusters) {
       const report = engine.report(
         {
           tenantId,
@@ -136,14 +137,36 @@ export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (
         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
         new Date().toISOString(),
       );
-      return acc + report.findings.length;
-    }, 0);
+      findings.push(...report.findings);
+    }
+    const totalFindings = findings.length;
     logger.info(
       { tenantId, clusterId: body.clusterId, totalFindings },
       'runtime security scan completed',
     );
     reply.code(202);
-    return { accepted: true, totalFindings };
+    const response = { accepted: true, totalFindings };
+
+    // Publish one batched event per scan (not one per finding) so the
+    // compliance service can auto-map every finding to CIS/NIST controls
+    // (S6-4) without the publish work blocking the response.
+    // ponytail: fire-and-forget, logged on rejection — never await in the
+    // request path.
+    if (findings.length > 0) {
+      void bus
+        .publish({
+          type: EventTypes.RUNTIME_RISK_DETECTED,
+          version: 1,
+          source: 'runtime-security-service',
+          tenantId,
+          data: { findings },
+        })
+        .catch((err) => {
+          logger.error({ err, count: findings.length }, 'failed to publish runtime.risk.detected');
+        });
+    }
+
+    return response;
   });
 
   // ---- reports -------------------------------------------------------
@@ -197,5 +220,4 @@ export const buildRuntimeSecurityRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   logger.debug('runtime-security-service routes registered');
-  void bus;
 };

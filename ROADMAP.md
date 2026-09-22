@@ -114,10 +114,12 @@ Status: **planned**.
   using the existing compose `redis` container, behind the same
   `EventBus` interface. See
   [ADR 0014](./docs/adr/0014-redis-streams-event-bus.md).
-- **S6-4**: compliance auto-mapping of K8s runtime risks to CIS /
-  NIST controls, with evidence attachment from inventory, health,
-  and runtime services, and continuous compliance scoring per
-  cluster / per tenant.
+- ✅ **S6-4**: compliance auto-mapping of K8s runtime risks and
+  cluster health issues to CIS / NIST controls, with evidence
+  attachment, reusing the existing `control-mapper` rules engine. See
+  [ADR 0015](./docs/adr/0015-infrastructure-compliance-mapping.md).
+  Deferred: continuous compliance scoring per cluster / per tenant,
+  control-scoring weights, drift/attestation.
 - **S6-5**: encrypt cluster credentials (`kubernetes-service`'s
   `clusters` table `token`/`ca_bundle` columns) at rest — follow-up
   from [ADR 0010](./docs/adr/0010-postgres-persistence.md).

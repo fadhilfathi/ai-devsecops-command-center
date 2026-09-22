@@ -39,6 +39,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S6-4: runtime + health findings auto-mapped to CIS/NIST** —
+  `runtime-security-service` (`POST /v1/runtime-security/scan`) and
+  `k8s-health-service` (`GET /v1/health/issues`) now publish
+  `runtime.risk.detected` / `cluster.health.issue.detected` (one event
+  per finding); a new `compliance-service` listener
+  (`src/evidence/infrastructure-listener.ts`) normalizes each finding
+  into the existing `control-mapper`'s `MappingInput` (a new
+  `subjectKind` discriminator keeps the Sprint 2 vulnerability rules
+  unchanged) and reuses `EvidenceAttacher`/`PoamService` to create
+  control failures + POA&M items + evidence records, exactly like the
+  scan-completed flow. 15 new rules in `mapping-rules.json` cover the 9
+  runtime-security rule ids and 8 k8s-health issue kinds against real
+  CIS v8 / NIST 800-53 control ids. See
+  `docs/adr/0015-infrastructure-compliance-mapping.md` and the updated
+  `docs/compliance/compliance-matrix.md`.
+
 - **S6-3: Redis Streams event bus driver** — `@aicc/shared/events` gained
   `RedisStreamsEventBus` (`ioredis`), a durable alternative to the
   Sprint 1 `InMemoryEventBus` behind the same `EventBus` interface: one

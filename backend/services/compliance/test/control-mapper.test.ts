@@ -125,3 +125,88 @@ test('disabled rules are excluded from the engine', () => {
   expect(evaluation.matches).toEqual([]);
   expect(evaluation.effectiveStatus).toBe('pass');
 });
+
+// ---------------------------------------------------------------------------
+// Infrastructure findings (runtime risks / health issues) — S6-4
+// ---------------------------------------------------------------------------
+
+function makeRuntimeRiskInput(overrides: Partial<MappingInput> = {}): MappingInput {
+  return {
+    vulnId: 'risk-1',
+    tenantId: 't-1',
+    severity: 'critical',
+    kind: 'runtime',
+    kev: false,
+    assetId: 'pod-1',
+    subjectKind: 'runtime_risk',
+    ruleId: 'AICC-RT-001',
+    resourceKind: 'Pod',
+    namespace: 'default',
+    clusterId: 'cluster-1',
+    workloadName: 'pod-1',
+    ...overrides,
+  };
+}
+
+function makeHealthIssueInput(overrides: Partial<MappingInput> = {}): MappingInput {
+  return {
+    vulnId: 'issue-1',
+    tenantId: 't-1',
+    severity: 'critical',
+    kind: 'runtime',
+    kev: false,
+    assetId: 'pod-1',
+    subjectKind: 'health_issue',
+    ruleId: 'crash_loop_back_off',
+    resourceKind: 'Pod',
+    namespace: 'default',
+    clusterId: 'cluster-1',
+    workloadName: 'pod-1',
+    ...overrides,
+  };
+}
+
+test('a privileged-container runtime risk maps to CIS-4, CM-6, and AC-6 (multiple frameworks)', () => {
+  const engine = new MappingEngine({ rules: mappingRules as never, now: () => NOW.getTime() });
+  const evaluation = engine.evaluate(makeRuntimeRiskInput({ ruleId: 'AICC-RT-001' }));
+  const controlIds = evaluation.matches.map((m) => m.controlId).sort();
+  expect(controlIds).toEqual(['4', 'AC-6', 'CM-6']);
+  expect(evaluation.matches.map((m) => m.framework).sort()).toEqual([
+    'cis_v8',
+    'nist_800_53',
+    'nist_800_53',
+  ]);
+  expect(evaluation.effectiveStatus).toBe('fail');
+  // The vulnerability-only rules must not fire for a runtime risk.
+  expect(controlIds).not.toContain('SI-2');
+  expect(controlIds).not.toContain('RA-5');
+});
+
+test('a CrashLoopBackOff health issue maps to SI-4 and CP-10', () => {
+  const engine = new MappingEngine({ rules: mappingRules as never, now: () => NOW.getTime() });
+  const evaluation = engine.evaluate(makeHealthIssueInput({ ruleId: 'crash_loop_back_off' }));
+  const controlIds = evaluation.matches.map((m) => m.controlId).sort();
+  expect(controlIds).toEqual(['CP-10', 'SI-4']);
+  expect(evaluation.effectiveStatus).toBe('fail');
+});
+
+test('a node-pressure health issue maps to CIS-12, SI-4, and SC-5', () => {
+  const engine = new MappingEngine({ rules: mappingRules as never, now: () => NOW.getTime() });
+  const evaluation = engine.evaluate(makeHealthIssueInput({ ruleId: 'node_pressure' }));
+  const controlIds = evaluation.matches.map((m) => m.controlId).sort();
+  expect(controlIds).toEqual(['12', 'SC-5', 'SI-4']);
+});
+
+test('an unknown runtime-security rule id matches no infrastructure rule', () => {
+  const engine = new MappingEngine({ rules: mappingRules as never, now: () => NOW.getTime() });
+  const evaluation = engine.evaluate(makeRuntimeRiskInput({ ruleId: 'AICC-RT-999' }));
+  expect(evaluation.matches).toEqual([]);
+  expect(evaluation.effectiveStatus).toBe('pass');
+});
+
+test('a vulnerability input never matches the infrastructure-only rules', () => {
+  const engine = new MappingEngine({ rules: mappingRules as never, now: () => NOW.getTime() });
+  const evaluation = engine.evaluate(makeInput({ severity: 'low', kind: 'sast', kev: false }));
+  const controlIds = evaluation.matches.map((m) => m.controlId).sort();
+  expect(controlIds).toEqual(['RA-5', 'SI-2']);
+});

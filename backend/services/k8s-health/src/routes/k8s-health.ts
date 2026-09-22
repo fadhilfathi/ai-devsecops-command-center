@@ -11,7 +11,7 @@
  */
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { type EventBus, type Logger, type UUID } from '@aicc/shared';
+import { EventTypes, type EventBus, type Logger, type UUID } from '@aicc/shared';
 import type {
   InfrastructureHealth,
   InfrastructureHealthListResponse,
@@ -117,6 +117,32 @@ export const buildK8sHealthRoutes: FastifyPluginAsync<Deps> = async (
     const q = QuerySchema.parse(req.query ?? {});
     const input = await loadInput(inventory, tenantId, q.clusterId);
     const issues = engine.collectIssues(input);
+
+    // Publish one batched event per request (not one per issue) so the
+    // compliance service can auto-map every issue to CIS/NIST controls
+    // (S6-4) without the publish work blocking the response. This GET
+    // republishes the same open issues on every poll — evidence is
+    // deduped downstream by blob ref (see EvidenceAttacher), so cheap,
+    // frequent, batched publishing is fine here.
+    // ponytail: fire-and-forget, logged on rejection — never await in the
+    // request path.
+    if (issues.length > 0) {
+      void bus
+        .publish({
+          type: EventTypes.CLUSTER_HEALTH_ISSUE_DETECTED,
+          version: 1,
+          source: 'k8s-health-service',
+          tenantId,
+          data: { findings: issues },
+        })
+        .catch((err) => {
+          logger.error(
+            { err, count: issues.length },
+            'failed to publish cluster.health.issue.detected',
+          );
+        });
+    }
+
     return { items: issues, total: issues.length };
   });
 
@@ -133,7 +159,4 @@ export const buildK8sHealthRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   logger.debug('k8s-health-service health routes registered');
-  // Bus is reserved for future event publishing (e.g. auto-open
-  // incident on a `p0` recommendation).
-  void bus;
 };

@@ -1,6 +1,18 @@
 import { test, expect } from 'vitest';
-import { signAccessToken, AUTH_DEV_DEFAULT_SECRET } from '@aicc/shared';
+import { signAccessToken, AUTH_DEV_DEFAULT_SECRET, EventTypes } from '@aicc/shared';
 import { buildServer } from './index.js';
+
+function makeFakeBus() {
+  const published: Array<{ type: string; tenantId?: string; data?: unknown }> = [];
+  return {
+    published,
+    publish: async (e: { type: string; tenantId?: string; data?: unknown }) => {
+      published.push({ type: e.type, tenantId: e.tenantId, data: e.data });
+    },
+    subscribe: async () => {},
+    close: async () => {},
+  };
+}
 
 const tokenOpts = { secret: AUTH_DEV_DEFAULT_SECRET, issuer: 'aicc', audience: 'aicc-api' };
 
@@ -75,6 +87,27 @@ test('a token signed with the wrong secret is rejected', async () => {
     if (prev === undefined) delete process.env.AUTH_DEV_BYPASS;
     else process.env.AUTH_DEV_BYPASS = prev;
   }
+});
+
+test('POST /v1/runtime-security/scan publishes a single batched runtime.risk.detected event', async () => {
+  const bus = makeFakeBus();
+  const server = await buildServer({ bus: bus as never });
+  const res = await server.inject({
+    method: 'POST',
+    url: '/v1/runtime-security/scan',
+    headers: { 'x-tenant-id': 'tenant-1' },
+    payload: {},
+  });
+  expect(res.statusCode).toBe(202);
+  const body = res.json();
+  expect(body.totalFindings).toBeGreaterThan(0);
+  expect(bus.published.length).toBe(1);
+  expect(bus.published[0].type).toBe(EventTypes.RUNTIME_RISK_DETECTED);
+  expect(bus.published[0].tenantId).toBe('tenant-1');
+  expect((bus.published[0].data as { findings: unknown[] }).findings.length).toBe(
+    body.totalFindings,
+  );
+  await server.close();
 });
 
 test('a token for tenant A plus a forged x-tenant-id header still only sees tenant A data', async () => {

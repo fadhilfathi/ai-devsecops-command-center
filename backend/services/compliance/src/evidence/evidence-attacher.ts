@@ -20,7 +20,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { EventEnvelope, EventBus, UUID } from '@aicc/shared';
 import { EventTypes, type Severity } from '@aicc/shared/events';
 import type { EvidenceRepository, EvidenceRecord } from '../repositories/evidence.repository.js';
-import type { MappingEngine } from '../control-mapper/index.js';
+import type { MappingEngine, MappingInput } from '../control-mapper/index.js';
 import type { PoamService } from '../poam/poam.service.js';
 import { withAudit } from '../observability/audit.js';
 
@@ -53,6 +53,16 @@ export interface AttachScanResult {
   attachedControls: string[];
   poamCreated: number;
   poamDeduplicated: number;
+}
+
+export interface AttachInfrastructureFindingInput {
+  tenantId: UUID;
+  /** Normalized mapping input (subjectKind: 'runtime_risk' | 'health_issue'). */
+  input: MappingInput;
+  /** Raw finding JSON (RuntimeRisk or HealthIssue) — stored verbatim as evidence. */
+  finding: object;
+  /** 'runtime-risk' | 'health-issue' — used for the blob path and evidence description. */
+  sourceLabel: string;
 }
 
 export interface EvidenceAttacherDeps {
@@ -162,6 +172,94 @@ export class EvidenceAttacher {
       });
       evidenceIds.push(reportEv.id);
       await this.emitEvidenceAttached(reportEv, input);
+    }
+
+    return {
+      evidenceIds,
+      attachedControls: Array.from(controlIds),
+      poamCreated,
+      poamDeduplicated,
+    };
+  }
+
+  /**
+   * Attach evidence for a single infrastructure finding (runtime risk or
+   * cluster health issue). Mirrors `attach()`'s control-mapping / POA&M /
+   * evidence pipeline but for a single pre-normalized `MappingInput`
+   * instead of a batch of scan findings. The finding JSON itself is the
+   * evidence body (no SBOM/report pair to persist).
+   */
+  async attachInfrastructureFinding(
+    input: AttachInfrastructureFindingInput,
+  ): Promise<AttachScanResult> {
+    const now = new Date().toISOString();
+    const batch = this.mappingEngine.evaluateBatch([input.input]);
+    const controlIds = new Set<string>(batch.tuples.map((t) => t.controlId));
+    let poamCreated = 0;
+    let poamDeduplicated = 0;
+
+    for (const tuple of batch.tuples) {
+      const r = await this.poamService.createFromTuple(input.tenantId, tuple);
+      if (r.deduplicated) poamDeduplicated += 1;
+      else poamCreated += 1;
+    }
+
+    for (const [controlId, summary] of batch.controlSummary) {
+      await this.emitControlViolated({
+        tenantId: input.tenantId as string,
+        controlId,
+        framework: summary.framework as any,
+        status: 'fail',
+        violatingVulnIds: summary.vulnIds,
+        firstObservedAt: now,
+        highestSeverity: summary.highestSeverity,
+        ruleIds: batch.tuples.filter((t) => t.controlId === controlId).map((t) => t.ruleId),
+      });
+    }
+
+    const evidenceIds: string[] = [];
+    const findingJson = JSON.stringify(input.finding);
+    const stored = await this.store.put(
+      `tenants/${input.tenantId}/${input.sourceLabel}/${input.input.vulnId}.json`,
+      findingJson,
+      'application/json',
+    );
+
+    // Reuse emitEvidenceAttached by shaping a minimal AttachScanInput —
+    // it only reads assetId, scanId, and tool off the object.
+    const asAttachScanInput: AttachScanInput = {
+      tenantId: input.tenantId,
+      assetId: input.input.workloadName ?? input.input.resourceKind ?? 'unknown',
+      scanId: input.input.vulnId,
+      tool: input.sourceLabel,
+      sbom: {},
+      scanReport: {},
+    };
+
+    for (const controlId of controlIds) {
+      // Dedupe on (tenantId, controlId, ref): the blob ref is deterministic
+      // per finding id, so a repeat delivery of the same finding (e.g.
+      // k8s-health republishing every open issue on every poll) resolves
+      // to the same ref and must not insert a second evidence row.
+      const existing = await this.evidenceRepo.findByRef(
+        input.tenantId,
+        controlId as UUID,
+        stored.key,
+      );
+      if (existing) {
+        evidenceIds.push(existing.id);
+        continue;
+      }
+      const ev = await this.evidenceRepo.create({
+        tenantId: input.tenantId,
+        controlId: controlId as UUID,
+        kind: 'log',
+        description: `${input.sourceLabel} finding ${input.input.vulnId} (rule ${input.input.ruleId ?? 'n/a'}); sha256=${stored.hash}`,
+        ref: stored.key,
+        collectedBy: this.collectedBy,
+      });
+      evidenceIds.push(ev.id);
+      await this.emitEvidenceAttached(ev, asAttachScanInput);
     }
 
     return {

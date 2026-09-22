@@ -13,10 +13,22 @@ export type VulnSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'un
 export type VulnKind = 'sca' | 'sast' | 'dast' | 'runtime' | 'manual' | 'unknown';
 
 /**
+ * Discriminates the shape/origin of a MappingInput. Defaults to
+ * 'vulnerability' (the Sprint 2 shape) so existing callers that never set
+ * this field keep matching the vulnerability-only rules unchanged.
+ */
+export type MappingSubjectKind = 'vulnerability' | 'runtime_risk' | 'health_issue';
+
+/**
  * Normalized vulnerability input. The engine accepts either a bare
  * VulnerabilityFinding (shared types) or a richer event-bus shape with
  * KEV / introducedAt / kind / source. The engine normalizes via
  * `toMappingInput()` before evaluating predicates.
+ *
+ * Also doubles as the normalized shape for infrastructure findings
+ * (runtime risks, cluster health issues) via `subjectKind` plus the
+ * optional `ruleId` / `resourceKind` / `namespace` / `clusterId` /
+ * `workloadName` fields (S6-4).
  */
 export interface MappingInput {
   /** Stable ID for the finding (e.g., ULID or UUID). */
@@ -39,6 +51,18 @@ export interface MappingInput {
   componentId?: string;
   /** Free-form metadata preserved through evaluation. */
   metadata?: Record<string, unknown>;
+  /** Discriminator; defaults to 'vulnerability' when absent. */
+  subjectKind?: MappingSubjectKind;
+  /** Rule id that produced the finding (runtime-security / k8s-health rule ids). */
+  ruleId?: string;
+  /** Kind of the affected resource, e.g. 'Pod', 'ServiceAccount', 'Node'. */
+  resourceKind?: string;
+  /** Kubernetes namespace of the affected resource. */
+  namespace?: string;
+  /** Cluster the finding was observed on. */
+  clusterId?: string;
+  /** Workload name (Deployment/StatefulSet/DaemonSet) the finding is attached to. */
+  workloadName?: string;
 }
 
 /** Output of a single (rule, input) match. */
@@ -82,6 +106,9 @@ export type Predicate =
   | { type: 'cve_pattern'; value: string }
   | { type: 'asset_pattern'; value: string }
   | { type: 'component_pattern'; value: string }
+  | { type: 'subject_kind_is'; value: MappingSubjectKind }
+  | { type: 'rule_id_in'; value: string[] }
+  | { type: 'resource_kind_is'; value: string }
   | { type: 'and'; clauses: Predicate[] }
   | { type: 'or'; clauses: Predicate[] }
   | { type: 'not'; clause: Predicate };

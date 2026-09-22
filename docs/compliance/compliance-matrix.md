@@ -199,6 +199,31 @@ derived but is not duplicated here.
 | 18.4                                                    | Validate after changes                 | CA-7, SI-7                 |
 | 18.5                                                    | Internal pen-test                      | CA-8(2), RA-5              |
 
+## 1a. Infrastructure findings → controls (S6-4)
+
+Runtime-security findings (`AICC-RT-001..009`) and k8s-health issue
+kinds are auto-mapped to CIS v8 / NIST 800-53 controls by the same
+`control-mapper` rules engine used for vulnerabilities (see
+[ADR 0015](../adr/0015-infrastructure-compliance-mapping.md)), with the
+finding JSON attached as evidence.
+
+| Source           | Rule / issue kind                                                    | CIS v8 | NIST 800-53       |
+| ---------------- | -------------------------------------------------------------------- | ------ | ----------------- |
+| runtime-security | AICC-RT-001 Privileged container                                     | 4      | CM-6, AC-6        |
+| runtime-security | AICC-RT-002 hostPath volume mount                                    | 3      | AC-6, SC-7        |
+| runtime-security | AICC-RT-003 Root user execution                                      | 4      | CM-6, AC-6        |
+| runtime-security | AICC-RT-004 Dangerous Linux capability                               | 4      | CM-6, AC-6        |
+| runtime-security | AICC-RT-005 Weak/missing SecurityContext                             | 4      | CM-6, AC-6        |
+| runtime-security | AICC-RT-006 Risky ServiceAccount usage                               | 6      | AC-2, AC-3, AC-6  |
+| runtime-security | AICC-RT-007 Risky RBAC binding                                       | 6      | AC-2, AC-3, AC-6  |
+| runtime-security | AICC-RT-008 Missing resource limits                                  | —      | SC-5              |
+| runtime-security | AICC-RT-009 Image tag not pinned to digest                           | 2      | CM-2, CM-8        |
+| k8s-health       | crash_loop_back_off, pending_pod, failed_pod, unschedulable_workload | —      | SI-4, CP-10       |
+| k8s-health       | image_pull_back_off                                                  | —      | SI-4              |
+| k8s-health       | oom_killed                                                           | —      | SI-4, CP-10, SC-5 |
+| k8s-health       | restart_storm                                                        | —      | SI-4, SC-5        |
+| k8s-health       | node_pressure                                                        | 12     | SI-4, SC-5        |
+
 ## 2. Control family quick reference
 
 | Topic                            | CIS Control | NIST Family | Primary owner (this team)             |
