@@ -12,9 +12,7 @@
 # Label correlation with .github/labeler.yml:
 #   - "dependencies"   → every Dependabot PR
 #   - "automated"      → bot-generated
-#   - "security"       → security-related (applied to vuln-fix PRs and to
-#                        the Critical CVE issues opened by
-#                        .github/workflows/security-issue.yml)
+#   - "security"       → security-related (applied to vuln-fix PRs)
 #   - "<area>"         → scope label (e.g. backend, frontend, ci, docker)
 # =============================================================================
 

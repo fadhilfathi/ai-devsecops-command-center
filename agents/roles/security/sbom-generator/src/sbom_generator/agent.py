@@ -672,14 +672,10 @@ async def _build_response(
                 "components_count": response.components_count,
                 "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 # O-3.7-locked fingerprint fields. The runtime is the
-                # **producer**; the GitOps auto-committer
-                # (``security.yml``) is the **writer** of the sibling
-                # ``security/sboms/<sbom_id>/sbom.fingerprint.txt``
-                # file. Three fields so future algorithm migrations
-                # are forward-compatible (the workflow can recognise
-                # the algorithm from the suffix in the fingerprint
-                # value, but having the explicit field avoids a
-                # parse on every commit).
+                # **producer**; no workflow consumes this today. Three
+                # fields so future algorithm migrations are
+                # forward-compatible without a consumer having to parse
+                # the algorithm out of the fingerprint value.
                 "sbom_fingerprint": sbom_fingerprint,
                 "sbom_fingerprint_algorithm": "sha256",
                 # The O-3.7 enum encodes format + canonicalization

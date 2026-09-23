@@ -144,12 +144,20 @@ Status: **in progress**.
   config consolidated to one root npm entry (was 8 overlapping npm
   entries) plus grouped pip entries for the 3 Python agents.
   See [ADR 0017](./docs/adr/0017-fastify-5.md).
-- **S7-3**: OpenSSF Scorecard hardening — pin every GitHub Actions step
-  in `.github/workflows/*.yml` to a commit SHA instead of a tag
-  (`actions/checkout@v4` → `@<sha>`, same for `scorecard-action`),
-  document branch protection settings for `main`, and verify
-  `SECURITY.md`'s SLA table and supported-versions list still match
-  reality. Re-run `scorecard.yml` and confirm the badge score moves.
+- ✅ **S7-3**: done. Fixed the 4 workflows that had been failing on
+  every push to `main` (`sbom`, `security`, `scorecard`, `codeql`);
+  deleted `security.yml` and `security-issue.yml` (dead GitOps
+  automation from the deleted multi-agent era — no producer ever
+  existed for their `repository_dispatch` triggers, and the
+  `attach-sbom` job in `release.yml` that depended on them). Pinned
+  every third-party action across all workflows to a commit SHA with
+  a `# vX.Y.Z` comment; Dependabot keeps them current. Least-privilege
+  `permissions:` on every workflow/job; `persist-credentials: false`
+  on every non-pushing checkout. Rewrote `SECURITY.md` to drop
+  fictional teams/SLAs/PGP keys and describe only the automation that
+  actually exists. Added `docs/operations/branch-protection.md`
+  (manual checklist, not yet applied). Fixed README's hardcoded
+  "pending" CI/CodeQL badges to point at the real workflow badges.
 - **S7-4**: rate limiting, request-size limits, and a security-headers
   audit across all 13 backend services (Fastify `@fastify/rate-limit`
   / body-size limits / `helmet` config review) — today's `helmet` wiring

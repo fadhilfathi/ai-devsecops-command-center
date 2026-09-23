@@ -240,11 +240,10 @@ for the full producer/consumer/schema-path matrix.
   `security.<aggregate>.deprecated.v1` event, with at least one minor
   release of overlap.
 
-**GitOps consumer:** `.github/workflows/security.yml` consumes
-`vulnerability-detected` (via a small `github-bridge` service that
-calls the GitHub `repository_dispatch` API). See
-[`../runbooks/security-automation.md`](../runbooks/security-automation.md#system-map)
-for the full flow.
+**Consumers today:** no GitHub Actions workflow consumes these subjects.
+`compliance-service` subscribes to `security.vulnerability.detected.v1`
+in-process (via the event bus) for POA&M auto-mapping; there is no
+GitOps/`repository_dispatch` bridge.
 
 ## Consumer groups
 

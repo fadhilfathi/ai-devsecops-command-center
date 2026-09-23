@@ -1,10 +1,9 @@
 # Contract tests (S2.10 + O-3.7)
 
 Cross-team contract tests that lock the GitOps wire format so producers
-and consumers cannot drift. **Owner: GitOpsManager.** Consumers are
-vuln-intel :4008 (producer of the rich event) and security-service
-:4003 (projector of the GitOps record); producers are the `.github/workflows/`
-automation (consumer of the NDJSON); `compliance-service` is a
+and consumers cannot drift. The parties are vuln-intel (producer of the
+rich event) and security-service :4003 (projector of the GitOps
+record); `compliance-service` is a
 downstream consumer of the GitOps record (for POA&M auto-mapping per
 O-3.7 § "Downstream routing").
 
@@ -100,4 +99,3 @@ The contract tests MUST be updated when:
 - `security/README.md` — operator-facing mirror of the wire format
 - `security/wire-format/*.schema.json` — JSON Schema source of truth
 - `docs/architecture/event-bus.md` — Sprint 2 contract addendum
-- `docs/runbooks/security-automation.md` — operator runbook

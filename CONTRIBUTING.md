@@ -65,7 +65,7 @@ Open <http://localhost:5173> for the UI and <http://localhost:3001> for Grafana
 
 1. **Pick or create an issue.** Anything non-trivial should have an issue
    describing the user problem, the proposed approach, and acceptance criteria.
-2. **Branch from `develop`.** Branch name format: `type/issue-id-short-desc`
+2. **Branch from `main`.** Branch name format: `type/issue-id-short-desc`
    - `feat/412-incident-correlation`
    - `fix/189-jwt-refresh-loop`
    - `docs/22-rbac-explainer`
@@ -73,7 +73,7 @@ Open <http://localhost:5173> for the UI and <http://localhost:3001> for Grafana
 3. **Work in small, focused commits.** Conventional Commits are required
    (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, …).
 4. **Run the test suite locally** before pushing.
-5. **Push and open a PR** against `develop`. Use the PR template.
+5. **Push and open a PR** against `main`. Use the PR template.
 6. **Pass CI and code review.** A PR needs:
    - At least one approving review from a code owner
      (solo maintainer; review via PR)
@@ -169,12 +169,19 @@ with a polite request for more context.
 
 ## Release process
 
-- Releases are cut from `main` via the
-  [`release`](./.github/workflows/release.yml) workflow.
-- `standard-version` updates `CHANGELOG.md`, bumps versions, tags, and
-  publishes a GitHub release.
-- SemVer is strict: breaking changes bump the major, features bump the minor,
-  fixes bump the patch.
+Releases are cut by hand — no bot commits to `main`:
+
+1. Bump the `version` in root `package.json`.
+2. Hand-write the release section in `CHANGELOG.md` (move `[Unreleased]`
+   entries under a new `## [x.y.z] - YYYY-MM-DD` heading).
+3. Commit both changes to `main`.
+4. Run the [`release`](./.github/workflows/release.yml) workflow
+   (`workflow_dispatch`, input `version`), which validates the version,
+   tags `main` as `v<version>`, and publishes a GitHub release with the
+   CHANGELOG section as the body. It does not commit anything.
+
+SemVer is strict: breaking changes bump the major, features bump the minor,
+fixes bump the patch.
 
 ## Security disclosures
 

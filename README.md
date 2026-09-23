@@ -9,11 +9,11 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Status: Pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange)](./CHANGELOG.md)
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](./.github/workflows/ci.yml)
-[![CodeQL](https://img.shields.io/badge/CodeQL-pending-lightgrey)](./.github/workflows/codeql.yml)
+[![CI](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
+[![CodeQL](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/codeql.yml/badge.svg)](./.github/workflows/codeql.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 6 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 7 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
@@ -225,17 +225,16 @@ needed there.
 
 ### Common commands
 
-| Command            | What it does                                              |
-| ------------------ | --------------------------------------------------------- |
-| `make up`          | Bring the local stack up                                  |
-| `make down`        | Tear the local stack down                                 |
-| `make logs`        | Tail logs                                                 |
-| `make lint`        | Lint everything                                           |
-| `make typecheck`   | Type-check everything                                     |
-| `make test`        | Run unit tests                                            |
-| `make db-shell`    | Open a psql shell (migrations run per-service at startup) |
-| `make release-dry` | Dry-run a release                                         |
-| `make help`        | List all targets                                          |
+| Command          | What it does                                              |
+| ---------------- | --------------------------------------------------------- |
+| `make up`        | Bring the local stack up                                  |
+| `make down`      | Tear the local stack down                                 |
+| `make logs`      | Tail logs                                                 |
+| `make lint`      | Lint everything                                           |
+| `make typecheck` | Type-check everything                                     |
+| `make test`      | Run unit tests                                            |
+| `make db-shell`  | Open a psql shell (migrations run per-service at startup) |
+| `make help`      | List all targets                                          |
 
 ## Documentation
 

@@ -139,8 +139,8 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
               'projected vulnerability to GitOps wire format (security-service :4003 boundary)',
             );
             // NOTE: the bus emits the rich `data: event` shape above; the GitOps
-            // wire-format record is logged + persisted (Sprint 2.1 will wire the
-            // dedicated GitOps emission path via the github-bridge).
+            // wire-format record is only logged here today — no workflow
+            // consumes it (see docs/architecture/event-bus.md).
           }
         }
         logger.info(

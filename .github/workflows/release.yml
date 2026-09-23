@@ -3,192 +3,74 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      release-type:
-        description: 'Release type'
+      version:
+        description: 'Version to release (e.g. 0.3.0) — must match package.json and have a CHANGELOG.md section'
         required: true
-        type: choice
-        default: 'patch'
-        options:
-          - patch
-          - minor
-          - major
+        type: string
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: {}
 
 jobs:
   release:
-    name: Release
+    name: Tag and publish release
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.12.0'
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build & test
-        run: |
-          pnpm -r --filter "./backend/shared" build
-          pnpm -r build
-          pnpm -r --if-present test
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Cut release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            pnpm exec standard-version --release-as ${{ github.event.inputs.release-type }}
-          else
-            pnpm exec standard-version
-          fi
-
-      - name: Push tags
-        run: |
-          git push --follow-tags origin main
-          git push --tags
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: false
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: |
-            CHANGELOG.md
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # Attach the latest SBOM artifacts to the release.
-  # Owned by GitOpsManager (S2.10).
-  # Depends on the `release` job to ensure the release exists.
-  # See: docs/runbooks/security-automation.md
-  # ─────────────────────────────────────────────────────────────────────────
-  attach-sbom:
-    name: 'Attach SBOMs to release'
-    needs: release
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
-      contents: read
-    outputs:
-      release_tag: ${{ steps.detect-tag.outputs.tag }}
-      sbom_attached: ${{ steps.attach.outputs.attached }}
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: true
 
-      - name: Detect release tag
-        id: detect-tag
-        run: |
-          set -euo pipefail
-          # For tag pushes, GITHUB_REF_NAME is the tag (e.g. v0.1.0).
-          # For workflow_dispatch, we look up the most recent release.
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF_NAME}"
-            core_output "tag=${TAG}"
-          else
-            TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
-          fi
-          if [ -z "${TAG}" ]; then
-            echo "::warning::No release tag detected; nothing to attach"
-            core_output "tag="
-            core_output "attaching=false"
-            return 0
-          fi
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "🏷️  Attaching SBOMs to release: ${TAG}"
+      - name: Validate version input
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Locate latest SBOM triplet
-        id: locate
-        if: steps.detect-tag.outputs.tag != ''
+          VERSION: ${{ inputs.version }}
         run: |
-          set -euo pipefail
-          # Find the most recent SBOM folder by mtime (security/sboms/<sbom_id>/)
-          if [ ! -d security/sboms ]; then
-            echo "::error::security/sboms does not exist; cannot attach SBOMs"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version input '$VERSION' is not a bare semver (e.g. 0.3.0)"
             exit 1
           fi
-          LATEST=$(ls -1t security/sboms/ 2>/dev/null \
-                     | grep -E '^sbom-' \
-                     | grep -v 'index.json' \
-                     | head -1 || true)
-          if [ -z "${LATEST}" ]; then
-            echo "::warning::No SBOMs found under security/sboms/; skipping"
-            echo "sbom_dir=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          SBOM_DIR="security/sboms/${LATEST}"
-          if [ ! -d "${SBOM_DIR}" ]; then
-            # LATEST might be a file (index.json etc.). Take its parent sbom_id folder.
-            echo "::warning::${SBOM_DIR} is not a directory; trying sbom_id pattern"
-            echo "sbom_dir=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "sbom_dir=${SBOM_DIR}" >> "$GITHUB_OUTPUT"
-          echo "📂 Latest SBOM directory: ${SBOM_DIR}"
-          ls -la "${SBOM_DIR}"
 
-      - name: Upload SBOM files to release
-        id: attach
-        if: steps.locate.outputs.sbom_dir != '' && steps.locate.outputs.sbom_dir != null
+      - name: Verify package.json version matches
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.detect-tag.outputs.tag }}
-          SBOM_DIR: ${{ steps.locate.outputs.sbom_dir }}
+          VERSION: ${{ inputs.version }}
         run: |
-          set -euo pipefail
-          echo "📎 Attaching files from ${SBOM_DIR} to ${TAG}:"
-          # Build a list of files to attach
-          FILES=()
-          for f in "${SBOM_DIR}"/*.cyclonedx.json \
-                   "${SBOM_DIR}"/*.cyclonedx.xml \
-                   "${SBOM_DIR}"/*.spdx.json \
-                   "${SBOM_DIR}"/provenance.intoto.jsonl; do
-            if [ -f "${f}" ]; then
-              echo "  + $(basename "${f}")"
-              FILES+=("${f}")
-            fi
-          done
-          if [ ${#FILES[@]} -eq 0 ]; then
-            echo "::warning::No SBOM files matched in ${SBOM_DIR}"
-            echo "attached=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match input ($VERSION)"
+            exit 1
           fi
-          gh release upload "${TAG}" "${FILES[@]}" --clobber
-          echo "attached=true" >> "$GITHUB_OUTPUT"
-          echo "✅ Attached ${#FILES[@]} SBOM file(s) to ${TAG}"
 
-      - name: Verify attachments
-        if: steps.attach.outputs.attached == 'true'
+      - name: Verify CHANGELOG.md has a section for this version
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.detect-tag.outputs.tag }}
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "🔍 Verifying attachments on ${TAG}:"
-          gh release view "${TAG}" --json assets --jq '.assets[] | "  - \(.name) (\(.size) bytes)"'
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$VERSION]' section"
+            exit 1
+          fi
+
+      - name: Extract CHANGELOG section
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          awk -v ver="## [$VERSION]" '
+            $0 == ver { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+
+      - name: Create tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: v${{ inputs.version }}
+          body_path: release-notes.md
+          draft: false

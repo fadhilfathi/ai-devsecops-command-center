@@ -30,9 +30,7 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "docker:build": "docker compose build",
-    "prepare": "husky || true",
-    "release": "standard-version",
-    "prerelease": "pnpm build && pnpm test"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -45,7 +43,6 @@
     "lint-staged": "^15.2.0",
     "prettier": "^3.3.0",
     "rimraf": "^6.0.1",
-    "standard-version": "^9.5.0",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.70.0",
     "vitest": "^4.1.11"

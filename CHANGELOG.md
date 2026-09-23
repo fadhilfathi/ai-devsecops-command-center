@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **S7-3**: fixed the 4 GitHub Actions workflows (`sbom`, `security`,
+  `scorecard`, `codeql`) that had failed on every push to `main` for
+  weeks; pinned every third-party action to a commit SHA; applied
+  least-privilege `permissions:` and `persist-credentials: false`
+  across all workflows; rewrote `SECURITY.md` to remove fictional
+  teams/SLAs/PGP references and describe only real automation; added
+  `docs/operations/branch-protection.md`. Follow-up: replaced the
+  `release` workflow's `standard-version` step (which rewrote
+  `CHANGELOG.md` and pushed a bot commit to `main`) with a
+  `workflow_dispatch`-only tag-and-publish flow — no commits, hand-write
+  the CHANGELOG section yourself; removed `standard-version` and the
+  `release`/`release-dry` Make targets accordingly. Added a
+  `github/codeql-action/upload-sarif` step to `scorecard.yml`. Deleted
+  the stale `docs/runbooks/security-automation.md` runbook and trimmed
+  `security/README.md` to just the wire-format schema contracts —
+  both described automation (`security.yml`, `security-issue.yml`,
+  a `github-bridge` service) that never existed; fixed the remaining
+  references to it in `docs/architecture/event-bus.md` and elsewhere.
 - **S7-2**: Fastify 5, vitest 4, react-router 7; `pnpm audit` 0 critical /
   0 high; Dependabot consolidated.
 

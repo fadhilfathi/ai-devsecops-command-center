@@ -161,11 +161,11 @@ event interfaces** live in
 > the constant from `@aicc/shared/security`. The string-form is in
 > this document for clarity; the constant is the source of truth.
 
-| Constant     | Subject                              | Producer         | Consumers                                               | Schema path                                      |
-| ------------ | ------------------------------------ | ---------------- | ------------------------------------------------------- | ------------------------------------------------ |
-| `SBOM_TOPIC` | `security.sbom.generated.v1`         | sbom-pipeline    | dependency-intel, security-service, security-automation | `backend/models/security/sbom.model.ts`          |
-| `VULN_TOPIC` | `security.vulnerability.detected.v1` | vuln-intel       | dependency-intel, security-service, security-automation | `backend/models/security/vulnerability.model.ts` |
-| `RISK_TOPIC` | `security.risk.calculated.v1`        | dependency-intel | security-service, security-automation                   | `backend/models/security/risk-score.model.ts`    |
+| Constant     | Subject                              | Producer         | Consumers                          | Schema path                                      |
+| ------------ | ------------------------------------ | ---------------- | ---------------------------------- | ------------------------------------------------ |
+| `SBOM_TOPIC` | `security.sbom.generated.v1`         | sbom-pipeline    | dependency-intel, security-service | `backend/models/security/sbom.model.ts`          |
+| `VULN_TOPIC` | `security.vulnerability.detected.v1` | vuln-intel       | dependency-intel, security-service | `backend/models/security/vulnerability.model.ts` |
+| `RISK_TOPIC` | `security.risk.calculated.v1`        | dependency-intel | security-service                   | `backend/models/security/risk-score.model.ts`    |
 
 Versions follow the subject (`…v1`, `…v2`); a breaking payload change
 requires a new subject version. See

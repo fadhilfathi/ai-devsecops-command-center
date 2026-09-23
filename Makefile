@@ -148,16 +148,9 @@ db-reset: ## Drop and recreate the Postgres volume (DESTRUCTIVE)
 db-shell: ## Open a psql shell against the dev database
 	$(COMPOSE) exec postgres psql -U aicc -d aicc
 
-# ----------------------------------------------------------------------------
-# Release
-# ----------------------------------------------------------------------------
-.PHONY: release release-dry
-
-release-dry: ## Dry-run a release (no commit/tag)
-	$(PNPM) exec standard-version --dry-run
-
-release: ## Cut a release (commits, tags, updates CHANGELOG)
-	$(PNPM) exec standard-version
+# Releases are cut by hand: bump package.json + write the CHANGELOG.md
+# section, commit, then run the `release` GitHub Actions workflow. See
+# CONTRIBUTING.md § Release process.
 
 # ----------------------------------------------------------------------------
 # Housekeeping

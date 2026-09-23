@@ -16,13 +16,9 @@
  *   - **All 4 topics are at `.v1` as of 2026-06-12.** The next breaking change
  *     to the event shape will bump to `.v2` and the old topic will be
  *     retired after a 2-release deprecation window.
- *   - **NB:** the `.v1` suffix is for Redis Stream subjects and the
- *     `github-bridge` event_type mapping ONLY. GitHub
- *     `repository_dispatch` event types (`vulnerability-detected`,
- *     `supported-version-released`) are a different namespace and do NOT
- *     get the `.v1` suffix. The github-bridge service maps the Redis
- *     Stream subject to the GitHub `event_type` in the bridge, not the
- *     consumer workflow.
+ *   - **NB:** the `.v1` suffix is for Redis Stream subjects only. No
+ *     GitOps/`repository_dispatch` bridge exists today (see
+ *     `docs/architecture/event-bus.md`).
  *   - All security-domain events carry a `tenantId` field for multi-tenant
  *     isolation. The security-service stamps it from the authenticated
  *     request headers (NOT from upstream feeds).

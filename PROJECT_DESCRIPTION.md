@@ -160,8 +160,9 @@ Control mapping: [`docs/compliance/`](./docs/compliance/).
 - **Redis**: managed (ElastiCache / Memorystore) or in-cluster with HA.
 - **Object store**: managed (S3 / GCS) or MinIO.
 - **Observability stack**: OTel collector, Prometheus, Grafana, Loki.
-- **Release process**: `standard-version` from `main`; cut a release
-  with the `release` workflow.
+- **Release process**: hand-bump `package.json` + hand-write the
+  `CHANGELOG.md` section, commit to `main`, then run the `release`
+  workflow (tags and publishes a GitHub release; no bot commits).
 
 SLOs and on-call: [`docs/operations/`](./docs/operations/).
 Runbooks: [`docs/runbooks/`](./docs/runbooks/).
