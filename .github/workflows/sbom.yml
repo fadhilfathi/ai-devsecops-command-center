@@ -27,24 +27,23 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      # Syft reads pnpm-lock.yaml directly; cyclonedx-npm shells out to
+      # `npm ls`, which fails on pnpm's node_modules layout.
+      - name: Generate CycloneDX SBOM (JSON)
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
-          version: 9.12.0
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          upload-artifact: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Generate CycloneDX SBOM (XML)
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
-          node-version: '22.12.0'
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate CycloneDX SBOM
-        run: |
-          npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.cyclonedx.json --spec-version 1.5
-          npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.cyclonedx.xml --spec-version 1.5 --format xml
+          path: .
+          format: cyclonedx
+          output-file: sbom.cyclonedx.xml
+          upload-artifact: false
 
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
