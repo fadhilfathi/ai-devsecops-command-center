@@ -50,13 +50,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest==9.0.1",
+  "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
-  "pytest-cov==6.0.0",
-  "respx==0.22.0",
-  "mypy==1.14.0",
-  "ruff==0.8.4",
-  "freezegun==1.5.1",
+  "pytest-cov==7.1.0",
+  "respx==0.23.1",
+  "mypy==2.3.1",
+  "ruff==0.16.8",
+  "freezegun==1.5.5",
 ]
 
 [project.scripts]
