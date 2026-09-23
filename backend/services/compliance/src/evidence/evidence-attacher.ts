@@ -16,7 +16,6 @@
 // implementation can be swapped (S3, GCS, Azure Blob, in-memory for
 // dev) without changing this file.
 
-import { createHash, randomUUID } from 'node:crypto';
 import type { EventEnvelope, EventBus, UUID } from '@aicc/shared';
 import { EventTypes, type Severity } from '@aicc/shared/events';
 import type { EvidenceRepository, EvidenceRecord } from '../repositories/evidence.repository.js';
@@ -105,9 +104,21 @@ export class EvidenceAttacher {
     // 1. Run mapping engine over the scan report's findings.
     const findings = extractFindings(input.scanReport);
     if (findings.length > 0) {
-      const batch = this.mappingEngine.evaluateFindings(
-        findings.map((f) => ({ ...f, tenantId: input.tenantId, assetId: input.assetId })) as any,
-      );
+      const mappingInputs: MappingInput[] = findings.map((f) => ({
+        vulnId: f.id,
+        tenantId: input.tenantId,
+        cveId: f.cveId,
+        severity: f.severity,
+        // Scan reports don't say which scanner produced a finding; 'unknown'
+        // matches the pre-existing toMappingInput() default.
+        kind: 'unknown',
+        kev: Boolean(f.kev),
+        introducedAt: f.introducedAt,
+        assetId: input.assetId,
+        componentId: f.componentId,
+        metadata: f.metadata,
+      }));
+      const batch = this.mappingEngine.evaluateBatch(mappingInputs);
       for (const tuple of batch.tuples) controlIds.add(tuple.controlId);
 
       // 2. Auto-create POA&M items for each tuple (deduped).
@@ -122,7 +133,7 @@ export class EvidenceAttacher {
         await this.emitControlViolated({
           tenantId: input.tenantId as string,
           controlId,
-          framework: summary.framework as any,
+          framework: summary.framework,
           status: 'fail',
           violatingVulnIds: summary.vulnIds,
           firstObservedAt: now,
@@ -208,7 +219,7 @@ export class EvidenceAttacher {
       await this.emitControlViolated({
         tenantId: input.tenantId as string,
         controlId,
-        framework: summary.framework as any,
+        framework: summary.framework,
         status: 'fail',
         violatingVulnIds: summary.vulnIds,
         firstObservedAt: now,
@@ -315,7 +326,7 @@ export class EvidenceAttacher {
         evidenceId: record.id,
         controlIds: [record.controlId],
         assetId: input.assetId,
-        evidenceType: record.kind as any,
+        evidenceType: record.kind,
         objectStorePath: record.ref,
         hash: extractHashFromDescription(record.description) ?? '',
         scanId: input.scanId,
@@ -367,12 +378,43 @@ function extractHashFromDescription(description: string): string | null {
   return m ? m[1] : null;
 }
 
+/** Loose shape of a single finding as emitted by Trivy/Grype/Syft. */
+interface RawScanFinding {
+  id?: string;
+  vulnId?: string;
+  issue_id?: string;
+  cveId?: string;
+  cve_id?: string;
+  cve?: string;
+  severity?: string;
+  severity_v4?: string;
+  cvss_v3_severity?: string;
+  status?: 'open' | 'confirmed' | 'false_positive' | 'resolved' | 'suppressed';
+  kev?: boolean;
+  is_known_exploited?: boolean;
+  introducedAt?: string;
+  introduced_at?: string;
+  published_at?: string;
+  assetId?: string;
+  asset_id?: string;
+  packageName?: string;
+  package_name?: string;
+  component?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface RawScanReport {
+  findings?: RawScanFinding[];
+  vulnerabilities?: RawScanFinding[];
+  results?: RawScanFinding[];
+}
+
 /**
  * Extract vulnerability findings from a scanner report. The Sprint 2
  * format is the union of Trivy and Grype normalized shapes. Unknown
  * fields are preserved in metadata.
  */
-function extractFindings(report: any): Array<{
+function extractFindings(report: unknown): Array<{
   id: string;
   cveId?: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unknown';
@@ -383,9 +425,10 @@ function extractFindings(report: any): Array<{
   componentId?: string;
   metadata?: Record<string, unknown>;
 }> {
-  const findings = report?.findings ?? report?.vulnerabilities ?? report?.results ?? [];
+  const r = report as RawScanReport | null | undefined;
+  const findings = r?.findings ?? r?.vulnerabilities ?? r?.results ?? [];
   if (!Array.isArray(findings)) return [];
-  return findings.map((f: any, idx: number) => ({
+  return findings.map((f, idx) => ({
     id: f.id ?? f.vulnId ?? f.issue_id ?? `finding-${idx}`,
     cveId: f.cveId ?? f.cve_id ?? f.cve,
     severity: normalizeSev(f.severity ?? f.severity_v4 ?? f.cvss_v3_severity),
@@ -398,7 +441,7 @@ function extractFindings(report: any): Array<{
   }));
 }
 
-function normalizeSev(s: any): 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unknown' {
+function normalizeSev(s: unknown): 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unknown' {
   if (typeof s !== 'string') return 'unknown';
   const v = s.toLowerCase();
   if (v.includes('crit')) return 'critical';

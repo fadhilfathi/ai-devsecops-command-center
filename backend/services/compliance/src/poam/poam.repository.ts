@@ -10,7 +10,6 @@
 //   - by (tenantId, controlId, vulnId, status='open') for dedup
 //   - by (tenantId, status, dueAt) for the overdue scheduler
 
-import { randomUUID } from 'node:crypto';
 import type { PoamItem, ListPoamFilter, PoamStatus } from './poam.types.js';
 import type { Framework } from '@aicc/shared/types/domain';
 

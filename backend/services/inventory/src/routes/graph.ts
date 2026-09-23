@@ -10,8 +10,12 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { type EventBus, type Logger, type UUID } from '@aicc/shared';
-import type { TopologyGraph } from '@aicc/models';
-import type { InventoryEngine, InventoryEngineInput } from '../engine/inventory.engine.js';
+import type { TopologyGraph, TopologyNode, TopologyEdge } from '@aicc/models';
+import {
+  toNodeKind,
+  type InventoryEngine,
+  type InventoryEngineInput,
+} from '../engine/inventory.engine.js';
 import type { InventoryClient } from '../inventory/client.js';
 
 interface Deps {
@@ -49,7 +53,7 @@ function buildGraph(
   name: string,
   clusterId: string | undefined,
   namespace: string | undefined,
-  graph: { nodes: any[]; edges: any[] },
+  graph: { nodes: TopologyNode[]; edges: TopologyEdge[] },
 ): TopologyGraph {
   return {
     id: randomUUID(),
@@ -76,7 +80,7 @@ export const buildGraphRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
         nodes: engine.catalog(snap).map((a) => ({
           id: a.id,
           label: a.name,
-          kind: a.kind,
+          kind: toNodeKind(a.kind),
           namespace: a.namespace,
           clusterId: a.clusterId,
           clusterName: a.clusterName,

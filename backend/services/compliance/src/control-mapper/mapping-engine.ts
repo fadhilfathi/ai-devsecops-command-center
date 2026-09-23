@@ -9,11 +9,7 @@
 // The engine is pure: no I/O, no event emission. Callers wire the
 // engine to persistence, event bus, and POA&M creation.
 
-import type {
-  VulnerabilityFinding,
-  ComplianceControlStatus,
-  Framework,
-} from '@aicc/shared/types/domain';
+import type { VulnerabilityFinding, Framework } from '@aicc/shared/types/domain';
 import type {
   ControlMapping,
   ControlVulnTuple,

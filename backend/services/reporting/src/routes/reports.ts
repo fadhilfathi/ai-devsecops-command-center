@@ -8,7 +8,7 @@
  *   GET /v1/reports/topology[?format=json|md|pdf]
  *   GET /v1/reports/executive-summary[?format=json|md|pdf]
  */
-import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { type EventBus, type Logger, type UUID } from '@aicc/shared';
 import type { Report } from '../engine/report.engine.js';
@@ -44,7 +44,12 @@ function contentType(format: ReportFormat): string {
   return 'application/pdf';
 }
 
-async function sendReport(reply: any, report: Report, format: ReportFormat, filename: string) {
+async function sendReport(
+  reply: FastifyReply,
+  report: Report,
+  format: ReportFormat,
+  filename: string,
+) {
   if (format === 'json') {
     reply.header('content-type', contentType(format));
     return toJson(report);
@@ -84,7 +89,7 @@ export const buildReportRoutes: FastifyPluginAsync<Deps> = async (
   }
 
   function makeHandler(fn: (input: ReportEngineInput) => Report, filename: string) {
-    return async (req: any, reply: any) => {
+    return async (req: FastifyRequest, reply: FastifyReply) => {
       const tenantId = requireTenant(req.tenantId);
       const q = QuerySchema.parse(req.query ?? {});
       const input = await loadInput(tenantId, q.clusterId);

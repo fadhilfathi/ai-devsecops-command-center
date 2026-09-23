@@ -12,7 +12,7 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { type EventBus, type Logger, type UUID } from '@aicc/shared';
 import type { TopologyGraph } from '@aicc/models';
-import type { TopologyEngine, TopologyEngineInput } from '../engine/topology.engine.js';
+import type { TopologyEngine } from '../engine/topology.engine.js';
 import type { InventoryClient } from '../inventory/client.js';
 
 interface Deps {

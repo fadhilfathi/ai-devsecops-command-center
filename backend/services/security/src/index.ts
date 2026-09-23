@@ -241,7 +241,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
 }
 
 async function main(): Promise<void> {
-  const env = loadEnv();
+  loadEnv();
   const cfg = loadServiceConfig(SERVICE_NAME, SERVICE_VERSION);
   const logger = createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const server = await buildServer({ logger });

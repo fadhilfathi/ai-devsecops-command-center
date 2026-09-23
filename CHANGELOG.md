@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **S7-1**: cleared all 45 outstanding ESLint warnings
+  (`@typescript-eslint/no-unused-vars`, `@typescript-eslint/no-explicit-any`,
+  unused `eslint-disable` directives) at the root — deleted dead
+  imports/functions, replaced `any` with real types, and typed a
+  `MappingInput` construction in `evidence-attacher.ts` directly instead
+  of casting. Along the way, fixed a real bug in
+  `inventory-service`'s `/v1/inventory/graph/asset` route, which was
+  assigning the internal `AssetKind` (e.g. `'deployment'`) straight to a
+  `TopologyNode`'s `kind` field instead of going through the existing
+  `toNodeKind()` mapper, producing invalid node kinds in the asset graph.
+  `pnpm lint` now runs with `--max-warnings 0` so new warnings fail CI.
+
 ## [0.3.0] - 2026-09-23
 
 Sprint 6 — frontend integration, authentication, event bus, compliance

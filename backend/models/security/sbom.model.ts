@@ -109,6 +109,7 @@ export type SbomLicense = z.infer<typeof SbomLicenseSchema>;
 // ponytail: recursive schema (pedigree.ancestors/descendants/variants self-reference)
 // needs an explicit type to break the circular inference; upgrade to a hand-written
 // interface if callers ever need precise typing of nested pedigree components.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- zod recursive schema requires ZodType<any> to break circular type inference
 export const SbomComponentSchema: z.ZodType<any> = z.object({
   type: SbomComponentTypeSchema,
   'bom-ref': z.string().min(1),

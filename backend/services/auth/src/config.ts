@@ -28,7 +28,6 @@ export function loadEnv(): AuthEnv {
   if (cached) return cached;
   const parsed = EnvSchema.safeParse(process.env);
   if (!parsed.success) {
-    // eslint-disable-next-line no-console
     console.error('[auth-service] invalid environment', parsed.error.flatten());
     throw new Error('Invalid environment configuration for auth-service');
   }

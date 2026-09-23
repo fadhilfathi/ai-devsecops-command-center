@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import type { Logger } from '@aicc/shared';
 interface Deps {
   logger: Logger;

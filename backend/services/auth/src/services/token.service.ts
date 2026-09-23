@@ -7,7 +7,7 @@
  */
 import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
 import { signAccessToken, verifyAccessToken, type AccessTokenClaims } from '@aicc/shared/auth';
-import type { UUID, UserRole } from '@aicc/shared';
+import type { UUID } from '@aicc/shared';
 
 export type AccessTokenPayload = AccessTokenClaims & { sub: UUID; tenantId: UUID };
 

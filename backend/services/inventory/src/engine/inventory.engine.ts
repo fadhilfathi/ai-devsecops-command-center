@@ -75,7 +75,7 @@ export interface InventoryEngine {
   ): { nodes: TopologyNode[]; edges: TopologyEdge[] };
 }
 
-function toNodeKind(kind: AssetKind): TopologyNodeKind {
+export function toNodeKind(kind: AssetKind): TopologyNodeKind {
   switch (kind) {
     case 'cluster':
       return 'cluster';

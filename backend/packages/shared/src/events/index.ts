@@ -97,7 +97,6 @@ export class InMemoryEventBus implements EventBus {
           await h(envelope);
         } catch (err) {
           // The SREEngineer will own the global error reporter.
-          // eslint-disable-next-line no-console
           console.error('[EventBus] handler threw', { type: envelope.type, err });
         }
       }),

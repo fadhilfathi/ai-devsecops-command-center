@@ -78,7 +78,6 @@ export function buildRuntimeSecurityEngine(): RuntimeSecurityEngine {
           out.push(...rule.evaluate(ctx, ruleInput));
         } catch (err) {
           // A buggy rule should never break the engine.
-          // eslint-disable-next-line no-console
           console.error('[runtime-security] rule failed', { ruleId: rule.id, err });
         }
       }

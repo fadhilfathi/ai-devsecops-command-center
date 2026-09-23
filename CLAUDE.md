@@ -1,7 +1,7 @@
 # CLAUDE.md — AI-DevSecOps Command Center (AICC)
 
 Monorepo: pnpm workspaces. Fastify/TypeScript backend services, Vite/React frontend, Python security agents.
-Status: pre-alpha, Sprint 5 of 12. See `ROADMAP.md`, `CHANGELOG.md`, `docs/architecture/`.
+Status: pre-alpha, Sprint 7 of 12. See `ROADMAP.md`, `CHANGELOG.md`, `docs/architecture/`.
 
 ## Hard rules
 

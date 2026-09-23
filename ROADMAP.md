@@ -129,10 +129,10 @@ Status: **complete** (2026-09-23). See
 
 ## Sprint 7 — Hardening, security review, OpenSSF Scorecard pass
 
-Status: **planned**.
+Status: **in progress**.
 
-- **S7-1**: fix the 45 outstanding `eslint` warnings (mostly
-  `@typescript-eslint/no-unused-vars` / `no-explicit-any`) and switch
+- **S7-1**: done. Fixed the 45 outstanding `eslint` warnings (mostly
+  `@typescript-eslint/no-unused-vars` / `no-explicit-any`) and switched
   CI's `pnpm lint` to `--max-warnings 0` so the count can't silently
   grow back.
 - **S7-2**: dependency / supply-chain pass — clear the backlog of open

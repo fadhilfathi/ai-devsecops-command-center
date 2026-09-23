@@ -31,7 +31,6 @@ import {
   type IngressClass,
   type IngressTls,
   type Deployment,
-  type DeploymentRolloutStatus,
   DeploymentRolloutStatusSchema,
   type StatefulSet,
   type DaemonSet,

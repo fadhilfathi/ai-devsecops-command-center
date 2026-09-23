@@ -7,7 +7,7 @@
  */
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { type Logger, type UUID } from '@aicc/shared';
-import type { IncidentChain, CorrelationEdge } from '../correlation/correlation-engine.js';
+import type { CorrelationEdge } from '../correlation/correlation-engine.js';
 import type { ChainRepository } from '../correlation/chain.repository.js';
 
 interface Deps {

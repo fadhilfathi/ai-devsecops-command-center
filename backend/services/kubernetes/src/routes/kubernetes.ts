@@ -24,7 +24,6 @@ import { type EventBus, type Logger, type UUID } from '@aicc/shared';
 import type {
   Cluster,
   ClusterListResponse,
-  Namespace,
   NamespaceListResponse,
   Workload,
   WorkloadListResponse,

@@ -62,7 +62,7 @@ export const buildDashboardRoute: FastifyPluginAsync<Deps> = async (
   server: FastifyInstance,
   opts,
 ) => {
-  const { logger, sboms, scans, findings, eventLog } = opts;
+  const { logger, sboms, findings, eventLog } = opts;
 
   server.get<{ Querystring: Record<string, string | undefined> }>(
     '/security/dashboard',

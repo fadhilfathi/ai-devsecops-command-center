@@ -16,8 +16,6 @@ import type {
   ClusterPhase,
   Namespace,
   Pod,
-  PodPhase,
-  Container,
   Workload,
   WorkloadHealth,
   Service,
@@ -27,7 +25,6 @@ import type {
   StatefulSet,
   DaemonSet,
   DeploymentRolloutStatus,
-  PodManagementPolicy,
   IngressClass,
   NetworkPolicy,
 } from '@aicc/models';
@@ -287,13 +284,13 @@ function makeDeployments(tenantId: string, opts: ListOptions): Deployment[] {
   return arr;
 }
 
-function makeStatefulSets(_tenantId: string, opts: ListOptions): StatefulSet[] {
+function makeStatefulSets(_tenantId: string, _opts: ListOptions): StatefulSet[] {
   return [];
 }
-function makeDaemonSets(_tenantId: string, opts: ListOptions): DaemonSet[] {
+function makeDaemonSets(_tenantId: string, _opts: ListOptions): DaemonSet[] {
   return [];
 }
-function makePods(_tenantId: string, opts: ListOptions): Pod[] {
+function makePods(_tenantId: string, _opts: ListOptions): Pod[] {
   return [];
 }
 

@@ -259,12 +259,6 @@ export interface TopologyEngine {
   ): { items: TopologyEdge[]; total: number };
 }
 
-function nodeKindFor(
-  kind: 'cluster' | 'namespace' | 'service' | 'workload' | 'ingress' | 'pod',
-): TopologyNodeKind {
-  return kind;
-}
-
 function makeNode(
   id: string,
   label: string,
@@ -322,7 +316,6 @@ export function buildTopologyEngine(): TopologyEngine {
     serviceMap(input, name, clusterId) {
       const nodes: TopologyNode[] = [];
       const edges: TopologyEdge[] = [];
-      const serviceKey = (s: Service) => `${s.clusterId}/${s.namespace}/${s.name}`;
       const workloadKey = (w: Workload) => `${w.clusterId}/${w.namespace}/${w.name}/${w.kind}`;
       const bySelector = new Map<string, Workload[]>();
       const sKey = (c: string, n: string, k: string, v: string) => `${c}/${n}/${k}=${v}`;

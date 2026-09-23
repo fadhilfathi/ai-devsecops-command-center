@@ -23,7 +23,6 @@ import type {
   StatefulSet,
   DaemonSet,
   DeploymentRolloutStatus,
-  PodManagementPolicy,
   IngressClass,
 } from '@aicc/models';
 import type {
@@ -229,10 +228,10 @@ function makeDeployments(tenantId: string, opts: ListOptions): Deployment[] {
   ];
 }
 
-function makeStatefulSets(_tenantId: string, opts: ListOptions): StatefulSet[] {
+function makeStatefulSets(_tenantId: string, _opts: ListOptions): StatefulSet[] {
   return [];
 }
-function makeDaemonSets(_tenantId: string, opts: ListOptions): DaemonSet[] {
+function makeDaemonSets(_tenantId: string, _opts: ListOptions): DaemonSet[] {
   return [];
 }
 

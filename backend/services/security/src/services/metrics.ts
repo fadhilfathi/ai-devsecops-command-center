@@ -37,8 +37,6 @@ import {
   renderMetrics,
   serviceName,
   defaultRegistry as _defaultRegistry,
-  type CreateCounterOptions,
-  type CreateHistogramOptions,
 } from '@aicc/observability';
 import type { EventBus, Severity } from '@aicc/shared';
 
