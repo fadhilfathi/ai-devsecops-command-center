@@ -14,7 +14,7 @@
  *   - JWT auth (HS256 Sprint 2 stub, RS256 Sprint 2.1 via @aicc/auth)
  *   - RBAC (platform_admin or security_engineer for POSTs; all auth'd for GETs)
  */
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
@@ -81,7 +81,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   const eventLog = new InMemoryEventLog(bus);
 
   const server = Fastify({
-    logger: logger,
+    loggerInstance: logger,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
     // Zod-generated JSON schemas (see @aicc/models toJSONSchema) set
@@ -215,7 +215,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   await server.register(buildDashboardRoute, { logger, bus, sboms, scans, findings, eventLog });
 
   // ---------- Error handler ----------
-  server.setErrorHandler((err, req, reply) => {
+  server.setErrorHandler<FastifyError>((err, req, reply) => {
     logger.error({ err, requestId: req.id, url: req.url }, 'unhandled error');
     const status = (err as { statusCode?: number }).statusCode ?? 500;
     if (reply.statusCode < 400) reply.code(status);

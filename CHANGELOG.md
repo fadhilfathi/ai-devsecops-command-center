@@ -12,6 +12,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **S7-2**: Fastify 5, vitest 4, react-router 7; `pnpm audit` 0 critical /
+  0 high; Dependabot consolidated.
+
+### Changed
+
+- **S7-2**: upgraded Fastify 4→5 across all 13 backend services plus
+  `@aicc/shared`/`@aicc/observability` (custom logger now passed as
+  `loggerInstance`, `setErrorHandler<FastifyError>` for the now-`unknown`
+  default error type), and the matching plugin majors
+  (`@fastify/cors` 11, `@fastify/helmet` 13, `@fastify/sensible` 6,
+  `@fastify/swagger` 9, `@fastify/swagger-ui` 6, `@fastify/rate-limit` 11,
+  `pino` 10, `pino-pretty` 13). Bumped `vitest`/`@vitest/coverage-v8` 2→4
+  and `vite`/`@vitejs/plugin-react` 5→7/4→5 in the frontend (vitest 4
+  requires vite ^6). Bumped `react-router-dom` 6→7 in the frontend
+  (declarative mode, no other API changes needed). Bumped `pyjwt` to
+  2.13.0 in `vuln-intel` and `pytest` to 9 in `dependency-intel`.
+  Consolidated `.github/dependabot.yml` to a single root npm entry
+  (pnpm-workspace-aware) instead of 8 overlapping npm entries, and added
+  grouped `pip` entries for the 3 Python security agents. `pnpm audit`:
+  0 critical / 0 high / 0 moderate / 0 low (was 2/5/13/1). See
+  [ADR 0017](./docs/adr/0017-fastify-5.md).
+
 ### Fixed
 
 - **S7-1**: cleared all 45 outstanding ESLint warnings

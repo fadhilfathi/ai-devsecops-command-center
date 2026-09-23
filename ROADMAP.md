@@ -135,10 +135,15 @@ Status: **in progress**.
   `@typescript-eslint/no-unused-vars` / `no-explicit-any`) and switched
   CI's `pnpm lint` to `--max-warnings 0` so the count can't silently
   grow back.
-- **S7-2**: dependency / supply-chain pass — clear the backlog of open
-  Dependabot PRs (e.g. the `vitest` 4.x major), run `pnpm audit`
-  (and the Python agents' `pip-audit`/`safety` equivalent) and fix or
-  explicitly accept-risk any findings.
+- ✅ **S7-2**: dependency / supply-chain pass — Fastify 4→5 across all 13
+  services + `@aicc/shared` + `@aicc/observability` (`loggerInstance`,
+  `setErrorHandler<FastifyError>`), vitest 2→4 (+ vite 5→7,
+  `@vitejs/plugin-react` 4→5), react-router-dom 6→7 in the frontend,
+  `pyjwt` 2.13.0 in `vuln-intel`, `pytest` 9 in `dependency-intel`.
+  `pnpm audit`: 0 critical / 0 high / 0 moderate / 0 low. Dependabot
+  config consolidated to one root npm entry (was 8 overlapping npm
+  entries) plus grouped pip entries for the 3 Python agents.
+  See [ADR 0017](./docs/adr/0017-fastify-5.md).
 - **S7-3**: OpenSSF Scorecard hardening — pin every GitHub Actions step
   in `.github/workflows/*.yml` to a commit SHA instead of a tag
   (`actions/checkout@v4` → `@<sha>`, same for `scorecard-action`),

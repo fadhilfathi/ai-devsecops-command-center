@@ -6,7 +6,7 @@
  *   - Webhook ingestion endpoints with signature verification
  *   - Sync orchestration (PR scanning, SBOM attachment, alerts)
  */
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
@@ -48,7 +48,7 @@ export async function buildServer(
   const providers = buildProviderRegistry({ bus, logger, syncs });
 
   const server = Fastify({
-    logger: logger,
+    loggerInstance: logger,
     trustProxy: true,
     bodyLimit: 5 * 1024 * 1024, // 5 MiB for webhook payloads
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
@@ -68,7 +68,7 @@ export async function buildServer(
   await server.register(buildIntegrationRoutes, { logger, integrations, providers });
   await server.register(buildWebhookRoutes, { logger, providers, integrations, syncs, bus });
 
-  server.setErrorHandler((err, _req, reply) => {
+  server.setErrorHandler<FastifyError>((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');
     if (reply.statusCode < 400) reply.code(err.statusCode ?? 500);
     reply.send({

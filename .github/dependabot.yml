@@ -24,6 +24,9 @@ updates:
   # ---------------------------------------------------------------------------
   # npm workspaces (frontend, backend services, shared, agents)
   # ---------------------------------------------------------------------------
+  # Single pnpm-workspace-aware root entry covers every npm package in the
+  # monorepo (frontend, all 13 backend services, shared, models). Per-directory
+  # entries used to duplicate this and piled up ~30 overlapping PRs; deleted.
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
@@ -31,7 +34,7 @@ updates:
       day: 'monday'
       time: '09:00'
       timezone: 'Etc/UTC'
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - 'dependencies'
       - 'automated'
@@ -45,71 +48,9 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
-        # Major bumps are reviewed manually
-
-  # ---------------------------------------------------------------------------
-  # Frontend
-  # ---------------------------------------------------------------------------
-  - package-ecosystem: 'npm'
-    directory: '/frontend'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Etc/UTC'
-    open-pull-requests-limit: 10
-    labels:
-      - 'dependencies'
-      - 'automated'
-      - 'security'
-      - 'frontend'
-    rebase-strategy: 'auto'
-
-  # ---------------------------------------------------------------------------
-  # Backend services
-  # ---------------------------------------------------------------------------
-  - package-ecosystem: 'npm'
-    directory: '/backend/services/auth'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-    labels: ['dependencies', 'automated', 'security', 'backend', 'auth']
-  - package-ecosystem: 'npm'
-    directory: '/backend/services/agent'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-    labels: ['dependencies', 'automated', 'security', 'backend', 'agents']
-  - package-ecosystem: 'npm'
-    directory: '/backend/services/security'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-    labels: ['dependencies', 'automated', 'security', 'backend', 'security']
-  - package-ecosystem: 'npm'
-    directory: '/backend/services/incident'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-    labels: ['dependencies', 'automated', 'security', 'backend', 'incidents']
-  - package-ecosystem: 'npm'
-    directory: '/backend/services/compliance'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-    labels: ['dependencies', 'automated', 'security', 'backend', 'compliance']
-  - package-ecosystem: 'npm'
-    directory: '/backend/services/integration'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-    labels: ['dependencies', 'automated', 'security', 'backend', 'integrations']
+        # Major bumps are reviewed manually. NOTE: Dependabot security
+        # updates ignore this `ignore` block — a major-version security
+        # advisory still gets an individual PR regardless.
 
   # ---------------------------------------------------------------------------
   # GitHub Actions
@@ -144,3 +85,50 @@ updates:
       - 'security'
       - 'docker'
     open-pull-requests-limit: 5
+
+  # ---------------------------------------------------------------------------
+  # Python security agents (pip has no workspace concept — one entry per
+  # agent directory, each grouped by dependency type).
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: 'pip'
+    directory: '/agents/roles/security/sbom-generator'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 5
+    labels: ['dependencies', 'automated', 'security', 'python', 'agents']
+    groups:
+      production:
+        dependency-type: 'production'
+      development:
+        dependency-type: 'development'
+  - package-ecosystem: 'pip'
+    directory: '/agents/roles/security/vuln-intel'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 5
+    labels: ['dependencies', 'automated', 'security', 'python', 'agents']
+    groups:
+      production:
+        dependency-type: 'production'
+      development:
+        dependency-type: 'development'
+  - package-ecosystem: 'pip'
+    directory: '/agents/roles/security/dependency-intel'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 5
+    labels: ['dependencies', 'automated', 'security', 'python', 'agents']
+    groups:
+      production:
+        dependency-type: 'production'
+      development:
+        dependency-type: 'development'

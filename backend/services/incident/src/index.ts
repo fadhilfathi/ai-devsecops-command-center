@@ -4,7 +4,7 @@
  * Tracks the full incident lifecycle, from creation (often triggered
  * by a `vulnerability.detected` event) to mitigation and post-mortem.
  */
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
@@ -57,7 +57,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
   const chains = db ? buildPgChainRepository(db) : buildChainRepository();
 
   const server = Fastify({
-    logger: logger,
+    loggerInstance: logger,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
   });
@@ -86,7 +86,7 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
   // resulting chains.
   await buildCorrelationListener({ bus, chains, logger });
 
-  server.setErrorHandler((err, _req, reply) => {
+  server.setErrorHandler<FastifyError>((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');
     if (reply.statusCode < 400) reply.code(err.statusCode ?? 500);
     reply.send({

@@ -8,10 +8,11 @@ import pino, { type LoggerOptions } from 'pino';
 import type { FastifyBaseLogger } from 'fastify';
 
 // Exported as `FastifyBaseLogger` (rather than pino's own `Logger`) so the
-// instance returned here can be passed straight into `Fastify({ logger })`
-// without the whole `FastifyInstance` generic getting pinned to pino's more
-// specific type — see every service's `src/index.ts`. A pino logger is a
-// structural superset of `FastifyBaseLogger`, so nothing is lost.
+// instance returned here can be passed straight into
+// `Fastify({ loggerInstance })` without the whole `FastifyInstance` generic
+// getting pinned to pino's more specific type — see every service's
+// `src/index.ts`. A pino logger is a structural superset of
+// `FastifyBaseLogger`, so nothing is lost.
 export type Logger = FastifyBaseLogger;
 
 export interface CreateLoggerOptions {

@@ -5,7 +5,7 @@
  * fixture provider) and produces per-scope health scores + issues +
  * recommendations.
  */
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
@@ -42,7 +42,7 @@ export async function buildServer(deps?: Partial<K8sHealthServiceDeps>): Promise
   const engine = buildHealthEngine({ logger });
 
   const server = Fastify({
-    logger: logger,
+    loggerInstance: logger,
     trustProxy: true,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
   });
@@ -60,7 +60,7 @@ export async function buildServer(deps?: Partial<K8sHealthServiceDeps>): Promise
   await server.register(buildHealthRoutes, { logger, cfg });
   await server.register(buildK8sHealthRoutes, { logger, inventory, engine, bus });
 
-  server.setErrorHandler((err, _req, reply) => {
+  server.setErrorHandler<FastifyError>((err, _req, reply) => {
     logger.error({ err }, 'unhandled error');
     if (reply.statusCode < 400) reply.code(err.statusCode ?? 500);
     reply.send({
