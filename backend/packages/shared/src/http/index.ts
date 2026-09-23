@@ -1,9 +1,14 @@
 /**
  * HTTP helpers shared across services: env loading, port resolution,
- * graceful shutdown signal handling.
+ * graceful shutdown signal handling, and HTTP hardening (CORS/helmet/
+ * body limit/rate limit) via `registerSecurityPlugins`.
  */
 
 import type { FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+import sensible from '@fastify/sensible';
+import rateLimit from '@fastify/rate-limit';
 import type { Logger } from '../logger/index.js';
 import type { EventBusConfig } from '../events/index.js';
 
@@ -27,6 +32,35 @@ export interface ServiceAuthConfig {
   devBypass: boolean;
 }
 
+export interface ServiceSecurityConfig {
+  /**
+   * Exact browser origins allowed to make cross-origin requests
+   * (comma-separated `CORS_ORIGINS`). Empty by default: the SPA talks to
+   * every service same-origin through the vite/nginx `/api/*` proxy
+   * (see frontend/proxy-table.mjs), so no service needs to reflect a
+   * cross-origin `Origin` at all. Never combined with `origin: true` —
+   * an allow-list only.
+   */
+  corsOrigins: string[];
+  /** `BODY_LIMIT_BYTES`, default 1 MiB (Fastify's own default). */
+  bodyLimitBytes: number;
+  /** `RATE_LIMIT_MAX` requests per `RATE_LIMIT_WINDOW` ms, default 300/60s. */
+  rateLimitMax: number;
+  rateLimitWindowMs: number;
+  /**
+   * `TRUST_PROXY_CIDR`: comma-separated IP/CIDR list of the only peers
+   * whose `X-Forwarded-*` headers Fastify trusts. Fastify 5 removed
+   * numeric hop-count trust (it can't validate the immediate peer, so a
+   * direct client could spoof it) — an IP/CIDR allow-list is the
+   * replacement. Default covers the two ways a request reaches a
+   * service: the vite dev proxy on loopback, and nginx inside the
+   * `ccnet` docker-compose network (see docker-compose.yml's pinned
+   * `172.28.0.0/16` subnet). A client-supplied `X-Forwarded-For` from
+   * outside this list is ignored, so it can't spoof the rate-limit key.
+   */
+  trustProxy: string[];
+}
+
 export interface ServiceConfig {
   name: string;
   version: string;
@@ -40,6 +74,8 @@ export interface ServiceConfig {
   auth: ServiceAuthConfig;
   /** `EVENT_BUS_DRIVER` (memory|redis, default memory) + `REDIS_URL`. */
   eventBus: EventBusConfig;
+  /** CORS/body-limit/rate-limit knobs for `registerSecurityPlugins`. */
+  security: ServiceSecurityConfig;
 }
 
 /** Dev-only default secret. Every service refuses to boot with this in production. */
@@ -74,6 +110,23 @@ function loadEventBusConfig(): EventBusConfig {
   return { driver, redisUrl: process.env.REDIS_URL };
 }
 
+function loadSecurityConfig(): ServiceSecurityConfig {
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  return {
+    corsOrigins,
+    bodyLimitBytes: Number(process.env.BODY_LIMIT_BYTES ?? 1_048_576),
+    rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 300),
+    rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW ?? 60_000),
+    trustProxy: (process.env.TRUST_PROXY_CIDR ?? '127.0.0.1,172.28.0.0/16')
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean),
+  };
+}
+
 export function loadServiceConfig(name: string, version: string): ServiceConfig {
   const environment = process.env.NODE_ENV ?? 'development';
   return {
@@ -86,6 +139,7 @@ export function loadServiceConfig(name: string, version: string): ServiceConfig 
     databaseUrl: process.env.DATABASE_URL,
     auth: loadAuthConfig(environment),
     eventBus: loadEventBusConfig(),
+    security: loadSecurityConfig(),
   };
 }
 
@@ -99,6 +153,95 @@ function defaultPort(serviceName: string): number {
     'integration-service': 4006,
   };
   return map[serviceName] ?? 4000;
+}
+
+// Health/metrics endpoints are scraped constantly (docker healthchecks,
+// Prometheus) — never rate-limited, regardless of the global bucket.
+const RATE_LIMIT_EXEMPT_PATHS = new Set(['/healthz', '/readyz', '/metrics']);
+
+// Swagger UI (security-service `/docs`) serves HTML with inline styles/
+// scripts — the strict `default-src 'none'` API CSP below would break it.
+const SWAGGER_UI_CSP =
+  "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'";
+
+export interface RegisterSecurityPluginsOptions {
+  /** Path prefixes (e.g. `/docs`) that get the relaxed Swagger UI CSP instead of the strict API default. */
+  cspRelaxedPrefixes?: string[];
+  /**
+   * Skip the shared global rate limit. Only security-service uses this —
+   * it registers its own `@fastify/rate-limit` with metrics
+   * instrumentation (`rateLimitRejectionsTotal`) and tighter per-route
+   * overrides. Default true (every other service gets the shared one).
+   */
+  installRateLimit?: boolean;
+}
+
+/**
+ * CORS allow-list + hardened helmet + sensible + a global rate limit —
+ * every service calls this once, right after constructing the Fastify
+ * instance and before the auth hook/routes (see S7-4 ADR 0018).
+ *
+ * CORS: no plugin registered (no `access-control-allow-origin` on any
+ * response) unless `cfg.security.corsOrigins` is non-empty — the SPA
+ * reaches every service same-origin via the vite/nginx `/api/*` proxy,
+ * so cross-origin access is opt-in only.
+ *
+ * Rate limit: keyed by the verified `req.userId` (falls back to `req.ip`
+ * for unauthenticated requests). Registered with `hook: 'preHandler'` so
+ * it runs after the auth `onRequest` hook every service adds afterwards —
+ * `req.userId` is already set by the time the limiter checks it.
+ */
+export async function registerSecurityPlugins(
+  server: FastifyInstance,
+  cfg: ServiceConfig,
+  opts: RegisterSecurityPluginsOptions = {},
+): Promise<void> {
+  await server.register(helmet, {
+    contentSecurityPolicy: {
+      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+    },
+    hsts: { maxAge: 15_552_000, includeSubDomains: true },
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    referrerPolicy: { policy: 'no-referrer' },
+  });
+
+  if (opts.cspRelaxedPrefixes?.length) {
+    const prefixes = opts.cspRelaxedPrefixes;
+    server.addHook('onSend', async (req, reply, payload) => {
+      const path = (req.url ?? '').split('?')[0];
+      if (prefixes.some((p) => path === p || path.startsWith(p + '/'))) {
+        reply.header('content-security-policy', SWAGGER_UI_CSP);
+      }
+      return payload;
+    });
+  }
+
+  if (cfg.security.corsOrigins.length > 0) {
+    await server.register(cors, { origin: cfg.security.corsOrigins, credentials: true });
+  }
+
+  await server.register(sensible);
+
+  if (opts.installRateLimit ?? true) {
+    await server.register(rateLimit, {
+      global: true,
+      max: cfg.security.rateLimitMax,
+      timeWindow: cfg.security.rateLimitWindowMs,
+      hook: 'preHandler',
+      allowList: (req) => isRateLimitExempt(req.url),
+      keyGenerator: (req) => req.userId || req.ip,
+      addHeaders: {
+        'x-ratelimit-limit': true,
+        'x-ratelimit-remaining': true,
+        'x-ratelimit-reset': true,
+      },
+    });
+  }
+}
+
+/** `/healthz`, `/readyz`, `/metrics` — never rate-limited. Exported so security-service's custom rate-limit registration exempts the same paths. */
+export function isRateLimitExempt(url: string | undefined): boolean {
+  return RATE_LIMIT_EXEMPT_PATHS.has((url ?? '').split('?')[0]);
 }
 
 export function registerGracefulShutdown(server: FastifyInstance, logger: Logger): void {

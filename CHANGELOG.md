@@ -14,6 +14,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **S7-4**: CORS allow-list, strict API CSP, body + rate limits on all
+  13 services. Added `registerSecurityPlugins` to `@aicc/shared/http`,
+  replacing every service's hand-rolled `cors({ origin: true,
+credentials: true })` (reflects any origin with credentials) /
+  `helmet({ contentSecurityPolicy: false })` block: no CORS by default
+  (`CORS_ORIGINS` opt-in allow-list — the SPA is same-origin via
+  `/api/*` already), `default-src 'none'` CSP (relaxed only for
+  security-service's `/docs`), a `bodyLimit` from `BODY_LIMIT_BYTES`
+  (default 1 MiB, with explicit 10 MiB overrides on SBOM
+  ingest/generate/analyze and vulnerability ingest), and a global
+  `@fastify/rate-limit` (`RATE_LIMIT_MAX`/`RATE_LIMIT_WINDOW`) keyed by
+  verified user id, exempting `/healthz`/`/readyz`/`/metrics`, with a
+  tighter 10/min limit on auth-service's login/refresh. `trustProxy`
+  is now an IP/CIDR allow-list (`TRUST_PROXY_CIDR`) instead of `true` —
+  Fastify 5 removed hop-count trust as spoofable. See
+  [ADR 0018](docs/adr/0018-http-hardening.md).
 - **S7-3**: fixed the 4 GitHub Actions workflows (`sbom`, `security`,
   `scorecard`, `codeql`) that had failed on every push to `main` for
   weeks; pinned every third-party action to a commit SHA; applied

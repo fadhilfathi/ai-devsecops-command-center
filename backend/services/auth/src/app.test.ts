@@ -116,3 +116,15 @@ test('POST /v1/auth/dev-login issues a token that authenticates /v1/auth/me', as
   expect(me.json().user.email).toBe('admin@aicc.local');
   await server.close();
 });
+
+test('security headers: no ACAO on a cross-origin request, strict CSP present', async () => {
+  const server = await buildServer();
+  const res = await server.inject({
+    method: 'GET',
+    url: '/healthz',
+    headers: { origin: 'https://evil.example' },
+  });
+  expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  expect(res.headers['content-security-policy']).toContain("default-src 'none'");
+  await server.close();
+});

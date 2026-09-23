@@ -158,10 +158,16 @@ Status: **in progress**.
   actually exists. Added `docs/operations/branch-protection.md`
   (manual checklist, not yet applied). Fixed README's hardcoded
   "pending" CI/CodeQL badges to point at the real workflow badges.
-- **S7-4**: rate limiting, request-size limits, and a security-headers
-  audit across all 13 backend services (Fastify `@fastify/rate-limit`
-  / body-size limits / `helmet` config review) — today's `helmet` wiring
-  predates the S6 auth work and has never been checked against it.
+- ✅ **S7-4**: done. `registerSecurityPlugins` (`@aicc/shared/http`)
+  replaces every service's `cors({ origin: true, credentials: true })`
+  / `helmet({ contentSecurityPolicy: false })` block: CORS allow-list
+  (opt-in via `CORS_ORIGINS`, off by default — the SPA is same-origin),
+  strict `default-src 'none'` CSP, a configurable `bodyLimit` with
+  10 MiB overrides on SBOM/vulnerability ingest routes, and a global
+  `@fastify/rate-limit` keyed by verified user id (health/metrics
+  exempt, tighter limit on auth login/refresh). `trustProxy` is now an
+  IP/CIDR allow-list, not `true`. See
+  [ADR 0018](./docs/adr/0018-http-hardening.md).
 - **S7-5**: a real end-to-end smoke test — `docker compose up --build`,
   wait for every service's `/healthz`, then hit one representative
   route per service (mirroring `scripts/smoke_*.py`'s pattern for the

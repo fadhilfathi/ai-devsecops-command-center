@@ -104,3 +104,15 @@ test('a token for tenant A plus a forged x-tenant-id header still only sees tena
     else process.env.AUTH_DEV_BYPASS = prev;
   }
 });
+
+test('security headers: no ACAO on a cross-origin request, strict CSP present', async () => {
+  const server = await buildServer();
+  const res = await server.inject({
+    method: 'GET',
+    url: '/healthz',
+    headers: { origin: 'https://evil.example' },
+  });
+  expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  expect(res.headers['content-security-policy']).toContain("default-src 'none'");
+  await server.close();
+});

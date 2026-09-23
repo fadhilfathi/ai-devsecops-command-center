@@ -91,6 +91,29 @@ RBAC is **role-based** with **scope-based** granularity for actions and
   require an additional environment constraint; the user's roles must
   include the matching env tag.
 
+## HTTP hardening (implemented, S7-4)
+
+Unlike most of this document (aspirational design), the following is
+live in every backend service today via `registerSecurityPlugins`
+(`@aicc/shared/http`) — see
+[ADR 0018](../adr/0018-http-hardening.md) for the full rationale:
+
+- **CORS**: no cross-origin access by default (the SPA reaches every
+  service same-origin through the vite/nginx `/api/*` proxy); an exact
+  origin allow-list via `CORS_ORIGINS`, never a wildcard/reflect.
+- **CSP**: `default-src 'none'` on every JSON API response; relaxed
+  only for `security-service`'s `/docs` (Swagger UI).
+- **Body limits**: 1 MiB default, explicit higher per-route limits
+  where a real payload needs it (SBOM ingest/generate/analyze,
+  vulnerability ingest, integration webhooks).
+- **Rate limiting**: global default (`RATE_LIMIT_MAX`/`RATE_LIMIT_WINDOW`)
+  on every service, keyed by verified user id; tighter per-route limits
+  on `auth-service`'s login/refresh and `security-service`'s
+  proxy/ingest routes; health/metrics endpoints exempt.
+- **`X-Forwarded-*` trust**: an IP/CIDR allow-list (`TRUST_PROXY_CIDR`),
+  not a blanket `trustProxy: true` — Fastify 5 dropped hop-count trust
+  as unsafe.
+
 ## Multi-tenant isolation
 
 - **Tenant** is a first-class column on every row of every business table.

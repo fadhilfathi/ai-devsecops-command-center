@@ -37,27 +37,37 @@ export const buildSbomRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
     return { items, total: items.length };
   });
 
-  server.post('/v1/sboms', async (req, reply) => {
-    const tenantId = requireTenant(req.tenantId);
-    const body = CreateSbomSchema.parse(req.body);
-    const asset = await assets.findById(body.assetId, tenantId);
-    if (!asset) throw new NotFoundError('Asset', body.assetId);
-    const record = await sboms.create({
-      tenantId,
-      assetId: body.assetId,
-      format: body.format as SbomFormat,
-      document: body.document,
-    });
-    await bus.publish({
-      type: EventTypes.INTEGRATION_SYNC_COMPLETED,
-      version: 1,
-      source: 'security-service',
-      tenantId,
-      severity: 'info',
-      data: { kind: 'sbom.created', sbomId: record.id, assetId: body.assetId, format: body.format },
-    });
-    return reply.code(201).send({ sbom: record });
-  });
+  server.post(
+    '/v1/sboms',
+    // The raw CycloneDX/SPDX `document` can exceed the shared 1 MiB default.
+    { bodyLimit: 10 * 1024 * 1024 },
+    async (req, reply) => {
+      const tenantId = requireTenant(req.tenantId);
+      const body = CreateSbomSchema.parse(req.body);
+      const asset = await assets.findById(body.assetId, tenantId);
+      if (!asset) throw new NotFoundError('Asset', body.assetId);
+      const record = await sboms.create({
+        tenantId,
+        assetId: body.assetId,
+        format: body.format as SbomFormat,
+        document: body.document,
+      });
+      await bus.publish({
+        type: EventTypes.INTEGRATION_SYNC_COMPLETED,
+        version: 1,
+        source: 'security-service',
+        tenantId,
+        severity: 'info',
+        data: {
+          kind: 'sbom.created',
+          sbomId: record.id,
+          assetId: body.assetId,
+          format: body.format,
+        },
+      });
+      return reply.code(201).send({ sbom: record });
+    },
+  );
 
   server.get<{ Params: { id: string } }>('/v1/sboms/:id', async (req) => {
     const tenantId = requireTenant(req.tenantId);

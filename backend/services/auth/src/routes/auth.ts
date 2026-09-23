@@ -51,39 +51,49 @@ export const buildAuthRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
     logger.warn('dev-login route disabled: NODE_ENV=production');
   } else {
     logger.warn('dev-login route enabled: password-less login, do not enable in production');
-    server.post('/v1/auth/dev-login', async (req, reply) => {
-      const body = LoginSchema.parse(req.body);
-      const user = await users.findByEmail(body.email);
-      if (!user) throw new NotFoundError('User', body.email);
-      if (!user.active) throw new ForbiddenError('User is inactive');
+    server.post(
+      '/v1/auth/dev-login',
+      // Credential-stuffing/brute-force surface — much tighter than the
+      // service-wide default (see @aicc/shared registerSecurityPlugins).
+      { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+      async (req, reply) => {
+        const body = LoginSchema.parse(req.body);
+        const user = await users.findByEmail(body.email);
+        if (!user) throw new NotFoundError('User', body.email);
+        if (!user.active) throw new ForbiddenError('User is inactive');
 
-      const pair = await tokens.issue({
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-      });
+        const pair = await tokens.issue({
+          sub: user.id,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+        });
 
-      await bus.publish({
-        type: EventTypes.AUTH_USER_LOGGED_IN,
-        version: 1,
-        source: 'auth-service',
-        tenantId: user.tenantId,
-        severity: 'info',
-        data: { userId: user.id, email: user.email },
-      });
+        await bus.publish({
+          type: EventTypes.AUTH_USER_LOGGED_IN,
+          version: 1,
+          source: 'auth-service',
+          tenantId: user.tenantId,
+          severity: 'info',
+          data: { userId: user.id, email: user.email },
+        });
 
-      reply.code(200).send({ user, ...pair });
-    });
+        reply.code(200).send({ user, ...pair });
+      },
+    );
   }
 
   // POST /v1/auth/refresh
-  server.post('/v1/auth/refresh', async (req, reply) => {
-    const body = z.object({ refreshToken: z.string() }).parse(req.body);
-    const pair = await tokens.rotateRefresh(body.refreshToken);
-    if (!pair) throw new UnauthorizedError('Invalid refresh token');
-    reply.code(200).send(pair);
-  });
+  server.post(
+    '/v1/auth/refresh',
+    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const body = z.object({ refreshToken: z.string() }).parse(req.body);
+      const pair = await tokens.rotateRefresh(body.refreshToken);
+      if (!pair) throw new UnauthorizedError('Invalid refresh token');
+      reply.code(200).send(pair);
+    },
+  );
 
   // POST /v1/auth/logout
   server.post('/v1/auth/logout', async (req) => {

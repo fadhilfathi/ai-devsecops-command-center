@@ -37,6 +37,9 @@ export const buildWebhookRoutes: FastifyPluginAsync<Deps> = async (
     '/v1/webhooks/:provider',
     {
       config: { rawBody: true },
+      // 5 MiB, not the shared BODY_LIMIT_BYTES default — provider webhooks
+      // (e.g. full SARIF/scan payloads) can exceed the default 1 MiB.
+      bodyLimit: 5 * 1024 * 1024,
     },
     async (req, reply) => {
       const provider = providers.get(req.params.provider);

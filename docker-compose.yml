@@ -424,3 +424,10 @@ networks:
   ccnet:
     driver: bridge
     name: ccnet
+    # Pinned (not Docker's auto-assigned range) so every service's default
+    # TRUST_PROXY_CIDR (backend/packages/shared/src/http/index.ts) matches
+    # the network nginx/other containers actually reach it from. See
+    # docs/adr/0018-http-hardening.md.
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

@@ -48,6 +48,9 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
       config: {
         rateLimit: { max: rateLimitMax, timeWindow: rateLimitWindowMs },
       },
+      // A generated SBOM (CycloneDX/SPDX JSON) for a large monorepo image
+      // routinely exceeds the shared 1 MiB default.
+      bodyLimit: 10 * 1024 * 1024,
       schema: {
         body: toJSONSchema(SbomGenerateRequestSchema),
         // No response schema: SbomServiceResponseSchema is recursive
@@ -118,6 +121,8 @@ export const buildSbomPipelineRoutes: FastifyPluginAsync<Deps> = async (
       config: {
         rateLimit: { max: rateLimitMax, timeWindow: rateLimitWindowMs },
       },
+      // The SBOM document being analysed can exceed the shared 1 MiB default.
+      bodyLimit: 10 * 1024 * 1024,
       schema: {
         body: toJSONSchema(SbomAnalyzeRequestSchema),
         // No response schema — see the /sbom/generate route above.

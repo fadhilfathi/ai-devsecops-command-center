@@ -57,6 +57,10 @@
   },
   "dependencies": {
     "@aicc/models": "workspace:*",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/sensible": "^6.0.5",
     "ioredis": "^6.0.0",
     "pg": "^8.23.0",
     "pino": "^10.3.1",

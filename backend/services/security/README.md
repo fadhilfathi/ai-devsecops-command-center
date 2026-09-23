@@ -440,18 +440,18 @@ Or use the `auth-service`'s `POST /v1/auth/dev-login`.
 
 See `.env.example`. Critical vars for S2.5:
 
-| Variable               | Default                 | Description                                                                  |
-| ---------------------- | ----------------------- | ---------------------------------------------------------------------------- |
-| `PORT`                 | `4003`                  | Service port                                                                 |
-| `SBOM_PIPELINE_URL`    | `http://localhost:4007` | Downstream SBOM pipeline                                                     |
-| `VULN_INTEL_URL`       | `http://localhost:4008` | Downstream vuln intel                                                        |
-| `DEPENDENCY_INTEL_URL` | `http://localhost:4009` | Downstream dep intel                                                         |
-| `RATE_LIMIT_MAX`       | `10`                    | Per-route req/s cap                                                          |
-| `RATE_LIMIT_WINDOW_MS` | `1000`                  | Per-route window                                                             |
-| `OTEL_SERVICE_NAME`    | `security-service`      | Injected as the `service` label on every metric (per metrics-spec.md §5.1.1) |
-| `JWT_ALG`              | `HS256`                 | `RS256` in prod via `@aicc/auth`                                             |
-| `JWT_SECRET`           | dev-only                | HS256 dev secret (Sprint 2 stub)                                             |
-| `JWT_PUBLIC_KEY`       | unset                   | RS256 public key (Sprint 2.1)                                                |
+| Variable                               | Default                 | Description                                                                  |
+| -------------------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
+| `PORT`                                 | `4003`                  | Service port                                                                 |
+| `SBOM_PIPELINE_URL`                    | `http://localhost:4007` | Downstream SBOM pipeline                                                     |
+| `VULN_INTEL_URL`                       | `http://localhost:4008` | Downstream vuln intel                                                        |
+| `DEPENDENCY_INTEL_URL`                 | `http://localhost:4009` | Downstream dep intel                                                         |
+| `SECURITY_INGEST_RATE_LIMIT_MAX`       | `10`                    | Per-route req/s cap (SBOM/vuln-ingest routes)                                |
+| `SECURITY_INGEST_RATE_LIMIT_WINDOW_MS` | `1000`                  | Per-route window                                                             |
+| `OTEL_SERVICE_NAME`                    | `security-service`      | Injected as the `service` label on every metric (per metrics-spec.md §5.1.1) |
+| `JWT_ALG`                              | `HS256`                 | `RS256` in prod via `@aicc/auth`                                             |
+| `JWT_SECRET`                           | dev-only                | HS256 dev secret (Sprint 2 stub)                                             |
+| `JWT_PUBLIC_KEY`                       | unset                   | RS256 public key (Sprint 2.1)                                                |
 
 ## Events emitted (S2.5 + S2.10)
 

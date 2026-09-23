@@ -23,9 +23,11 @@ const EnvSchema = z.object({
   // DB
   DATABASE_URL: z.string().url().optional(),
 
-  // Rate limit defaults
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(1000),
+  // Rate limit defaults (per-route override on top of the shared global
+  // limit from @aicc/shared's RATE_LIMIT_MAX/RATE_LIMIT_WINDOW — named
+  // distinctly, S7-4, to avoid the two being confused for the same knob).
+  SECURITY_INGEST_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  SECURITY_INGEST_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(1000),
 
   // Event bus
   EVENT_BUS_DRIVER: z.enum(['memory', 'nats', 'redis-streams']).default('memory'),

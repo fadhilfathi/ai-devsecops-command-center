@@ -15,9 +15,6 @@
  *   - RBAC (platform_admin or security_engineer for POSTs; all auth'd for GETs)
  */
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
-import cors from '@fastify/cors';
-import helmet from '@fastify/helmet';
-import sensible from '@fastify/sensible';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -27,6 +24,8 @@ import {
   createLogger,
   loadServiceConfig,
   registerGracefulShutdown,
+  registerSecurityPlugins,
+  isRateLimitExempt,
   createEventBus,
   buildAuthHook,
   type EventBus,
@@ -82,7 +81,8 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
 
   const server = Fastify({
     loggerInstance: logger,
-    trustProxy: true,
+    trustProxy: cfg.security.trustProxy,
+    bodyLimit: cfg.security.bodyLimitBytes,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
     // Zod-generated JSON schemas (see @aicc/models toJSONSchema) set
     // `default` on properties ajv's strict mode considers ambiguous
@@ -99,9 +99,15 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   );
 
   // ---------- Plugins ----------
-  await server.register(helmet, { contentSecurityPolicy: false });
-  await server.register(cors, { origin: true, credentials: true });
-  await server.register(sensible);
+  // CORS/helmet/sensible from the shared bundle (S7-4); the strict API CSP
+  // is relaxed to a Swagger-UI-compatible one under /docs. Rate limit is
+  // NOT installed here (`installRateLimit: false`) — security-service
+  // keeps its own below, with the metrics instrumentation this service
+  // already had.
+  await registerSecurityPlugins(server, cfg, {
+    cspRelaxedPrefixes: ['/docs'],
+    installRateLimit: false,
+  });
   registerHttpMetrics(server, { registry: metricsRegistry });
 
   // Global rate limit (10 req/s) — overridden per route where needed.
@@ -109,10 +115,14 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   // The `bucket` label is 'global' for Sprint 2 (one global rate limit);
   // Sprint 3 can widen to 3 (D1) or 5 (D7) values if per-route rate limits
   // are introduced. See services/metrics.ts:4 for the cardinality rationale.
+  // `hook: 'preHandler'` so it runs after the auth `onRequest` hook below —
+  // `keyGenerator` needs the verified `req.userId`, not just `req.ip`.
   await server.register(rateLimit, {
     global: true,
-    max: env.RATE_LIMIT_MAX,
-    timeWindow: env.RATE_LIMIT_WINDOW_MS,
+    max: env.SECURITY_INGEST_RATE_LIMIT_MAX,
+    timeWindow: env.SECURITY_INGEST_RATE_LIMIT_WINDOW_MS,
+    hook: 'preHandler',
+    allowList: (req) => isRateLimitExempt(req.url),
     addHeadersOnExceeding: {
       'x-ratelimit-limit': true,
       'x-ratelimit-remaining': true,
@@ -192,24 +202,24 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     logger,
     bus,
     sbomPipelineUrl: env.SBOM_PIPELINE_URL,
-    rateLimitMax: env.RATE_LIMIT_MAX,
-    rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+    rateLimitMax: env.SECURITY_INGEST_RATE_LIMIT_MAX,
+    rateLimitWindowMs: env.SECURITY_INGEST_RATE_LIMIT_WINDOW_MS,
     serviceVersion: SERVICE_VERSION,
   });
   await server.register(buildVulnerabilityIngestRoute, {
     logger,
     bus,
     vulnIntelUrl: env.VULN_INTEL_URL,
-    rateLimitMax: env.RATE_LIMIT_MAX,
-    rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+    rateLimitMax: env.SECURITY_INGEST_RATE_LIMIT_MAX,
+    rateLimitWindowMs: env.SECURITY_INGEST_RATE_LIMIT_WINDOW_MS,
     serviceVersion: SERVICE_VERSION,
   });
   await server.register(buildRiskCalculateRoute, {
     logger,
     bus,
     dependencyIntelUrl: env.DEPENDENCY_INTEL_URL,
-    rateLimitMax: env.RATE_LIMIT_MAX,
-    rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+    rateLimitMax: env.SECURITY_INGEST_RATE_LIMIT_MAX,
+    rateLimitWindowMs: env.SECURITY_INGEST_RATE_LIMIT_WINDOW_MS,
     serviceVersion: SERVICE_VERSION,
   });
   await server.register(buildDashboardRoute, { logger, bus, sboms, scans, findings, eventLog });

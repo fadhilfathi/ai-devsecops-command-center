@@ -47,6 +47,8 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
       config: {
         rateLimit: { max: rateLimitMax, timeWindow: rateLimitWindowMs },
       },
+      // A bulk vulnerability ingest batch can exceed the shared 1 MiB default.
+      bodyLimit: 10 * 1024 * 1024,
       schema: {
         body: toJSONSchema(VulnerabilityIngestRequestSchema),
         response: { 200: toJSONSchema(VulnerabilityIngestResponseSchema) },

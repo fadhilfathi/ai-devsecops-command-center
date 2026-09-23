@@ -15,14 +15,24 @@ export function renderNginxConf(table = PROXY_TABLE) {
       // plus a prefix location for subpaths (e.g. `/api/incidents/123`).
       // nginx's `location = <path>` always wins over prefix locations, so
       // order relative to the prefix block below doesn't matter.
+      // nginx is the edge (nothing in front of it) — overwrite, don't
+      // append, X-Forwarded-For/X-Real-IP so a client can't spoof its own
+      // rate-limit key past the backend's TRUST_PROXY_CIDR check. See ADR
+      // 0018 for what changes if a load balancer is ever added in front.
       return `    location = ${browserPath} {
         proxy_pass http://${container}:${port}${upstreamPath};
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
     location ${browserPath}/ {
         rewrite ^${browserPath}/(.*)$ ${upstreamPath}/$1 break;
         proxy_pass http://${container}:${port};
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }`;
     })
     .join('\n');

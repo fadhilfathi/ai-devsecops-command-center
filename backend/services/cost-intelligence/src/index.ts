@@ -2,14 +2,12 @@
  * Cost Intelligence Service — entry point.
  */
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
-import cors from '@fastify/cors';
-import helmet from '@fastify/helmet';
-import sensible from '@fastify/sensible';
 import { registerHttpMetrics } from '@aicc/observability';
 import {
   createLogger,
   loadServiceConfig,
   registerGracefulShutdown,
+  registerSecurityPlugins,
   buildAuthHook,
   createEventBus,
   type EventBus,
@@ -52,13 +50,12 @@ export async function buildServer(
 
   const server = Fastify({
     loggerInstance: logger,
-    trustProxy: true,
+    trustProxy: cfg.security.trustProxy,
+    bodyLimit: cfg.security.bodyLimitBytes,
     genReqId: () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
   });
 
-  await server.register(helmet, { contentSecurityPolicy: false });
-  await server.register(cors, { origin: true, credentials: true });
-  await server.register(sensible);
+  await registerSecurityPlugins(server, cfg);
   registerHttpMetrics(server);
 
   server.decorateRequest('tenantId', '');
