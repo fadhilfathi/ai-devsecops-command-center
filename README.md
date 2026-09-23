@@ -13,20 +13,18 @@
 [![CodeQL](https://img.shields.io/badge/CodeQL-pending-lightgrey)](./.github/workflows/codeql.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 5 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 6 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
 
-**Sprint 5 just shipped**: live Kubernetes, persistence, observability,
-containerisation — a live `KubernetesProvider` on
-`@kubernetes/client-node`, Postgres-backed cluster/incident/runbook/chain
-repositories, Prometheus `/metrics` on all 13 services, network-policy
-inference + service-mesh detection in the topology engine,
-Prometheus-derived cost utilisation, multi-page PDF reports, and
-Dockerfiles + `docker-compose.yml` for the full stack. See
-[`docs/architecture/sprint-5/`](./docs/architecture/sprint-5/) and
-[`CHANGELOG.md`](./CHANGELOG.md).
+**Sprint 6 just shipped**: the frontend now talks to real service APIs
+behind a resource-based proxy, every backend service verifies a real
+JWT instead of trusting a raw tenant header, the event bus gained a
+durable Redis Streams driver, K8s runtime/health findings auto-map to
+CIS/NIST compliance controls, and cluster credentials are encrypted at
+rest. See [`docs/architecture/sprint-6/`](./docs/architecture/sprint-6/)
+and [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 
@@ -217,6 +215,13 @@ make up
 # - Grafana:              http://localhost:3011  (admin / admin)
 # - Prometheus:           http://localhost:9090
 ```
+
+The compose stack runs with real auth (`AUTH_DEV_BYPASS=false` in
+`.env.example`), so the frontend shows a login gate — use the
+dev-login form (any seeded user; see `auth-service`) to get in. Running
+a single service directly with `pnpm dev` outside compose keeps the
+`AUTH_DEV_BYPASS` default (`true` outside production), so no login is
+needed there.
 
 ### Common commands
 

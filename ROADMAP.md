@@ -99,7 +99,8 @@ Status: **complete** (2026-09-22). See
 
 ## Sprint 6 — Frontend integration, auth, event bus, compliance automation
 
-Status: **planned**.
+Status: **complete** (2026-09-23). See
+[`docs/architecture/sprint-6/`](./docs/architecture/sprint-6/).
 
 - ✅ **S6-1**: wire the frontend to the real service APIs instead of
   `src/lib/*.mock.ts`, starting with the infrastructure pages
@@ -108,7 +109,8 @@ Status: **planned**.
 - ✅ **S6-2**: auth end-to-end — `auth-service` issues JWTs, every
   backend service verifies them via a shared middleware in
   `@aicc/shared`, and the frontend gets a real login flow (replacing
-  the `x-tenant-id`-header development shortcut). See
+  the `x-tenant-id`-header development shortcut). A follow-up closed a
+  tenant-header spoofing hole left by the first cut. See
   [ADR 0013](./docs/adr/0013-service-to-service-auth.md).
 - ✅ **S6-3**: event bus driver beyond in-memory — Redis Streams,
   using the existing compose `redis` container, behind the same
@@ -126,5 +128,31 @@ Status: **planned**.
   [ADR 0016](./docs/adr/0016-credential-encryption-at-rest.md).
 
 ## Sprint 7 — Hardening, security review, OpenSSF Scorecard pass
+
+Status: **planned**.
+
+- **S7-1**: fix the 45 outstanding `eslint` warnings (mostly
+  `@typescript-eslint/no-unused-vars` / `no-explicit-any`) and switch
+  CI's `pnpm lint` to `--max-warnings 0` so the count can't silently
+  grow back.
+- **S7-2**: dependency / supply-chain pass — clear the backlog of open
+  Dependabot PRs (e.g. the `vitest` 4.x major), run `pnpm audit`
+  (and the Python agents' `pip-audit`/`safety` equivalent) and fix or
+  explicitly accept-risk any findings.
+- **S7-3**: OpenSSF Scorecard hardening — pin every GitHub Actions step
+  in `.github/workflows/*.yml` to a commit SHA instead of a tag
+  (`actions/checkout@v4` → `@<sha>`, same for `scorecard-action`),
+  document branch protection settings for `main`, and verify
+  `SECURITY.md`'s SLA table and supported-versions list still match
+  reality. Re-run `scorecard.yml` and confirm the badge score moves.
+- **S7-4**: rate limiting, request-size limits, and a security-headers
+  audit across all 13 backend services (Fastify `@fastify/rate-limit`
+  / body-size limits / `helmet` config review) — today's `helmet` wiring
+  predates the S6 auth work and has never been checked against it.
+- **S7-5**: a real end-to-end smoke test — `docker compose up --build`,
+  wait for every service's `/healthz`, then hit one representative
+  route per service (mirroring `scripts/smoke_*.py`'s pattern for the
+  Python agents) — nothing has ever exercised the full compose stack
+  end to end.
 
 ## Sprint 8 — 0.1.0 release, public docs, demo data
