@@ -42,7 +42,7 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@aicc.local"
-              className="w-full rounded-md border border-aion-border bg-aion-surface2 px-2.5 py-1.5 text-sm text-aion-text placeholder:text-aion-muted focus:border-aion-accent/50 focus:outline-none focus:ring-1 focus:ring-aion-accent/30"
+              className="w-full rounded-md border border-aion-border bg-aion-surface2 px-2.5 py-1.5 text-sm text-aion-text placeholder:text-aion-muted focus:border-aion-accent/50 focus:outline-hidden focus:ring-1 focus:ring-aion-accent/30"
             />
             {error && <p className="text-xs text-aion-danger">{error}</p>}
             <Button type="submit" variant="primary" size="md" disabled={submitting}>

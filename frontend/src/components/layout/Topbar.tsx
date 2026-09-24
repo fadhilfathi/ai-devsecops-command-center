@@ -11,7 +11,7 @@ export function Topbar() {
         <input
           type="search"
           placeholder="Search assets, CVEs, incidents, controls…"
-          className="w-full rounded-md border border-aion-border bg-aion-surface2 py-1.5 pl-9 pr-16 text-sm text-aion-text placeholder:text-aion-muted focus:border-aion-accent/50 focus:outline-none focus:ring-1 focus:ring-aion-accent/30"
+          className="w-full rounded-md border border-aion-border bg-aion-surface2 py-1.5 pl-9 pr-16 text-sm text-aion-text placeholder:text-aion-muted focus:border-aion-accent/50 focus:outline-hidden focus:ring-1 focus:ring-aion-accent/30"
         />
         <kbd className="pointer-events-none absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded border border-aion-border bg-aion-bg px-1.5 py-0.5 text-[10px] text-aion-muted">
           <Command className="h-3 w-3" />K

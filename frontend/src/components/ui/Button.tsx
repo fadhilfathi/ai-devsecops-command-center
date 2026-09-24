@@ -5,7 +5,7 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md';
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-aion-accent text-aion-bg hover:bg-aion-accent/90 focus-visible:ring-aion-accent/40',
+  primary: 'bg-aion-accent text-aion-bg hover:bg-aion-accent/90',
   secondary:
     'bg-aion-surface2 text-aion-text border border-aion-border hover:border-aion-accent/40',
   ghost: 'text-aion-muted hover:bg-aion-surface2 hover:text-aion-text',
@@ -35,7 +35,7 @@ export function Button({
     <button
       type="button"
       className={clsx(
-        'inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md font-medium transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-aion-accent/40 disabled:cursor-not-allowed disabled:opacity-50',
         variantClasses[variant],
         sizeClasses[size],
         className,

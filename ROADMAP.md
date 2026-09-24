@@ -206,6 +206,8 @@ routes.
   `react-dom`, `@types/react`/`@types/react-dom`), Tailwind 4,
   TypeScript 6. Each needs its own migration/breaking-change pass, not
   a blind merge.
+  - **S8-2a** (done): React 19, Tailwind 4, recharts 3, lucide-react 1,
+    react-window 2; zustand removed (unused). TypeScript 6 still open.
 - **S8-3**: a user-facing docs site / quick-start walkthrough — plain
   markdown in-repo (no paid hosting), aimed at someone cloning the
   repo for the first time rather than a contributor reading ADRs.

@@ -238,7 +238,7 @@ function SbomNode({ data }: NodeProps<{ node: GraphNode }>) {
       aria-label={`${n.label}, ${n.ecosystem} ${n.version}${
         sev ? `, ${n.vulnCount} ${sev} vulnerabilities` : ', no vulnerabilities'
       }`}
-      className="rounded-md border-2 bg-surface px-2 py-1.5 text-left shadow-sm hover:border-accent/60"
+      className="rounded-md border-2 bg-surface px-2 py-1.5 text-left shadow-xs hover:border-accent/60"
       style={{
         borderColor: sev ? SEV_COLOR[sev] : 'hsl(var(--border))',
         minWidth: 140,

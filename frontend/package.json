@@ -13,29 +13,26 @@
     "gen:nginx": "node scripts/gen-nginx.mjs"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.18.4",
     "@tanstack/react-query": "^5.51.0",
-    "zustand": "^4.5.4",
     "axios": "^1.7.4",
-    "recharts": "^2.12.7",
-    "lucide-react": "^0.439.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.2",
-    "react-window": "^1.8.10",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^1.48.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "react-window": "^2.3.3",
     "reactflow": "^11.11.4",
-    "date-fns": "^4.1.0"
+    "recharts": "^3.10.1",
+    "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@types/react-window": "^1.8.8",
+    "@tailwindcss/vite": "^4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.5.4",
-    "vite": "^7.3.6",
-    "tailwindcss": "^3.4.10",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.41"
+    "vite": "^7.3.6"
   }
 }

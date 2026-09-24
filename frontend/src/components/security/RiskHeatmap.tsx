@@ -181,7 +181,7 @@ export function RiskHeatmap() {
                         onClick={() => activate(eco, sev)}
                         onFocus={() => setFocus({ eco: eIdx, sev: sIdx })}
                         style={{ cursor: 'pointer', outline: 'none' }}
-                        className="focus:outline-none"
+                        className="focus:outline-hidden"
                       >
                         <rect
                           x={CELL_X(eIdx)}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FixedSizeList, type ListChildComponentProps } from 'react-window';
+import { List, type RowComponentProps } from 'react-window';
 import { Download, Filter, Search, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -123,7 +123,7 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search component name…"
               aria-label="Search component name"
-              className="w-full rounded-md border border-border bg-surface-2 py-1.5 pl-8 pr-3 text-sm text-text placeholder:text-muted focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+              className="w-full rounded-md border border-border bg-surface-2 py-1.5 pl-8 pr-3 text-sm text-text placeholder:text-muted focus:border-accent/50 focus:outline-hidden focus:ring-1 focus:ring-accent/30"
             />
           </div>
 
@@ -137,7 +137,7 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
             <select
               value={licenseFilter ?? ''}
               onChange={(e) => setLicenseFilter(e.target.value || null)}
-              className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-text focus:border-accent/50 focus:outline-none"
+              className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-text focus:border-accent/50 focus:outline-hidden"
               aria-label="Filter by license"
             >
               <option value="">All</option>
@@ -154,7 +154,7 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
             <select
               value={maxDepth ?? ''}
               onChange={(e) => setMaxDepth(e.target.value === '' ? null : Number(e.target.value))}
-              className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-text focus:border-accent/50 focus:outline-none"
+              className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-text focus:border-accent/50 focus:outline-hidden"
               aria-label="Filter by maximum depth"
             >
               <option value="">All</option>
@@ -187,16 +187,19 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
             No components match the current filters.
           </div>
         ) : (
-          <FixedSizeList
-            height={Math.min(560, Math.max(ROW_HEIGHT * 4, filtered.length * ROW_HEIGHT))}
-            width="100%"
-            itemCount={filtered.length}
-            itemSize={ROW_HEIGHT}
-            itemData={filtered}
-            overscanCount={6}
+          <div
+            style={{
+              height: Math.min(560, Math.max(ROW_HEIGHT * 4, filtered.length * ROW_HEIGHT)),
+            }}
           >
-            {Row}
-          </FixedSizeList>
+            <List
+              rowCount={filtered.length}
+              rowHeight={ROW_HEIGHT}
+              rowProps={{ components: filtered }}
+              rowComponent={Row}
+              overscanCount={6}
+            />
+          </div>
         )}
       </Card>
     </div>
@@ -234,12 +237,18 @@ function HeaderRow() {
   );
 }
 
-const Row = ({ index, style, data }: ListChildComponentProps<SbomComponentEnhanced[]>) => {
-  const c = data[index];
+const Row = ({
+  index,
+  style,
+  ariaAttributes,
+  components,
+}: RowComponentProps<{ components: SbomComponentEnhanced[] }>) => {
+  const c = components[index];
   return (
     <div
-      style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
+      {...ariaAttributes}
       role="row"
+      style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
       className="grid items-center gap-3 overflow-hidden border-b border-border/60 px-4 text-sm hover:bg-surface-2"
     >
       <div role="cell" className="truncate">

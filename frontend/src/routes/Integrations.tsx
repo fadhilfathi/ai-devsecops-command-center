@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Plug, Github, Cloud, MessagesSquare, Shield, KeyRound, Wrench } from 'lucide-react';
+import { Plug, GitBranch, Cloud, MessagesSquare, Shield, KeyRound, Wrench } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +11,7 @@ import { fmtRel, titleCase } from '@/lib/format';
 import type { Integration } from '@/types';
 
 const categoryIcon: Record<Integration['category'], ReactNode> = {
-  scm: <Github className="h-4 w-4" />,
+  scm: <GitBranch className="h-4 w-4" />,
   ci: <Wrench className="h-4 w-4" />,
   ticketing: <Wrench className="h-4 w-4" />,
   chat: <MessagesSquare className="h-4 w-4" />,
