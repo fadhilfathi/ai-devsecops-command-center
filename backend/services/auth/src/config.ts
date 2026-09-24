@@ -16,7 +16,6 @@ const EnvSchema = z.object({
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('7d'),
   DATABASE_URL: z.string().url().optional(),
-  EVENT_BUS_DRIVER: z.enum(['memory', 'nats', 'redis-streams']).default('memory'),
   EVENT_BUS_NATS_URL: z.string().optional(),
 });
 

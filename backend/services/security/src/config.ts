@@ -30,7 +30,6 @@ const EnvSchema = z.object({
   SECURITY_INGEST_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(1000),
 
   // Event bus
-  EVENT_BUS_DRIVER: z.enum(['memory', 'nats', 'redis-streams']).default('memory'),
 
   // Observability / metrics (S2.7 — security-service :4003 proxy layer)
   /**
