@@ -49,6 +49,7 @@ import { buildScanRepository } from './repositories/scan.repository.js';
 import { buildFindingRepository } from './repositories/finding.repository.js';
 import { buildSbomRepository } from './repositories/sbom.repository.js';
 import { InMemoryEventLog } from './services/event-log.js';
+import { seedDemoData } from './seed.js';
 import { registerHttpMetrics } from '@aicc/observability';
 
 import {
@@ -79,6 +80,15 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   const findings = buildFindingRepository();
   const sboms = buildSbomRepository();
   const eventLog = new InMemoryEventLog(bus);
+
+  if (cfg.demoSeed) {
+    // Demo data is optional; a failed seed must not stop the service booting.
+    try {
+      await seedDemoData({ assets, scans, findings }, cfg.demoTenantId);
+    } catch (err) {
+      logger.warn({ err }, 'demo seed failed; continuing without it');
+    }
+  }
 
   const server = Fastify({
     loggerInstance: logger,

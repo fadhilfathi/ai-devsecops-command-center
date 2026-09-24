@@ -34,6 +34,7 @@ import { buildEventListeners } from './listeners/index.js';
 import { buildChainRepository, buildPgChainRepository } from './correlation/chain.repository.js';
 import { buildCorrelationListener } from './listeners/correlation.listener.js';
 import { MIGRATIONS } from './db/migrations.js';
+import { seedDemoData } from './seed.js';
 
 const SERVICE_NAME = 'incident-service';
 const SERVICE_VERSION = '0.1.0';
@@ -54,6 +55,15 @@ export async function buildServer(deps?: Partial<IncidentServiceDeps>): Promise<
   const incidents = db ? buildPgIncidentRepository(db) : buildIncidentRepository();
   const runbooks = db ? buildPgRunbookRepository(db) : buildRunbookRepository();
   const chains = db ? buildPgChainRepository(db) : buildChainRepository();
+
+  if (cfg.demoSeed) {
+    // Demo data is optional; a failed seed must not stop the service booting.
+    try {
+      await seedDemoData({ incidents, runbooks }, cfg.demoTenantId);
+    } catch (err) {
+      logger.warn({ err }, 'demo seed failed; continuing without it');
+    }
+  }
 
   const server = Fastify({
     loggerInstance: logger,

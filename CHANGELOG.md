@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **S8-1**: optional demo seed data (`AICC_DEMO_SEED`) — security,
+  incident, compliance, and integration services insert a small
+  deterministic fixture set for the demo tenant on boot when set,
+  idempotent and off by default; enabled in `docker-compose.yml`.
+
 ## [0.4.0] - 2026-09-24
 
 Sprint 7 — hardening: lint, dependencies, CI, HTTP security, end-to-end

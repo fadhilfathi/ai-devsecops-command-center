@@ -23,6 +23,7 @@ import { buildHealthRoutes } from './routes/health.js';
 import { buildIntegrationRoutes } from './routes/integrations.js';
 import { buildWebhookRoutes } from './routes/webhooks.js';
 import { buildIntegrationRepository } from './repositories/integration.repository.js';
+import { seedDemoData } from './seed.js';
 import { buildSyncRepository } from './repositories/sync.repository.js';
 import { buildProviderRegistry } from './providers/registry.js';
 
@@ -45,6 +46,15 @@ export async function buildServer(
   const integrations = buildIntegrationRepository();
   const syncs = buildSyncRepository();
   const providers = buildProviderRegistry({ bus, logger, syncs });
+
+  if (cfg.demoSeed) {
+    // Demo data is optional; a failed seed must not stop the service booting.
+    try {
+      await seedDemoData({ integrations }, cfg.demoTenantId);
+    } catch (err) {
+      logger.warn({ err }, 'demo seed failed; continuing without it');
+    }
+  }
 
   const server = Fastify({
     loggerInstance: logger,

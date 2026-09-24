@@ -194,11 +194,14 @@ release: demo data, the deferred dependency majors, user-facing docs,
 and replacing the last mock-only frontend endpoints with real backend
 routes.
 
-- **S8-1**: demo seed data — a fixture/mock-backed dataset (clusters,
-  assets, vulnerabilities, incidents, SBOM) that populates the
-  in-memory providers on startup so a fresh `docker compose up` shows
-  a working demo instead of an empty UI, without requiring a real
-  Kubernetes cluster or external feed credentials.
+- **S8-1** (partially done): `AICC_DEMO_SEED=true` seeds security
+  (assets/scans/findings), incident (incidents/runbook), compliance
+  (controls), and integration (integrations) repositories on startup —
+  idempotent, deterministic, tenant-scoped. The Sprint-4 infra
+  services (clusters, kubernetes, cost, topology) already serve
+  fixture data and were out of scope here. Still open: wiring this
+  into the frontend's `VITE_USE_MOCKS=false` path end-to-end and
+  covering SBOM.
 - **S8-2**: the Dependabot majors deferred from S7-2 — React 19 (+
   `react-dom`, `@types/react`/`@types/react-dom`), Tailwind 4,
   TypeScript 6. Each needs its own migration/breaking-change pass, not

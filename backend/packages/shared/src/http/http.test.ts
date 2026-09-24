@@ -18,6 +18,8 @@ const ENV_KEYS = [
   'RATE_LIMIT_MAX',
   'RATE_LIMIT_WINDOW',
   'TRUST_PROXY_CIDR',
+  'AICC_DEMO_SEED',
+  'AICC_DEMO_TENANT_ID',
 ] as const;
 const savedEnv: Record<string, string | undefined> = {};
 
@@ -56,6 +58,9 @@ test('loadServiceConfig applies defaults when no env is set', () => {
       rateLimitWindowMs: 60_000,
       trustProxy: ['127.0.0.1', '172.28.0.0/16'],
     },
+    databaseUrl: undefined,
+    demoSeed: false,
+    demoTenantId: '00000000-0000-4000-8000-000000000000',
   });
 });
 

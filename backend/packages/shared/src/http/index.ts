@@ -76,7 +76,14 @@ export interface ServiceConfig {
   eventBus: EventBusConfig;
   /** CORS/body-limit/rate-limit knobs for `registerSecurityPlugins`. */
   security: ServiceSecurityConfig;
+  /** `AICC_DEMO_SEED=true` makes services insert demo fixture rows on boot (S8-1). Default false. */
+  demoSeed: boolean;
+  /** Tenant the demo seed writes to. Matches the seeded auth user/e2e smoke tenant. */
+  demoTenantId: string;
 }
+
+/** Tenant id used by the seeded auth user and `scripts/e2e-smoke.mjs`. */
+export const DEMO_TENANT_ID = '00000000-0000-4000-8000-000000000000';
 
 /** Dev-only default secret. Every service refuses to boot with this in production. */
 export const AUTH_DEV_DEFAULT_SECRET = 'dev-secret-change-me-please-32-chars-min';
@@ -140,6 +147,8 @@ export function loadServiceConfig(name: string, version: string): ServiceConfig 
     auth: loadAuthConfig(environment),
     eventBus: loadEventBusConfig(),
     security: loadSecurityConfig(),
+    demoSeed: process.env.AICC_DEMO_SEED === 'true',
+    demoTenantId: process.env.AICC_DEMO_TENANT_ID ?? DEMO_TENANT_ID,
   };
 }
 

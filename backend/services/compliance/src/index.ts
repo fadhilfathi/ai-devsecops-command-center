@@ -33,6 +33,7 @@ import { EvidenceAttacher } from './evidence/evidence-attacher.js';
 import { buildScanListener } from './evidence/scan-listener.js';
 import { buildInfrastructureListener } from './evidence/infrastructure-listener.js';
 import { metricsRegistry } from './observability/audit.js';
+import { seedDemoData } from './seed.js';
 
 const SERVICE_NAME = 'compliance-service';
 const SERVICE_VERSION = '0.1.0';
@@ -53,6 +54,15 @@ export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promis
   const evidenceRepo = buildEvidenceRepository();
   const poamRepo = buildPoamRepository();
   const poamService = new PoamService({ repo: poamRepo, bus });
+
+  if (cfg.demoSeed) {
+    // Demo data is optional; a failed seed must not stop the service booting.
+    try {
+      await seedDemoData({ controls }, cfg.demoTenantId);
+    } catch (err) {
+      logger.warn({ err }, 'demo seed failed; continuing without it');
+    }
+  }
   const mappingEngine = new MappingEngine({ rules: mappingRules as never });
 
   const blobStore = new InMemoryBlobStore();
