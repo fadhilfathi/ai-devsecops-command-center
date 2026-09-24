@@ -38,7 +38,7 @@ export async function buildServer(
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
-  const inventory = buildInventoryClient({ logger });
+  const inventory = buildInventoryClient({ logger, auth: cfg.auth });
   const engine = buildCostEngine({
     cpuUsdPerHour: Number(process.env.AICC_COST_CPU_USD_PER_HOUR ?? 0.041),
     memoryUsdPerHour: Number(process.env.AICC_COST_MEMORY_USD_PER_HOUR ?? 0.005),

@@ -1,7 +1,7 @@
 /**
  * Inventory client (shared shape).
  */
-import type { Logger } from '@aicc/shared';
+import type { JwtSecretOptions, Logger } from '@aicc/shared';
 import type {
   Cluster,
   Namespace,
@@ -36,10 +36,17 @@ export interface InventoryClient {
   fetch(tenantId: string, clusterId?: string): Promise<InventorySnapshot>;
 }
 
-export function buildInventoryClient(deps: { logger: Logger }): InventoryClient {
+export function buildInventoryClient(deps: {
+  logger: Logger;
+  auth: JwtSecretOptions;
+}): InventoryClient {
   const kubernetesServiceUrl = process.env.KUBERNETES_SERVICE_URL;
   const provider: KubernetesProvider = kubernetesServiceUrl
-    ? buildHttpKubernetesProvider({ baseUrl: kubernetesServiceUrl, logger: deps.logger })
+    ? buildHttpKubernetesProvider({
+        baseUrl: kubernetesServiceUrl,
+        logger: deps.logger,
+        auth: deps.auth,
+      })
     : buildFixtureProvider(deps.logger);
   return {
     async fetch(tenantId, clusterId) {

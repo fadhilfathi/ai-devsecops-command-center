@@ -22,8 +22,22 @@ cp .env.example .env
 docker compose up --build
 ```
 
+The observability toolchain (Prometheus, Alertmanager, Grafana, Loki,
+OTel collector) is behind a compose `observability` profile — it's not
+needed for the app to run, so the default `up` skips it:
+
+```
+docker compose --profile observability up --build
+```
+
 Frontend: <http://localhost:5173> · Grafana: <http://localhost:3011>
 (admin/admin) · Prometheus: <http://localhost:9090>.
+
+`scripts/e2e-smoke.mjs` exercises the running stack end to end (health,
+one authenticated route per service, negative-auth, the frontend proxy)
+— see `.github/workflows/e2e.yml`, which runs it against a freshly
+built compose stack (without the observability profile) on every push
+to `main` and weekly.
 
 ## Conventions
 

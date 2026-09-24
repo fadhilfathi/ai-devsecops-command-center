@@ -32,7 +32,7 @@ export async function buildServer(deps?: Partial<TopologyServiceDeps>): Promise<
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
-  const inventory = buildInventoryClient({ logger });
+  const inventory = buildInventoryClient({ logger, auth: cfg.auth });
   const engine = buildTopologyEngine();
 
   const server = Fastify({

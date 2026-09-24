@@ -168,10 +168,19 @@ Status: **in progress**.
   exempt, tighter limit on auth login/refresh). `trustProxy` is now an
   IP/CIDR allow-list, not `true`. See
   [ADR 0018](./docs/adr/0018-http-hardening.md).
-- **S7-5**: a real end-to-end smoke test — `docker compose up --build`,
-  wait for every service's `/healthz`, then hit one representative
-  route per service (mirroring `scripts/smoke_*.py`'s pattern for the
-  Python agents) — nothing has ever exercised the full compose stack
-  end to end.
+- ✅ **S7-5**: done. `scripts/e2e-smoke.mjs` mints its own HS256 token,
+  waits for all 13 services + frontend `/healthz`, hits one
+  authenticated route per service, `/readyz` on the Postgres/Redis-
+  backed ones, negative-auth (no token, wrong secret), and the nginx
+  `/api/*` proxy — the first time the full compose stack has been
+  exercised end to end. `.github/workflows/e2e.yml` runs it against a
+  freshly built stack on push to `main` and weekly. Moved Prometheus/
+  Alertmanager/Grafana/Loki/OTel behind a compose `observability`
+  profile (`docker compose --profile observability up`) — not needed
+  to smoke the app, so the default `up` (and the CI run) skips them.
+  Fixed a real bug this surfaced: cost-intelligence's and topology's
+  HTTP-to-kubernetes-service inventory calls only sent `x-tenant-id`,
+  no bearer token, so they 401'd once `AUTH_DEV_BYPASS=false` — both
+  now mint a short-lived internal service token per call.
 
 ## Sprint 8 — 0.1.0 release, public docs, demo data

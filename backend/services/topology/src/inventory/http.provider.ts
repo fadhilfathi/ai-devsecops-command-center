@@ -7,7 +7,7 @@
  * schemas so a shape drift between services fails loudly instead of
  * shipping malformed data into the topology engine.
  */
-import type { Logger } from '@aicc/shared';
+import { signAccessToken, type JwtSecretOptions, type Logger } from '@aicc/shared';
 import {
   ClusterListResponseSchema,
   NamespaceListResponseSchema,
@@ -40,6 +40,10 @@ import type {
 export interface HttpProviderDeps {
   baseUrl: string;
   logger: Logger;
+  /** Shared HS256 secret/issuer/audience — used to mint a short-lived
+   * internal service token for this server-to-server call, since
+   * kubernetes-service rejects unauthenticated requests. */
+  auth: JwtSecretOptions;
 }
 
 function buildQuery(opts: Partial<ListOptions>): string {
@@ -52,11 +56,19 @@ function buildQuery(opts: Partial<ListOptions>): string {
 }
 
 export function buildHttpKubernetesProvider(deps: HttpProviderDeps): KubernetesProvider {
-  const { baseUrl, logger } = deps;
+  const { baseUrl, logger, auth } = deps;
 
   async function getJson(tenantId: string, path: string): Promise<unknown> {
     const url = `${baseUrl.replace(/\/$/, '')}${path}`;
-    const res = await fetch(url, { headers: { 'x-tenant-id': tenantId } });
+    // ponytail: minted per-call (HMAC only, cheap) rather than cached —
+    // revisit with a short-lived cache if this becomes hot.
+    const token = signAccessToken(
+      { sub: 'system:topology-service', role: 'platform_admin', tenantId },
+      { ...auth, ttlSeconds: 60 },
+    );
+    const res = await fetch(url, {
+      headers: { 'x-tenant-id': tenantId, authorization: `Bearer ${token}` },
+    });
     if (!res.ok) {
       logger.error({ url, status: res.status }, 'kubernetes-service request failed');
       throw new Error(`kubernetes-service request failed: ${res.status} ${url}`);

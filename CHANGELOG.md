@@ -12,6 +12,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **S7-5**: end-to-end smoke of the real docker-compose stack.
+  `scripts/e2e-smoke.mjs` mints its own HS256 access token, waits for
+  every service's (and the frontend's) `/healthz`, hits one
+  authenticated route per service, `/readyz` on the Postgres/Redis-
+  backed services, two negative-auth cases, and the nginx `/api/*`
+  proxy. `.github/workflows/e2e.yml` runs it against a freshly built
+  stack on every push to `main` and weekly (`workflow_dispatch` too).
+  The observability toolchain (Prometheus, Alertmanager, Grafana,
+  Loki, OTel collector) moved behind a compose `observability` profile
+  since it isn't needed to run or smoke the app — see
+  `infra/README.md`.
+
+### Fixed
+
+- cost-intelligence's and topology's HTTP kubernetes-service inventory
+  provider only sent `x-tenant-id`, no `Authorization` header, so the
+  cross-service call 401'd whenever `AUTH_DEV_BYPASS=false` (found by
+  the new S7-5 e2e smoke). Both now mint a short-lived internal
+  service token per request using the shared HS256 secret.
+
 ### Security
 
 - **S7-4**: CORS allow-list, strict API CSP, body + rate limits on all

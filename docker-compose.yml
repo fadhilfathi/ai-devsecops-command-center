@@ -275,8 +275,11 @@ services:
     ports:
       - '4010:4010'
     depends_on:
+      # Not `prometheus` — that's behind the `observability` profile
+      # (`docker compose --profile observability up`) and cost-intelligence
+      # degrades to synthetic utilisation data when it's unreachable (see
+      # utilisation/source.ts).
       - kubernetes-service
-      - prometheus
 
   topology-service:
     <<: *service-base
@@ -344,6 +347,7 @@ services:
   # Observability
   # ---------------------------------------------------------------------------
   prometheus:
+    profiles: [observability]
     image: prom/prometheus:v2.54.0
     container_name: cc-prometheus
     volumes:
@@ -362,6 +366,7 @@ services:
       - ccnet
 
   alertmanager:
+    profiles: [observability]
     image: prom/alertmanager:v0.27.0
     container_name: cc-alertmanager
     volumes:
@@ -375,6 +380,7 @@ services:
       - ccnet
 
   grafana:
+    profiles: [observability]
     image: grafana/grafana:11.2.0
     container_name: cc-grafana
     environment:
@@ -392,6 +398,7 @@ services:
       - ccnet
 
   loki:
+    profiles: [observability]
     image: grafana/loki:3.1.0
     container_name: cc-loki
     command: -config.file=/etc/loki/local-config.yaml
@@ -403,6 +410,7 @@ services:
       - ccnet
 
   otel-collector:
+    profiles: [observability]
     image: otel/opentelemetry-collector-contrib:0.104.0
     container_name: cc-otel
     command: ['--config=/etc/otel/config.yaml']

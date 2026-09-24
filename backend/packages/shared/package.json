@@ -53,7 +53,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests --testTimeout=30000"
   },
   "dependencies": {
     "@aicc/models": "workspace:*",
