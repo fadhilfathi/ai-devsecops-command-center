@@ -108,6 +108,34 @@ describe('api URLs — one per service group (S6-1 resource-based proxy table)',
   it('compliance/controls: /api/controls', async () => {
     expect(await urlFor((api) => api.compliance())).toBe('/api/controls');
   });
+
+  it('vulnerabilities: /api/vulnerabilities', async () => {
+    expect(await urlFor((api) => api.vulnerabilities())).toBe('/api/vulnerabilities');
+  });
+
+  it('sbom components: /api/sbom/components', async () => {
+    expect(await urlFor((api) => api.sbom())).toBe('/api/sbom/components');
+  });
+
+  it('security score: /api/security/score', async () => {
+    expect(await urlFor((api) => api.securityScore())).toBe('/api/security/score');
+  });
+
+  it('vuln timeline: /api/security/vuln-timeline?range=7d', async () => {
+    expect(await urlFor((api) => api.vulnTimeline('7d'))).toBe(
+      '/api/security/vuln-timeline?range=7d',
+    );
+  });
+
+  it('risk heatmap: /api/security/risk-heatmap', async () => {
+    expect(await urlFor((api) => api.riskHeatmap())).toBe('/api/security/risk-heatmap');
+  });
+
+  it('graph: /api/security/graph?sbomId=sbom-1', async () => {
+    expect(await urlFor((api) => api.graphData('sbom-1'))).toBe(
+      '/api/security/graph?sbomId=sbom-1',
+    );
+  });
 });
 
 describe('mock-only accessors', () => {
@@ -117,18 +145,13 @@ describe('mock-only accessors', () => {
     vi.resetModules();
   });
 
-  it('never call fetch, even when mocks are off', async () => {
+  it('sbomExportUrl never calls fetch, even when mocks are off', async () => {
     vi.stubEnv('VITE_USE_MOCKS', 'false');
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
     const { api } = await import('./api');
 
-    await api.vulnerabilities();
-    await api.sbom();
-    await api.securityScore();
-    await api.vulnTimeline('7d');
-    await api.riskHeatmap();
-    await api.graphData('sbom-1');
+    api.sbomExportUrl('sbom-1');
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });

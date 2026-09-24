@@ -747,6 +747,7 @@ function spark(seed: number, base: number, variance: number, n = 14): number[] {
 }
 
 export const mockSecurityScore: SecurityScore = {
+  hasData: true,
   composite: 87,
   band: 'B',
   generatedAt: now(),

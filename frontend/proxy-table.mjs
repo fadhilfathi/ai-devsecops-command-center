@@ -43,10 +43,46 @@ export const PROXY_TABLE = [
     upstreamPath: '/v1/sboms',
   },
   {
+    browserPath: '/api/sbom/components',
+    port: 3003,
+    container: 'security-service',
+    upstreamPath: '/v1/sbom/components',
+  },
+  {
+    browserPath: '/api/vulnerabilities',
+    port: 3003,
+    container: 'security-service',
+    upstreamPath: '/v1/vulnerabilities',
+  },
+  {
     browserPath: '/api/security/dashboard',
     port: 3003,
     container: 'security-service',
     upstreamPath: '/security/dashboard',
+  },
+  {
+    browserPath: '/api/security/score',
+    port: 3003,
+    container: 'security-service',
+    upstreamPath: '/security/score',
+  },
+  {
+    browserPath: '/api/security/vuln-timeline',
+    port: 3003,
+    container: 'security-service',
+    upstreamPath: '/security/vuln-timeline',
+  },
+  {
+    browserPath: '/api/security/risk-heatmap',
+    port: 3003,
+    container: 'security-service',
+    upstreamPath: '/security/risk-heatmap',
+  },
+  {
+    browserPath: '/api/security/graph',
+    port: 3003,
+    container: 'security-service',
+    upstreamPath: '/security/graph',
   },
   {
     browserPath: '/api/risk/calculate',

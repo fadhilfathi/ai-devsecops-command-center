@@ -43,6 +43,8 @@ import { buildSbomPipelineRoutes } from './routes/sbom-pipeline.js';
 import { buildVulnerabilityIngestRoute } from './routes/vulnerabilities-ingest.js';
 import { buildRiskCalculateRoute } from './routes/risk.js';
 import { buildDashboardRoute } from './routes/dashboard.js';
+import { buildVulnerabilityRoutes } from './routes/vulnerabilities.js';
+import { buildSecurityAnalyticsRoutes } from './routes/security-analytics.js';
 
 import { buildAssetRepository } from './repositories/asset.repository.js';
 import { buildScanRepository } from './repositories/scan.repository.js';
@@ -84,7 +86,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   if (cfg.demoSeed) {
     // Demo data is optional; a failed seed must not stop the service booting.
     try {
-      await seedDemoData({ assets, scans, findings }, cfg.demoTenantId);
+      await seedDemoData({ assets, scans, findings, sboms }, cfg.demoTenantId);
     } catch (err) {
       logger.warn({ err }, 'demo seed failed; continuing without it');
     }
@@ -206,7 +208,8 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   await server.register(buildAssetRoutes, { logger, assets });
   await server.register(buildScanRoutes, { logger, assets, scans, findings, bus });
   await server.register(buildFindingRoutes, { logger, findings });
-  await server.register(buildSbomRoutes, { logger, sboms, assets, bus });
+  await server.register(buildVulnerabilityRoutes, { logger, findings, scans });
+  await server.register(buildSbomRoutes, { logger, sboms, assets, findings, bus });
 
   // Sprint 2 routes (S2.5)
   await server.register(buildSbomPipelineRoutes, {
@@ -234,6 +237,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     serviceVersion: SERVICE_VERSION,
   });
   await server.register(buildDashboardRoute, { logger, bus, sboms, scans, findings, eventLog });
+  await server.register(buildSecurityAnalyticsRoutes, { logger, assets, findings, sboms });
 
   // ---------- Error handler ----------
   server.setErrorHandler<FastifyError>((err, req, reply) => {

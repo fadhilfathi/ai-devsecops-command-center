@@ -110,14 +110,13 @@ proxy path.
 
 ### Endpoints with no backend route yet (mock-only)
 
-These accessors in `src/lib/api.ts` always return mock data, regardless
-of `VITE_USE_MOCKS` — there is no matching backend route (marked with a
-`ponytail:` comment at each call site; see S6-1):
+All six S6-1 mock-only accessors were wired to real security-service
+routes in S8-4. One remains mock-only:
 
-- `api.vulnerabilities()` — no `GET /vulnerabilities` on security-service
-- `api.sbom()` — no SBOM components-listing endpoint
-- `api.securityScore()`, `api.vulnTimeline()`, `api.riskHeatmap()`,
-  `api.graphData()` — no security-service routes for these yet
+- `api.sbomExportUrl()` — security-service has a real
+  `GET /v1/sboms/:id/export`, but the SBOM page's export button builds a
+  `data:` URL synchronously on click; wiring it up needs an async
+  fetch-then-download flow (see the `ponytail:` comment at the call site).
 
 ## See also
 

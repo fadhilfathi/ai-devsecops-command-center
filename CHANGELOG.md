@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S8-4**: real backend routes for vulnerabilities, SBOM components,
+  security score, timeline, heatmap, graph — security-service gains
+  `GET /v1/vulnerabilities`, `/v1/sbom/components` (+
+  `/v1/sboms/:id/export`), `/security/score`, `/security/vuln-timeline`,
+  `/security/risk-heatmap`, `/security/graph`, all tenant-scoped and
+  auth-gated. Aggregation logic (severity scoring, SBOM parsing,
+  ecosystem joins, dependency-graph capping) lives in the pure, unit-
+  tested `services/security-analytics.ts`. The frontend's 6 mock-only
+  accessors now hit these routes (still falling back to mock data on
+  failure); `sbomExportUrl()` stays mock-only (needs an async
+  fetch-then-download flow the SBOM page doesn't have yet).
 - **S8-1**: optional demo seed data (`AICC_DEMO_SEED`) — security,
   incident, compliance, and integration services insert a small
   deterministic fixture set for the demo tenant on boot when set,

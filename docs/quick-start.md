@@ -130,30 +130,30 @@ crashing (`src/lib/api.ts`'s `apiHealth`). Check
 
 Main sidebar (all wired to real routes):
 
-| Screen                                                | Backed by                                          |
-| ----------------------------------------------------- | -------------------------------------------------- |
-| Dashboard (`/`)                                       | live once other pages have data; otherwise mock    |
-| Assets (`/assets`)                                    | security-service `/v1/assets`                      |
-| Incidents (`/incidents`)                              | incident-service `/v1/incidents`                   |
-| Vulnerabilities (`/vulnerabilities`)                  | **mock-only** — no backend route yet               |
-| SBOM (`/sbom`)                                        | **mock-only** — no components-listing endpoint yet |
-| Compliance (`/compliance`)                            | compliance-service `/v1/controls`                  |
-| Integrations (`/integrations`)                        | integration-service `/v1/integrations`             |
-| Settings (`/settings`)                                | auth-service `/v1/users` (partial)                 |
-| Infrastructure Overview (`/infrastructure`)           | kubernetes-service, k8s-health-service             |
-| Cluster/Namespace/Workload Explorer                   | kubernetes-service `/v1/kubernetes/*`              |
-| Runtime Security (`/infrastructure/runtime-security`) | runtime-security-service                           |
-| Topology (`/infrastructure/topology`)                 | topology-service `/v1/topology`                    |
-| Cost Intelligence (`/infrastructure/cost`)            | cost-intelligence-service `/v1/cost`               |
-| Infrastructure Health/Incidents                       | k8s-health-service, incident-service               |
+| Screen                                                | Backed by                                       |
+| ----------------------------------------------------- | ----------------------------------------------- |
+| Dashboard (`/`)                                       | live once other pages have data; otherwise mock |
+| Assets (`/assets`)                                    | security-service `/v1/assets`                   |
+| Incidents (`/incidents`)                              | incident-service `/v1/incidents`                |
+| Vulnerabilities (`/vulnerabilities`)                  | security-service `/v1/vulnerabilities`          |
+| SBOM (`/sbom`)                                        | security-service `/v1/sbom/components`          |
+| Compliance (`/compliance`)                            | compliance-service `/v1/controls`               |
+| Integrations (`/integrations`)                        | integration-service `/v1/integrations`          |
+| Settings (`/settings`)                                | auth-service `/v1/users` (partial)              |
+| Infrastructure Overview (`/infrastructure`)           | kubernetes-service, k8s-health-service          |
+| Cluster/Namespace/Workload Explorer                   | kubernetes-service `/v1/kubernetes/*`           |
+| Runtime Security (`/infrastructure/runtime-security`) | runtime-security-service                        |
+| Topology (`/infrastructure/topology`)                 | topology-service `/v1/topology`                 |
+| Cost Intelligence (`/infrastructure/cost`)            | cost-intelligence-service `/v1/cost`            |
+| Infrastructure Health/Incidents                       | k8s-health-service, incident-service            |
 
 `AICC_DEMO_SEED=true` (on by default in `docker-compose.yml`) makes
 security-, incident-, compliance-, and integration-service insert a small
 deterministic fixture set into the demo tenant on boot, so Assets/
-Incidents/Compliance/Integrations show real (seeded) rows instead of an
-empty state the first time you log in. SBOM and the security-score/
-vuln-timeline/risk-heatmap/graph widgets on the Dashboard are still
-mock-only regardless (see
+Incidents/Compliance/Integrations/SBOM/Vulnerabilities and the
+security-score/vuln-timeline/risk-heatmap/graph widgets on the Dashboard
+all show real (seeded) rows instead of an empty state the first time you
+log in. The SBOM page's CycloneDX export button is still mock-only (see
 [`frontend/README.md`](../frontend/README.md#endpoints-with-no-backend-route-yet-mock-only)).
 
 ## Running locally without Docker for development

@@ -232,26 +232,34 @@ export const api = {
   assets: () => get<Asset[]>('/assets', mockAssets),
 
   // ---- Vulnerabilities ---------------------------------------------------
-  // ponytail: no backend route yet (S6-1) — security-service has no GET
-  // /vulnerabilities (findings are listed via /v1/findings, a different
-  // shape); mock-only until that's wired up.
+  // security-service's `/v1/vulnerabilities` (S8-4) returns `{ items, total }`.
   vulnerabilities: () =>
-    get<Vulnerability[]>('/vulnerabilities', mockVulnerabilities, { mockOnly: true }),
+    getRaw<{ items: Vulnerability[] }, Vulnerability[]>(
+      '/vulnerabilities',
+      mockVulnerabilities,
+      (raw) => raw.items,
+    ),
 
   // ---- Incidents ---------------------------------------------------------
   incidents: () => get<Incident[]>('/incidents', mockIncidents),
 
   // ---- SBOM (Sprint 1 stub; Sprint 2 detail) -----------------------------
-  // ponytail: no backend route yet (S6-1) — mock-only until a components
-  // listing endpoint exists.
-  /** Sprint 1 lightweight list — kept for backwards compatibility. */
-  sbom: () => get<SbomComponentEnhanced[]>('/sbom/components', mockSbomFull, { mockOnly: true }),
+  /** Sprint 1 lightweight list — kept for backwards compatibility. Backed
+   * by security-service's `/v1/sbom/components` (S8-4). */
+  sbom: () =>
+    getRaw<{ items: SbomComponentEnhanced[] }, SbomComponentEnhanced[]>(
+      '/sbom/components',
+      mockSbomFull,
+      (raw) => raw.items,
+    ),
   /** Sprint 2 full SBOM document for the viewer. */
   sbomDocument: (id: string) =>
     get<SbomDocument>(`/sboms/${encodeURIComponent(id)}`, mockSbomDocument),
   /** CycloneDX export URL — pages use this directly with a temporary <a>. */
-  // ponytail: security-service has no /v1/sboms/:id/export route yet, so the
-  // export button always serves the locally held document as a data: URL.
+  // ponytail: security-service's `/v1/sboms/:id/export` (S8-4) needs an
+  // async fetch + blob URL, which the SBOM page's synchronous <a>-click
+  // export flow doesn't support yet — stays a `data:` URL of the locally
+  // held document until that page is reworked to fetch-then-download.
   sbomExportUrl: (_id: string, _format: 'cyclonedx-1.5' | 'spdx-2.3' = 'cyclonedx-1.5') =>
     `data:application/json,${encodeURIComponent(JSON.stringify(mockSbomDocument, null, 2))}`,
 
@@ -261,26 +269,22 @@ export const api = {
   // ---- Integrations ------------------------------------------------------
   integrations: () => get<Integration[]>('/integrations', mockIntegrations),
 
-  // ---- Sprint 2 — Security visualizations (S2.5 contracts) ---------------
-  // ponytail: no backend route yet (S6-1) — mock-only for all four below.
+  // ---- Sprint 2 — Security visualizations (S2.5 contracts; S8-4 wiring) --
   /** Composite security score with sub-metrics + sparklines. */
-  securityScore: () => get<SecurityScore>('/security/score', mockSecurityScore, { mockOnly: true }),
+  securityScore: () => get<SecurityScore>('/security/score', mockSecurityScore),
 
   /** Vulnerability timeline, parameterized by date range. */
   vulnTimeline: (range: VulnTimelineRange) =>
-    get<VulnTimelinePoint[]>(`/security/vuln-timeline?range=${range}`, mockVulnTimeline(range), {
-      mockOnly: true,
-    }),
+    get<VulnTimelinePoint[]>(`/security/vuln-timeline?range=${range}`, mockVulnTimeline(range)),
 
   /** Ecosystem × severity risk heatmap. */
-  riskHeatmap: () =>
-    get<RiskHeatmap>('/security/risk-heatmap', mockRiskHeatmap, { mockOnly: true }),
+  riskHeatmap: () => get<RiskHeatmap>('/security/risk-heatmap', mockRiskHeatmap),
 
-  /** Dependency graph payload for a given SBOM id. */
+  /** Dependency graph payload. `sbomId` is tenant-wide today (security-service
+   * has no per-SBOM graph endpoint, S8-4) — it's echoed back on the response
+   * and otherwise unused for filtering. */
   graphData: (sbomId: string) =>
-    get<GraphData>(`/security/graph/${encodeURIComponent(sbomId)}`, mockGraphData(sbomId), {
-      mockOnly: true,
-    }),
+    get<GraphData>(`/security/graph?sbomId=${encodeURIComponent(sbomId)}`, mockGraphData(sbomId)),
 
   // ---- Sprint 4 — Infrastructure intelligence -----------------------
   /** Onboarded clusters. */

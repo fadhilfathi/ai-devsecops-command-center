@@ -8,7 +8,9 @@ import { useFetch } from '@/hooks/useFetch';
 import { fmtRel } from '@/lib/format';
 import type { SecurityScore, SecurityScoreSubMetric } from '@/types';
 
-const BAND_COLORS: Record<SecurityScore['band'], string> = {
+type Band = Exclude<SecurityScore['band'], null>;
+
+const BAND_COLORS: Record<Band, string> = {
   A: 'hsl(var(--success))',
   B: 'hsl(var(--info))',
   C: 'hsl(var(--warning))',
@@ -16,7 +18,7 @@ const BAND_COLORS: Record<SecurityScore['band'], string> = {
   F: 'hsl(var(--danger))',
 };
 
-const BAND_VARIANT: Record<SecurityScore['band'], 'ok' | 'info' | 'warn' | 'danger'> = {
+const BAND_VARIANT: Record<Band, 'ok' | 'info' | 'warn' | 'danger'> = {
   A: 'ok',
   B: 'info',
   C: 'warn',
@@ -32,6 +34,7 @@ const BAND_VARIANT: Record<SecurityScore['band'], 'ok' | 'info' | 'warn' | 'dang
  */
 export function SecurityScore() {
   const { data, loading } = useFetch(api.securityScore, {
+    hasData: true,
     composite: 0,
     band: 'F',
     subMetrics: [],
@@ -59,6 +62,20 @@ export function SecurityScore() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  if (!data.hasData) {
+    return (
+      <Card aria-label="Security score overview">
+        <Card.Header title="Security Score" subtitle="Composite across 5 sub-metrics" />
+        <Card.Body className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="text-sm text-muted">No data yet</div>
+          <div className="mt-1 text-xs text-muted">
+            Add an asset or upload an SBOM to compute a score.
+          </div>
+        </Card.Body>
+      </Card>
     );
   }
 

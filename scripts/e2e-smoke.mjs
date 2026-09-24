@@ -72,7 +72,12 @@ const SERVICES = [
 
 const FRONTEND_PORT = 5173;
 // A handful of /api/* resources proxied by nginx (frontend/proxy-table.mjs).
-const FRONTEND_API_RESOURCES = ['/api/controls', '/api/incidents', '/api/integrations'];
+const FRONTEND_API_RESOURCES = [
+  '/api/controls',
+  '/api/incidents',
+  '/api/integrations',
+  '/api/security/score',
+];
 
 const results = [];
 function record(name, check, ok, detail = '') {

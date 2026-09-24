@@ -167,15 +167,23 @@ export type SecurityScoreSubMetric = {
   delta?: number;
 };
 
-/** Composite security score + sub-metrics. */
-export type SecurityScore = {
-  /** 0..100 composite. */
-  composite: number;
-  /** Letter band derived from the composite. */
-  band: 'A' | 'B' | 'C' | 'D' | 'F';
-  subMetrics: SecurityScoreSubMetric[];
-  generatedAt: string;
-};
+/** Composite security score + sub-metrics. Discriminated on `hasData` —
+ * `false` when the tenant has no assets, SBOMs, or findings yet. */
+export type SecurityScore =
+  | {
+      hasData: true;
+      composite: number;
+      band: 'A' | 'B' | 'C' | 'D' | 'F';
+      subMetrics: SecurityScoreSubMetric[];
+      generatedAt: string;
+    }
+  | {
+      hasData: false;
+      composite: null;
+      band: null;
+      subMetrics: SecurityScoreSubMetric[];
+      generatedAt: string;
+    };
 
 /** A node in the dependency graph. */
 export type GraphNode = {

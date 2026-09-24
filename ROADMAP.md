@@ -199,9 +199,9 @@ routes.
   (controls), and integration (integrations) repositories on startup —
   idempotent, deterministic, tenant-scoped. The Sprint-4 infra
   services (clusters, kubernetes, cost, topology) already serve
-  fixture data and were out of scope here. Still open: wiring this
-  into the frontend's `VITE_USE_MOCKS=false` path end-to-end and
-  covering SBOM.
+  fixture data and were out of scope here. S8-4 added an SBOM to the
+  seed and wired the frontend's `VITE_USE_MOCKS=false` path end-to-end
+  for the security screens.
 - **S8-2**: the Dependabot majors deferred from S7-2 — React 19 (+
   `react-dom`, `@types/react`/`@types/react-dom`), Tailwind 4,
   TypeScript 6. Each needs its own migration/breaking-change pass, not
@@ -220,11 +220,13 @@ routes.
   `defaultPort()` in `backend/packages/shared/src/http/index.ts` only
   covered 6 of the 13 services and disagreed with the compose/vite-proxy
   port map for the rest.
-- **S8-4**: replace the remaining mock-only frontend endpoints with
-  real backend routes — `api.vulnerabilities()`, `api.sbom()`,
-  `api.securityScore()`, `api.vulnTimeline()`, `api.riskHeatmap()`,
-  and `api.graphData()` currently have no matching backend route at
-  all (see `frontend/README.md`).
+- **S8-4** (done): replaced the 6 mock-only frontend endpoints with real
+  security-service routes — `GET /v1/vulnerabilities`,
+  `/v1/sbom/components` (+ `/v1/sboms/:id/export`), `/security/score`,
+  `/security/vuln-timeline`, `/security/risk-heatmap`, `/security/graph`.
+  Aggregation logic lives in `security-analytics.ts` (pure, unit-tested).
+  `sbomExportUrl()` stays mock-only — it needs an async fetch-then-download
+  flow the SBOM page doesn't have yet.
 - **S8-5**: port clash — security-service defaults `SBOM_PIPELINE_URL`,
   `VULN_INTEL_URL` and `DEPENDENCY_INTEL_URL` to `localhost:4007-4009`,
   which Sprint 4 assigned to k8s-health, runtime-security and inventory.
