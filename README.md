@@ -11,6 +11,7 @@
 [![Status: Pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange)](./CHANGELOG.md)
 [![CI](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
 [![CodeQL](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/codeql.yml/badge.svg)](./.github/workflows/codeql.yml)
+[![e2e](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/e2e.yml/badge.svg)](./.github/workflows/e2e.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
 > **Status**: This repository is in **pre-alpha (Sprint 7 of 12)**. The
@@ -18,13 +19,14 @@
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
 
-**Sprint 6 just shipped**: the frontend now talks to real service APIs
-behind a resource-based proxy, every backend service verifies a real
-JWT instead of trusting a raw tenant header, the event bus gained a
-durable Redis Streams driver, K8s runtime/health findings auto-map to
-CIS/NIST compliance controls, and cluster credentials are encrypted at
-rest. See [`docs/architecture/sprint-6/`](./docs/architecture/sprint-6/)
-and [`CHANGELOG.md`](./CHANGELOG.md).
+**Sprint 7 just shipped**: a hardening pass — zero eslint warnings
+enforced in CI, Fastify 4→5 (`pnpm audit` 21 advisories → 0), every
+GitHub Actions workflow fixed and pinned to commit SHAs, a shared
+CORS allow-list / strict CSP / body + rate limits across all 13
+services, and the first real end-to-end smoke test of the full
+docker-compose stack. See
+[`docs/architecture/sprint-7/`](./docs/architecture/sprint-7/) and
+[`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 

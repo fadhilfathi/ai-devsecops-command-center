@@ -38,6 +38,9 @@ jobs:
             echo ""
             echo "AUTH_JWT_SECRET=${AUTH_JWT_SECRET}"
             echo "AUTH_DEV_BYPASS=false"
+            # .env.example defaults to development; run the images the
+            # way they ship so production-only safety checks are exercised.
+            echo "NODE_ENV=production"
             echo "AICC_CREDENTIAL_KEYS=${AICC_CREDENTIAL_KEYS}"
           } >> .env
           echo "AUTH_JWT_SECRET=${AUTH_JWT_SECRET}" >> "$GITHUB_ENV"

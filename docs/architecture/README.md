@@ -24,6 +24,7 @@
 | [`sprint-4/README.md`](./sprint-4/README.md)                                                   | Sprint 4 workstream notes: Kubernetes & Infrastructure Intelligence                                            | PlatformArchitect |
 | [`sprint-5/README.md`](./sprint-5/README.md)                                                   | Sprint 5 workstream notes: live Kubernetes, persistence, observability, containerisation                       | PlatformArchitect |
 | [`sprint-6/README.md`](./sprint-6/README.md)                                                   | Sprint 6 workstream notes: frontend integration, auth, event bus, compliance automation, credential encryption | PlatformArchitect |
+| [`sprint-7/README.md`](./sprint-7/README.md)                                                   | Sprint 7 workstream notes: hardening — lint zero, Fastify 5, CI fixes, HTTP security plugins, e2e smoke test   | PlatformArchitect |
 
 ## Diagrams
 

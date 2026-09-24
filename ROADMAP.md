@@ -129,9 +129,10 @@ Status: **complete** (2026-09-23). See
 
 ## Sprint 7 — Hardening, security review, OpenSSF Scorecard pass
 
-Status: **in progress**.
+Status: **complete** (2026-09-24). See
+[`docs/architecture/sprint-7/`](./docs/architecture/sprint-7/).
 
-- **S7-1**: done. Fixed the 45 outstanding `eslint` warnings (mostly
+- ✅ **S7-1**: done. Fixed the 45 outstanding `eslint` warnings (mostly
   `@typescript-eslint/no-unused-vars` / `no-explicit-any`) and switched
   CI's `pnpm lint` to `--max-warnings 0` so the count can't silently
   grow back.
@@ -183,4 +184,30 @@ Status: **in progress**.
   no bearer token, so they 401'd once `AUTH_DEV_BYPASS=false` — both
   now mint a short-lived internal service token per call.
 
-## Sprint 8 — 0.1.0 release, public docs, demo data
+## Sprint 8 — Public release readiness, docs, demo data
+
+Status: **not started**.
+
+The version name below was stale — the project is at 0.3.x, not
+0.1.0 — retitled to describe what's actually left before a public
+release: demo data, the deferred dependency majors, user-facing docs,
+and replacing the last mock-only frontend endpoints with real backend
+routes.
+
+- **S8-1**: demo seed data — a fixture/mock-backed dataset (clusters,
+  assets, vulnerabilities, incidents, SBOM) that populates the
+  in-memory providers on startup so a fresh `docker compose up` shows
+  a working demo instead of an empty UI, without requiring a real
+  Kubernetes cluster or external feed credentials.
+- **S8-2**: the Dependabot majors deferred from S7-2 — React 19 (+
+  `react-dom`, `@types/react`/`@types/react-dom`), Tailwind 4,
+  TypeScript 6. Each needs its own migration/breaking-change pass, not
+  a blind merge.
+- **S8-3**: a user-facing docs site / quick-start walkthrough — plain
+  markdown in-repo (no paid hosting), aimed at someone cloning the
+  repo for the first time rather than a contributor reading ADRs.
+- **S8-4**: replace the remaining mock-only frontend endpoints with
+  real backend routes — `api.vulnerabilities()`, `api.sbom()`,
+  `api.securityScore()`, `api.vulnTimeline()`, `api.riskHeatmap()`,
+  and `api.graphData()` currently have no matching backend route at
+  all (see `frontend/README.md`).
