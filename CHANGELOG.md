@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **S8-2a**: React 19, Tailwind 4, recharts 3, lucide 1 (+ zustand/react-window
   upgraded or removed).
+- **S8-2b**: TypeScript 6 — 5.5/5.4 → `^6.0.3` everywhere, hoisted to the
+  root `devDependencies` only (per-package `typescript`/`@types/node`
+  copies removed; each workspace resolves the root's `tsc` via pnpm's
+  ancestor-`node_modules/.bin` lookup). `@types/node` bumped to `^22.20.4`
+  (matches the Node 22 runtime, not the Dependabot-proposed 25). Dropped
+  the now-deprecated `baseUrl` from every tsconfig that had it (`paths`
+  alone resolves relative to the tsconfig, so entries needed an explicit
+  `./` prefix) and the unused `experimentalDecorators`/
+  `emitDecoratorMetadata` pair from both base tsconfigs (no decorators in
+  the codebase). Added explicit `"types": ["node"]` to the base tsconfigs
+  and `frontend/tsconfig.node.json` since TS 6 no longer auto-includes
+  ambient `@types/*` packages.
 
 ## [0.4.0] - 2026-09-24
 
