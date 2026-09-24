@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-24
+
+Sprint 7 — hardening: lint, dependencies, CI, HTTP security, end-to-end
+smoke.
+
 ### Added
 
 - **S7-5**: end-to-end smoke of the real docker-compose stack.
@@ -26,13 +31,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   since it isn't needed to run or smoke the app — see
   `infra/README.md`.
 
+### Changed
+
+- **S7-2**: upgraded Fastify 4→5 across all 13 backend services plus
+  `@aicc/shared`/`@aicc/observability` (custom logger now passed as
+  `loggerInstance`, `setErrorHandler<FastifyError>` for the now-`unknown`
+  default error type), and the matching plugin majors
+  (`@fastify/cors` 11, `@fastify/helmet` 13, `@fastify/sensible` 6,
+  `@fastify/swagger` 9, `@fastify/swagger-ui` 6, `@fastify/rate-limit` 11,
+  `pino` 10, `pino-pretty` 13). Bumped `vitest`/`@vitest/coverage-v8` 2→4
+  and `vite`/`@vitejs/plugin-react` 5→7/4→5 in the frontend (vitest 4
+  requires vite ^6). Bumped `react-router-dom` 6→7 in the frontend
+  (declarative mode, no other API changes needed). Bumped `pyjwt` to
+  2.13.0 in `vuln-intel` and `pytest` to 9 in `dependency-intel`.
+  Consolidated `.github/dependabot.yml` to a single root npm entry
+  (pnpm-workspace-aware) instead of 8 overlapping npm entries, and added
+  grouped `pip` entries for the 3 Python security agents. `pnpm audit`:
+  0 critical / 0 high / 0 moderate / 0 low (was 2/5/13/1). See
+  [ADR 0017](./docs/adr/0017-fastify-5.md).
+
 ### Fixed
 
-- cost-intelligence's and topology's HTTP kubernetes-service inventory
-  provider only sent `x-tenant-id`, no `Authorization` header, so the
-  cross-service call 401'd whenever `AUTH_DEV_BYPASS=false` (found by
-  the new S7-5 e2e smoke). Both now mint a short-lived internal
-  service token per request using the shared HS256 secret.
+- **S7-1**: cleared all 45 outstanding ESLint warnings
+  (`@typescript-eslint/no-unused-vars`, `@typescript-eslint/no-explicit-any`,
+  unused `eslint-disable` directives) at the root — deleted dead
+  imports/functions, replaced `any` with real types, and typed a
+  `MappingInput` construction in `evidence-attacher.ts` directly instead
+  of casting. Along the way, fixed a real bug in
+  `inventory-service`'s `/v1/inventory/graph/asset` route, which was
+  assigning the internal `AssetKind` (e.g. `'deployment'`) straight to a
+  `TopologyNode`'s `kind` field instead of going through the existing
+  `toNodeKind()` mapper, producing invalid node kinds in the asset graph.
+  `pnpm lint` now runs with `--max-warnings 0` so new warnings fail CI.
+- the first real docker-compose run of the S7-5 e2e smoke exposed
+  several boot bugs Windows/unit-test development had hidden:
+  - every service decided whether to start by comparing
+    `import.meta.url` against `file://` + `argv[1]`, which only matches
+    Windows paths, so every service exited immediately on Linux; now
+    compares against `pathToFileURL(argv[1])`.
+  - `@aicc/shared` was missing `"type": "module"`, so it compiled to
+    CommonJS and its ESM named exports failed to resolve at runtime.
+  - auth- and security-service validated `EVENT_BUS_DRIVER` against a
+    stale local enum (`memory`/`nats`/`redis-streams`) and rejected the
+    `redis` value the shared `createEventBus()` factory expects,
+    crash-looping in compose.
+  - cost-intelligence's and topology's HTTP kubernetes-service
+    inventory provider only sent `x-tenant-id`, no `Authorization`
+    header, so the cross-service call 401'd whenever
+    `AUTH_DEV_BYPASS=false` — the compose default. Both now mint a
+    short-lived internal service token per request using the shared
+    HS256 secret.
+  - the frontend healthcheck fetched `localhost`, which resolves to
+    `::1`, while the generated nginx config listens on IPv4 only; now
+    probes `127.0.0.1`.
+  - `.env.example` set `NODE_ENV=development`, overriding the image
+    default and skipping the production-only checks (signing-secret
+    strength, credential keyring requirement, dev-login disabled); the
+    e2e workflow now runs the stack with `NODE_ENV=production`.
 
 ### Security
 
@@ -70,41 +125,8 @@ credentials: true })` (reflects any origin with credentials) /
   both described automation (`security.yml`, `security-issue.yml`,
   a `github-bridge` service) that never existed; fixed the remaining
   references to it in `docs/architecture/event-bus.md` and elsewhere.
-- **S7-2**: Fastify 5, vitest 4, react-router 7; `pnpm audit` 0 critical /
-  0 high; Dependabot consolidated.
-
-### Changed
-
-- **S7-2**: upgraded Fastify 4→5 across all 13 backend services plus
-  `@aicc/shared`/`@aicc/observability` (custom logger now passed as
-  `loggerInstance`, `setErrorHandler<FastifyError>` for the now-`unknown`
-  default error type), and the matching plugin majors
-  (`@fastify/cors` 11, `@fastify/helmet` 13, `@fastify/sensible` 6,
-  `@fastify/swagger` 9, `@fastify/swagger-ui` 6, `@fastify/rate-limit` 11,
-  `pino` 10, `pino-pretty` 13). Bumped `vitest`/`@vitest/coverage-v8` 2→4
-  and `vite`/`@vitejs/plugin-react` 5→7/4→5 in the frontend (vitest 4
-  requires vite ^6). Bumped `react-router-dom` 6→7 in the frontend
-  (declarative mode, no other API changes needed). Bumped `pyjwt` to
-  2.13.0 in `vuln-intel` and `pytest` to 9 in `dependency-intel`.
-  Consolidated `.github/dependabot.yml` to a single root npm entry
-  (pnpm-workspace-aware) instead of 8 overlapping npm entries, and added
-  grouped `pip` entries for the 3 Python security agents. `pnpm audit`:
-  0 critical / 0 high / 0 moderate / 0 low (was 2/5/13/1). See
-  [ADR 0017](./docs/adr/0017-fastify-5.md).
-
-### Fixed
-
-- **S7-1**: cleared all 45 outstanding ESLint warnings
-  (`@typescript-eslint/no-unused-vars`, `@typescript-eslint/no-explicit-any`,
-  unused `eslint-disable` directives) at the root — deleted dead
-  imports/functions, replaced `any` with real types, and typed a
-  `MappingInput` construction in `evidence-attacher.ts` directly instead
-  of casting. Along the way, fixed a real bug in
-  `inventory-service`'s `/v1/inventory/graph/asset` route, which was
-  assigning the internal `AssetKind` (e.g. `'deployment'`) straight to a
-  `TopologyNode`'s `kind` field instead of going through the existing
-  `toNodeKind()` mapper, producing invalid node kinds in the asset graph.
-  `pnpm lint` now runs with `--max-warnings 0` so new warnings fail CI.
+  Also part of S7-2: `pnpm audit` 0 critical / 0 high (was 2/5) —
+  Dependabot consolidated.
 
 ## [0.3.0] - 2026-09-23
 
@@ -733,6 +755,7 @@ for the operator runbook (triage, override, rollback).
 
 | Version | Date       | Notes                                                                    |
 | ------- | ---------- | ------------------------------------------------------------------------ |
+| 0.4.0   | 2026-09-24 | Hardening: lint, dependencies, CI, HTTP security, end-to-end smoke       |
 | 0.3.0   | 2026-09-23 | Frontend integration, auth, event bus, compliance automation, encryption |
 | 0.2.0   | 2026-09-22 | Live Kubernetes, persistence, observability, containerisation            |
 | 0.0.0   | 2026-06-12 | Initial repository skeleton                                              |
