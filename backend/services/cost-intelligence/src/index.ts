@@ -1,6 +1,7 @@
 /**
  * Cost Intelligence Service — entry point.
  */
+import { pathToFileURL } from 'node:url';
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import { registerHttpMetrics } from '@aicc/observability';
 import {
@@ -102,7 +103,8 @@ async function main(): Promise<void> {
   }
 }
 
-const isMain = import.meta.url === `file:///${process.argv[1]?.replaceAll('\\', '/')}`;
+const isMain =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   void main();
 }

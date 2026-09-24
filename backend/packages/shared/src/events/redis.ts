@@ -8,7 +8,7 @@
  * `docs/adr/0014-redis-streams-event-bus.md` for the rationale and the
  * deferred work (dead-letter, stale-pending reclaim, ordering).
  */
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 import type { Logger } from '../logger/index.js';
 import { sealEnvelope, type EventBus, type EventEnvelope, type EventHandler } from './index.js';
 
@@ -79,7 +79,7 @@ export class RedisStreamsEventBus implements EventBus {
     this.serviceName = options.serviceName;
     this.logger = options.logger;
     this.url = options.url;
-    this.factory = options.redisFactory ?? ((url) => new IORedis(url) as unknown as RedisLike);
+    this.factory = options.redisFactory ?? ((url) => new Redis(url) as unknown as RedisLike);
     this.publisher = this.factory(this.url);
   }
 

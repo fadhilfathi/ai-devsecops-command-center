@@ -14,6 +14,7 @@
  *   - JWT auth (HS256 Sprint 2 stub, RS256 Sprint 2.1 via @aicc/auth)
  *   - RBAC (platform_admin or security_engineer for POSTs; all auth'd for GETs)
  */
+import { pathToFileURL } from 'node:url';
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
@@ -265,7 +266,8 @@ async function main(): Promise<void> {
   }
 }
 
-const isMain = import.meta.url === `file:///${process.argv[1]?.replaceAll('\\', '/')}`;
+const isMain =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   void main();
 }

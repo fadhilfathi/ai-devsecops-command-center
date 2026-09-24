@@ -1,6 +1,7 @@
 {
   "name": "@aicc/shared",
   "version": "0.1.0",
+  "type": "module",
   "description": "Shared types, utilities, logger, and event bus for AICC backend services",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
