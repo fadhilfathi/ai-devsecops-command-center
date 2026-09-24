@@ -191,39 +191,26 @@ tracking, evidence collection, audit answers. We build a system that
 
 ## Quick start
 
-> Prereqs: **Node.js** `>= 20.18.0`, **pnpm** `>= 9`, **Docker** + **Docker
+> Prereqs: **Node.js** `>= 22.12.0`, **pnpm** `>= 9`, **Docker** + **Docker
 > Compose v2**. See [`.nvmrc`](./.nvmrc).
 
 ```bash
-# 1. Clone
 git clone https://github.com/fadhilfathi/ai-devsecops-command-center.git
 cd ai-devsecops-command-center
-
-# 2. Use the pinned Node version
 nvm use    # or: nvm install
-
-# 3. Install
 pnpm install
-
-# 4. Configure
-cp .env.example .env
-# (edit .env — see .env.example for what to set)
-
-# 5. Bring up the full local stack
-make up
-
-# 6. Open
-# - AionUi (frontend):    http://localhost:5173
-# - Grafana:              http://localhost:3011  (admin / admin)
-# - Prometheus:           http://localhost:9090
 ```
 
-The compose stack runs with real auth (`AUTH_DEV_BYPASS=false` in
-`.env.example`), so the frontend shows a login gate — use the
-dev-login form (any seeded user; see `auth-service`) to get in. Running
-a single service directly with `pnpm dev` outside compose keeps the
-`AUTH_DEV_BYPASS` default (`true` outside production), so no login is
-needed there.
+From here, pick one:
+
+- **UI only, no backend** — `cd frontend && pnpm dev`, open
+  http://localhost:5173. Renders from mock data, no `.env` needed.
+- **Full stack** — `cp .env.example .env`, `docker compose up -d --build`,
+  open http://localhost:5173. Log in with the seeded dev user
+  (`admin@aicc.local`).
+
+Full walkthrough, including generating real secrets, the observability
+profile, and troubleshooting: **[`docs/quick-start.md`](./docs/quick-start.md)**.
 
 ### Common commands
 

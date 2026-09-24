@@ -16,6 +16,15 @@ import { CompliancePage as Compliance } from './routes/Compliance';
 import { IntegrationsPage as Integrations } from './routes/Integrations';
 import { SettingsPage as Settings } from './routes/Settings';
 import { NotFoundPage as NotFound } from './routes/NotFound';
+import { InfrastructureOverview } from './routes/InfrastructureOverview';
+import { ClusterExplorer } from './routes/ClusterExplorer';
+import { NamespaceExplorer } from './routes/NamespaceExplorer';
+import { WorkloadExplorer } from './routes/WorkloadExplorer';
+import { RuntimeSecurity } from './routes/RuntimeSecurity';
+import { TopologyViewer } from './routes/TopologyViewer';
+import { CostIntelligence } from './routes/CostIntelligence';
+import { InfrastructureHealthPage as InfrastructureHealth } from './routes/InfrastructureHealth';
+import { InfrastructureIncidents } from './routes/InfrastructureIncidents';
 
 /**
  * DependencyGraph (and its `reactflow` + dagre-style layout bundle)
@@ -65,6 +74,15 @@ export default function App() {
         <Route path="compliance" element={<Compliance />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="settings/*" element={<Settings />} />
+        <Route path="infrastructure" element={<InfrastructureOverview />} />
+        <Route path="infrastructure/clusters" element={<ClusterExplorer />} />
+        <Route path="infrastructure/namespaces" element={<NamespaceExplorer />} />
+        <Route path="infrastructure/workloads" element={<WorkloadExplorer />} />
+        <Route path="infrastructure/runtime-security" element={<RuntimeSecurity />} />
+        <Route path="infrastructure/topology" element={<TopologyViewer />} />
+        <Route path="infrastructure/cost" element={<CostIntelligence />} />
+        <Route path="infrastructure/health" element={<InfrastructureHealth />} />
+        <Route path="infrastructure/incidents" element={<InfrastructureIncidents />} />
         <Route
           path="graph/:sbom_id?"
           element={

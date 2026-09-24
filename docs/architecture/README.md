@@ -34,6 +34,10 @@ for "what the system is".
 
 ## Reading order
 
+If you are new to the project and want to run it, start with
+[`/docs/quick-start.md`](../quick-start.md) instead — this section is
+design rationale, not a setup guide.
+
 If you are new to the project, read in this order:
 
 1. [`/README.md`](../../README.md) — the elevator pitch.

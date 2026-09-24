@@ -40,7 +40,7 @@ test('loadServiceConfig applies defaults when no env is set', () => {
   expect(cfg).toEqual({
     name: 'agent-service',
     version: '0.1.0',
-    port: 4002,
+    port: 3002,
     host: '0.0.0.0',
     environment: 'development',
     logLevel: 'info',
@@ -75,6 +75,30 @@ test('loadServiceConfig unknown service defaults to port 4000', () => {
   delete process.env.PORT;
   const cfg = loadServiceConfig('unknown-service', '0.1.0');
   expect(cfg.port).toBe(4000);
+});
+
+// Must match docker-compose, frontend/proxy-table.mjs and CLAUDE.md's port
+// table exactly, so `pnpm --filter <svc> dev` needs no PORT override.
+test('loadServiceConfig defaults every known service to its compose port', () => {
+  delete process.env.PORT;
+  const expected: Record<string, number> = {
+    'auth-service': 3001,
+    'agent-service': 3002,
+    'security-service': 3003,
+    'incident-service': 3004,
+    'compliance-service': 3005,
+    'integration-service': 3006,
+    'kubernetes-service': 4006,
+    'k8s-health-service': 4007,
+    'runtime-security-service': 4008,
+    'inventory-service': 4009,
+    'cost-intelligence-service': 4010,
+    'topology-service': 4011,
+    'reporting-service': 4012,
+  };
+  for (const [name, port] of Object.entries(expected)) {
+    expect(loadServiceConfig(name, '0.1.0').port).toBe(port);
+  }
 });
 
 test('loadServiceConfig honors env var overrides', () => {

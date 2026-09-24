@@ -211,11 +211,21 @@ routes.
   - **S8-2b** (done): TypeScript 6, hoisted to the root `devDependencies`
     only; `@types/node` 22 (Node 22 runtime, not the Dependabot-proposed
     25).
-- **S8-3**: a user-facing docs site / quick-start walkthrough — plain
-  markdown in-repo (no paid hosting), aimed at someone cloning the
-  repo for the first time rather than a contributor reading ADRs.
+- **S8-3** (done): `docs/quick-start.md` — plain markdown in-repo (no paid
+  hosting), aimed at someone cloning the repo for the first time rather
+  than a contributor reading ADRs. Linked from `README.md` and
+  `docs/architecture/README.md`. Found and fixed in the same pass: the
+  sidebar's Infrastructure section linked to `/infrastructure/*` routes
+  `frontend/src/App.tsx` never registered (404s), and
+  `defaultPort()` in `backend/packages/shared/src/http/index.ts` only
+  covered 6 of the 13 services and disagreed with the compose/vite-proxy
+  port map for the rest.
 - **S8-4**: replace the remaining mock-only frontend endpoints with
   real backend routes — `api.vulnerabilities()`, `api.sbom()`,
   `api.securityScore()`, `api.vulnTimeline()`, `api.riskHeatmap()`,
   and `api.graphData()` currently have no matching backend route at
   all (see `frontend/README.md`).
+- **S8-5**: port clash — security-service defaults `SBOM_PIPELINE_URL`,
+  `VULN_INTEL_URL` and `DEPENDENCY_INTEL_URL` to `localhost:4007-4009`,
+  which Sprint 4 assigned to k8s-health, runtime-security and inventory.
+  Give the Python agents their own ports and add them to compose.

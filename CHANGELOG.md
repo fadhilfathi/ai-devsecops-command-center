@@ -18,6 +18,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   incident, compliance, and integration services insert a small
   deterministic fixture set for the demo tenant on boot when set,
   idempotent and off by default; enabled in `docker-compose.yml`.
+- **S8-3**: `docs/quick-start.md` — a verified, user-facing quick-start
+  covering mocks-only, the full docker-compose stack, logging in with the
+  seeded dev user, and running services locally without Docker. Fixed
+  stale Node version and `pnpm --filter` name in `README.md`/
+  `frontend/README.md` along the way.
+
+### Fixed
+
+- **S8-3**: registered the sidebar's Infrastructure routes
+  (`/infrastructure/*`) in `frontend/src/App.tsx` — they previously fell
+  through to the 404 catch-all despite the page components and backend
+  services existing. `defaultPort()` in
+  `backend/packages/shared/src/http/index.ts` now covers all 13 services
+  and matches the compose/vite-proxy port map (it previously covered only
+  6, at the wrong ports), so `pnpm --filter <svc> dev` needs no `PORT`
+  override.
 
 ### Changed
 

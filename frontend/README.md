@@ -1,7 +1,7 @@
 # Frontend (AionUi)
 
 > The single-page web app for the AI-DevSecOps Command Center. Built
-> with Vite, React 18, TypeScript, and a small set of well-considered
+> with Vite, React 19, TypeScript, and a small set of well-considered
 > libraries.
 
 ## Screens
@@ -49,7 +49,7 @@ frontend/
 ## Stack
 
 - **Vite** — bundler / dev server
-- **React 18** — UI
+- **React 19** — UI
 - **TypeScript** — types
 - **TanStack Query** — server state caching
 - **Zustand** — small global UI state
@@ -62,7 +62,7 @@ frontend/
 ## Running
 
 ```bash
-pnpm --filter @aicc/frontend dev
+pnpm --filter ai-devsecops-frontend dev
 # or
 make dev-frontend
 ```

@@ -154,12 +154,19 @@ export function loadServiceConfig(name: string, version: string): ServiceConfig 
 
 function defaultPort(serviceName: string): number {
   const map: Record<string, number> = {
-    'auth-service': 4001,
-    'agent-service': 4002,
-    'security-service': 4003,
-    'incident-service': 4004,
-    'compliance-service': 4005,
-    'integration-service': 4006,
+    'auth-service': 3001,
+    'agent-service': 3002,
+    'security-service': 3003,
+    'incident-service': 3004,
+    'compliance-service': 3005,
+    'integration-service': 3006,
+    'kubernetes-service': 4006,
+    'k8s-health-service': 4007,
+    'runtime-security-service': 4008,
+    'inventory-service': 4009,
+    'cost-intelligence-service': 4010,
+    'topology-service': 4011,
+    'reporting-service': 4012,
   };
   return map[serviceName] ?? 4000;
 }
