@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-27
+
+Sprint 10 — remediation proposals, SBOM index, dependency catch-up,
+reliability debts.
+
 ### Added
 
 - **S10-1**: `agent-service`'s `RemediationAgent` now proposes real

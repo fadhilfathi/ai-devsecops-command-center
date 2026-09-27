@@ -295,7 +295,8 @@ Status: **complete** (2026-09-27). See
 
 ## Sprint 10 — Agent debt, SBOM analytics performance, dependency review
 
-Status: in progress.
+Status: **complete** (2026-09-27). See
+[`docs/architecture/sprint-10/`](./docs/architecture/sprint-10/).
 
 - **S10-1** (done): `RemediationAgent` proposes a real, finding-specific
   dependency bump per package (deterministic; semver/PEP440-ish version
@@ -372,3 +373,49 @@ Deliberate corners cut, each with a named ceiling and an upgrade trigger:
   `Service.hasReadyEndpoints` is always `false` (would need a separate
   `Endpoints` list call per service). Upgrade: wire it when the topology
   view needs ready-endpoint state.
+
+## Sprint 11 — Cluster delete, remediation follow-through, remediation UI, security persistence
+
+Status: not started.
+
+- **S11-1**: cluster CRUD delete route in `kubernetes-service`.
+  `backend/services/kubernetes/src/routes/kubernetes.ts` today only
+  registers `GET` routes — there's no way to remove a cluster short of a
+  direct database delete, which means the S10-4 cache-eviction check in
+  `LiveProvider.clientsFor` (a deleted cluster is never served from cache)
+  has never been exercised by a real API call. Add `DELETE
+/v1/kubernetes/clusters/:id`, tenant-scoped, removing the cluster
+  registry row so the existing eviction path actually fires.
+- **S11-2**: `remediation.apply` via `integration-service`'s GitHub
+  provider. `providers/registry.ts`'s `GithubProvider` today only verifies
+  inbound webhook signatures and records a sync row (`handleEvent`) — it
+  has no outbound GitHub API client. Add one (a user-supplied personal
+  access token per integration, already the shape `integrations` rows
+  store credentials in; zero-cost — no GitHub App, no paid tier) that can
+  open an issue or PR with a `RemediationAgent` proposal's `manifestHint`.
+  Wire `agent-service`'s `applyRemediation()` to call it instead of
+  returning `applied: false` unconditionally.
+- **S11-3**: frontend triage/remediation results screen.
+  `frontend/src/routes/` has no page for `TriageAgent`'s heuristic output
+  or `RemediationAgent`'s proposals (S9-4/S10-1 shipped backend-only) —
+  the closest existing screen, `Vulnerabilities.tsx`, doesn't surface
+  either. Add a route (or a tab on `Vulnerabilities.tsx`) showing
+  per-finding triage rationale/priority and remediation proposals with
+  their risk level and `manifestHint`.
+- **S11-4**: Postgres persistence for `security-service`. Of the 13
+  backend services, only `kubernetes-service` (`cluster.repository.ts`)
+  and `incident-service` (`incident.repository.ts`, `runbook.repository.ts`,
+  `chain.repository.ts`) have a `buildPg*Repository` — auth, agent,
+  security, compliance, integration, k8s-health, runtime-security,
+  inventory, cost-intelligence, topology, and reporting are all in-memory
+  only. security-service is the highest-value next target: S10-2 already
+  noted its SBOM component index has no Postgres backing, so both the
+  index and the underlying asset/scan/finding/SBOM repositories are lost
+  on every restart. Add `buildPgSecurityRepository` (assets, scans,
+  findings, SBOMs + the S10-2 component/edge index) following the
+  interface + in-memory-default + `Queryable`/`migrate()` pattern the
+  other two services use, tested with `describe.each` against
+  `@electric-sql/pglite`.
+
+Release 1.0 readiness (branch protection, private vulnerability
+reporting, remaining in-memory-only services, PyJWT #69/#70) is Sprint 12.

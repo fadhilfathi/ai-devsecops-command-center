@@ -14,20 +14,23 @@
 [![e2e](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/e2e.yml/badge.svg)](./.github/workflows/e2e.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 10 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 11 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
 
-**Sprint 9 just shipped**: fixed sbom-generator's 11 pre-existing
-failing tests (which were hiding real SSRF bugs) and gated the three
-Python agents' tests in CI, replaced the SBOM page's mock-only export
-button with a real fetch-then-download flow, split the frontend into
-per-route chunks (242 KB gz → 101 KB gz main bundle), gave the triage
-agent an explainable heuristic with an optional local-LLM refinement
-pass, and fixed sbom-generator's `registry` source type (previously
-broken by a double URL scheme). See
-[`docs/architecture/sprint-9/`](./docs/architecture/sprint-9/) and
+**Sprint 10 just shipped**: `RemediationAgent` now proposes real
+finding-specific dependency-bump fixes (deterministic, per-ecosystem
+version comparison, shell-safe upgrade hints) instead of a hard-coded
+placeholder, security-service's SBOM analytics precompute components and
+dependency edges once at ingest instead of re-parsing every document per
+request, all 14 open Dependabot updates (GitHub Actions + the 3 Python
+agents) were applied by hand, and a repo-wide sweep of `ponytail:`
+markers fixed two reliability debts — a deleted/re-credentialed
+Kubernetes cluster is no longer served from `LiveProvider`'s client
+cache, and the Redis Streams event bus now reclaims and dead-letters
+stuck entries instead of retrying them forever. See
+[`docs/architecture/sprint-10/`](./docs/architecture/sprint-10/) and
 [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
