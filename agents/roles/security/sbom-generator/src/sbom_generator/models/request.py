@@ -43,48 +43,6 @@ class SourceType(str):
     REGISTRY = "registry"
 
 
-class ScopeType(str):
-    """O-3.7 scope enum for `subject_fingerprint` derivation.
-
-    The scope is a hint to the runtime about how to interpret the
-    ``subject_fingerprint`` field on the event payload:
-
-      - ``monorepo``: a sub-tree of a multi-package repository; the
-        fingerprint is the git commit SHA at which the sub-tree was
-        scanned.
-      - ``service``: a deployable unit in a monorepo; the fingerprint
-        is the parent repo's git commit SHA.
-      - ``package``: a single published package; the fingerprint is the
-        upstream registry's content hash (lockfile, package version
-        tarball, etc.).
-      - ``container``: a container image; the fingerprint is the
-        image digest (``sha256:...``).
-      - ``git-tree``: a non-monorepo git tree; the fingerprint is the
-        git commit SHA.
-      - ``fs``: a bare filesystem path; the fingerprint is a
-        SHA-256 of the directory contents.
-    """
-
-    MONOREPO = "monorepo"
-    SERVICE = "service"
-    PACKAGE = "package"
-    CONTAINER = "container"
-    GIT_TREE = "git-tree"
-    FS = "fs"
-
-
-VALID_SCOPE_TYPES = frozenset(
-    {
-        ScopeType.MONOREPO,
-        ScopeType.SERVICE,
-        ScopeType.PACKAGE,
-        ScopeType.CONTAINER,
-        ScopeType.GIT_TREE,
-        ScopeType.FS,
-    }
-)
-
-
 VALID_SOURCE_TYPES = {
     SourceType.DIRECTORY,
     SourceType.FILE,
@@ -141,7 +99,6 @@ class GenerateRequest(BaseModel):
     output_relationships: bool = True
     metadata: Dict[str, str] = Field(default_factory=dict)
     tenant_id: Optional[str] = None
-<<<<<<< Updated upstream
     # O-3.7 wire format compliance (S2.5 hotfix). Drives the
     # ``subject_fingerprint`` and ``sbom_path`` computation in the
     # emitted event payload. When omitted, the runtime derives a
@@ -153,15 +110,6 @@ class GenerateRequest(BaseModel):
     # container scans it's the image digest (``sha256:...``); for fs
     # scans it's the SHA-256 of the directory contents. The runtime
     # computes a default when not provided.
-=======
-    # O-3.7 wire format compliance. Drives the ``subject_fingerprint``
-    # computation in the emitted event payload.
-    scope: Optional[str] = None
-    # For git-backed scans, the resolved commit SHA at scan time. For
-    # container scans, the image digest (``sha256:...``). For fs scans,
-    # the SHA-256 of the directory contents. The runtime computes a
-    # default when not provided (see ``agent._compute_subject_fingerprint``).
->>>>>>> Stashed changes
     subject_fingerprint: Optional[str] = None
     # For git-backed scans, the relative path within the repo (per
     # folder contract). Required when scope is ``monorepo`` or
@@ -180,7 +128,6 @@ class GenerateRequest(BaseModel):
     def _validate_scope(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
-<<<<<<< Updated upstream
         # The 6-value enum is locked in O-3.7. Validated here so a
         # caller-supplied bad value fails the request with HTTP 400
         # before the runtime emits a wire-format-invalid event.
@@ -195,11 +142,6 @@ class GenerateRequest(BaseModel):
         if v not in valid:
             raise ValueError(
                 f"unsupported scope={v!r}. valid: {sorted(valid)}"
-=======
-        if v not in VALID_SCOPE_TYPES:
-            raise ValueError(
-                f"unsupported scope={v!r}. valid: {sorted(VALID_SCOPE_TYPES)}"
->>>>>>> Stashed changes
             )
         return v
 
