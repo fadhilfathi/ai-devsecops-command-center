@@ -40,6 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Output is byte-identical to the old parse-per-request path (see the
   `S10-2 component index equality` test in
   `backend/services/security/src/services/security-analytics.test.ts`).
+- **S10-3**: applied pending Dependabot updates (Actions + Python agent
+  deps). GitHub Actions: `docker/build-push-action` v6.19.2→v7.4.0,
+  `actions/labeler` v5.0.0→v7.0.0, `pnpm/action-setup` v4.3.0→v6.1.0,
+  `ossf/scorecard-action` v2.4.1→v2.4.4, `github/codeql-action`
+  v3.38.1→v4.38.2 (init/analyze/upload-sarif, `codeql.yml` +
+  `scorecard.yml`), all pinned to SHA. Python: bumped fastapi, pydantic,
+  httpx, structlog, pytest, mypy, ruff and related deps across
+  sbom-generator, vuln-intel, dependency-intel. Fixed a vuln-intel test
+  (`test_create_app_writes_only_under_configured_data_dir`) that relied
+  on `starlette.datastructures.State`'s old always-truthy `__bool__`;
+  Starlette now defines `__len__`, so an empty state is falsy.
 
 ## [0.6.0] - 2026-09-27
 

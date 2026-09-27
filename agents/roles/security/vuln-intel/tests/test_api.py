@@ -133,7 +133,7 @@ def test_create_app_writes_only_under_configured_data_dir(tmp_path: Path, monkey
     finally:
         reset_settings_cache()
 
-    assert app.state  # constructed without raising
+    assert app is not None  # constructed without raising
     written = list(tmp_path.rglob("*"))
     for path in written:
         assert str(path).startswith(str(tmp_path))

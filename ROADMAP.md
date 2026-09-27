@@ -313,12 +313,15 @@ Status: in progress.
   the index and join it against current findings instead of parsing the
   document. security-service has no Pg SBOM repository yet, so this is
   in-memory only.
-- **S10-3**: review and merge (or explicitly close) the 14 open
-  Dependabot PRs — grouped production/dev Python bumps for the 3
-  agents (sbom-generator, vuln-intel, dependency-intel) plus GitHub
-  Actions version bumps (`docker/build-push-action`,
-  `actions/labeler`, `pnpm/action-setup`, `ossf/scorecard-action`,
-  `github/codeql-action`). None reviewed since they opened.
+- **S10-3** (done): applied all 14 open Dependabot updates by hand
+  (merging their PRs would put bot commits on `main`). GitHub Actions
+  bumped and pinned to SHA: `docker/build-push-action` v7.4.0,
+  `actions/labeler` v7.0.0, `pnpm/action-setup` v6.1.0,
+  `ossf/scorecard-action` v2.4.4, `github/codeql-action` v4.38.2 (every
+  occurrence, including `scorecard.yml`'s `upload-sarif`). Python prod
+  + dev deps bumped for sbom-generator, vuln-intel, dependency-intel;
+  fixed one vuln-intel test broken by a Starlette `State.__len__`
+  change. All 14 PRs now superseded.
 - **S10-4**: `ponytail:` debt sweep — 13 occurrences across 12 files
   (`grep -rn "ponytail:"`) marking deliberate simplifications with a
   named ceiling: `security-analytics.ts` (SBOM re-parsing, depth
