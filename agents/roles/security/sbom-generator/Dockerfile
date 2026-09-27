@@ -37,22 +37,21 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates curl; \
     rm -rf /var/lib/apt/lists/*; \
+    cd /tmp; \
     curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" \
-        -o /tmp/syft.tgz; \
+        -o "syft_${SYFT_VERSION}_linux_amd64.tar.gz"; \
     curl -sSfL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt" \
-        -o /tmp/syft.checksums.txt; \
-    # Verify the published checksum file mentions our pinned image digest.
-    # (Anchore publishes *image* digests in the SBOM, not tarball hashes; the
-    # tarball checksum is verified separately for defense in depth.)
+        -o syft.checksums.txt; \
+    # checksums.txt lists the tarball by its published name, so it must be
+    # saved under that name for sha256sum -c to find it.
     echo "verifying tarball checksum"; \
-    grep "syft_${SYFT_VERSION}_linux_amd64.tar.gz" /tmp/syft.checksums.txt \
-        | sha256sum -c -; \
+    grep " syft_${SYFT_VERSION}_linux_amd64.tar.gz$" syft.checksums.txt | sha256sum -c -; \
     mkdir -p /syft; \
-    tar -xzf /tmp/syft.tgz -C /syft; \
+    tar -xzf "syft_${SYFT_VERSION}_linux_amd64.tar.gz" -C /syft; \
     mv /syft/syft /usr/local/bin/syft; \
     chmod 0755 /usr/local/bin/syft; \
     /usr/local/bin/syft version; \
-    rm -rf /tmp/syft.tgz /tmp/syft.checksums.txt /syft
+    rm -rf "/tmp/syft_${SYFT_VERSION}_linux_amd64.tar.gz" /tmp/syft.checksums.txt /syft
 
 # --- Stage 2: runtime --------------------------------------------------------
 FROM python:3.12-slim AS runtime
