@@ -186,7 +186,8 @@ Status: **complete** (2026-09-24). See
 
 ## Sprint 8 — Public release readiness, docs, demo data
 
-Status: **not started**.
+Status: **complete** (2026-09-27). See
+[`docs/architecture/sprint-8/`](./docs/architecture/sprint-8/).
 
 The version name below was stale — the project is at 0.3.x, not
 0.1.0 — retitled to describe what's actually left before a public
@@ -237,4 +238,39 @@ routes.
   (`depends_on: service_healthy`), and deleted the now-redundant
   per-agent `sbom-generator/docker-compose.yml`. security-service's
   `/readyz` now also checks the three agents' liveness endpoints, so
-  the e2e smoke's existing `security` readyz check covers them.
+  the e2e smoke's existing `security` readyz check covers them. The
+  first real boot of the three agent images then surfaced four bugs:
+  sbom-generator's Dockerfile verified the syft tarball under the
+  wrong filename, vuln-intel and dependency-intel crashed as non-root
+  (root-owned data dirs), and sbom-generator's settings loader read a
+  `default_factory` field off the class instead of an instance and
+  always raised. All fixed.
+
+## Sprint 9 — Test debt, export UX, bundle size, agent triage
+
+Status: **not started**.
+
+- **S9-1**: fix sbom-generator's 11 pre-existing failing tests
+  (`test_ssrf.py`'s DNS-mocking cases, `test_integration_live.py`'s
+  live-syft cases) and add the 3 Python agents' `pytest` suites to
+  `.github/workflows/ci.yml` — they're not in CI today despite being a
+  real part of the compose stack since S8-5.
+- **S9-2**: `sbomExportUrl()` (SBOM page's export button) is still a
+  `data:` URL of the mock document. Replace with the real
+  fetch-then-download flow against security-service's
+  `/v1/sboms/:id/export` (added in S8-4) — an async request, a
+  loading/error state on the button, and a `Blob`/`URL.createObjectURL`
+  download instead of a synchronous data URI.
+- **S9-3**: route-level code splitting for the frontend — the SPA
+  ships a single ~242 KB gzipped JS bundle with `recharts` and
+  `reactflow` on every page regardless of route. Lazy-load the pages
+  that actually use them (Topology Viewer, Dependency Graph, the
+  charted dashboard views) via `React.lazy`/dynamic `import()`.
+- **S9-4**: `agent-service`'s `TriageAgent` (`agents/registry.ts`) is
+  still the Sprint-1 placeholder — it only counts findings by
+  severity, with a code comment saying an LLM was coming "in Sprint
+  2". Give it a real triage decision with an opt-in LLM call
+  (`AICC_AGENT_LLM_ENABLED`, OpenAI-compatible client like
+  `vuln-intel`'s) and a heuristic fallback (the current
+  severity-count logic) when no key is configured — no paid API
+  required to run the platform.

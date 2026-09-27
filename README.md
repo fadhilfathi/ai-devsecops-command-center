@@ -14,18 +14,18 @@
 [![e2e](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/e2e.yml/badge.svg)](./.github/workflows/e2e.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 7 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 9 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
 
-**Sprint 7 just shipped**: a hardening pass — zero eslint warnings
-enforced in CI, Fastify 4→5 (`pnpm audit` 21 advisories → 0), every
-GitHub Actions workflow fixed and pinned to commit SHAs, a shared
-CORS allow-list / strict CSP / body + rate limits across all 13
-services, and the first real end-to-end smoke test of the full
-docker-compose stack. See
-[`docs/architecture/sprint-7/`](./docs/architecture/sprint-7/) and
+**Sprint 8 just shipped**: public-release readiness — optional demo
+seed data, the React 19 / Tailwind 4 / TypeScript 6 dependency majors
+deferred from Sprint 7, a verified `docs/quick-start.md`, six of the
+dashboard's mock-only security screens wired to real backend routes,
+and the three Python security agents (sbom-generator, vuln-intel,
+dependency-intel) actually running inside the docker-compose stack.
+See [`docs/architecture/sprint-8/`](./docs/architecture/sprint-8/) and
 [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---

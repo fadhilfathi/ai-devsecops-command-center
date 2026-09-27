@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.5.0] - 2026-09-27
+
+Sprint 8 — public-release readiness: demo data, dependency majors,
+quick-start, live security views, Python agents in compose.
+
+### Added
+
 - **S8-5**: Python agents (sbom-generator, vuln-intel, dependency-intel)
   moved off the Sprint-4 Node service ports (4007-4009) onto their own
   range (5001-5003) and added to `docker-compose.yml` as internal-only
@@ -43,8 +54,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **S8-5**: Python agent images boot as non-root (writable data dirs,
-  sbom-generator settings reference).
+- **S8-5**: the first real boot of the three Python agent images (they
+  had only ever been built and unit-tested, never run) surfaced four
+  bugs — sbom-generator's Dockerfile downloaded the syft release
+  tarball under a different name than `checksums.txt` uses, so
+  `sha256sum -c` failed the build; vuln-intel and dependency-intel
+  crashed on boot as non-root (their data/audit-log directories
+  resolved against a root-owned `WORKDIR`, now each gets its own
+  `chown`ed `/var/lib` directory); sbom-generator's settings loader
+  read `workspace_root` off the `Settings` class itself, which has no
+  class-level value for a `default_factory` field, so every boot
+  raised `AttributeError` (now reads `SBOM_WORKSPACE` from the
+  environment directly).
 - **S8-3**: registered the sidebar's Infrastructure routes
   (`/infrastructure/*`) in `frontend/src/App.tsx` — they previously fell
   through to the 404 catch-all despite the page components and backend
@@ -53,6 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and matches the compose/vite-proxy port map (it previously covered only
   6, at the wrong ports), so `pnpm --filter <svc> dev` needs no `PORT`
   override.
+- **S8-4**: a tenant with no assets, SBOMs, or findings computed a
+  perfect 100/A security score instead of reporting no score;
+  `composite`/`band` are now `null` for an empty tenant.
 
 ### Changed
 
@@ -812,12 +836,13 @@ for the operator runbook (triage, override, rollback).
 
 ## Release history
 
-| Version | Date       | Notes                                                                    |
-| ------- | ---------- | ------------------------------------------------------------------------ |
-| 0.4.0   | 2026-09-24 | Hardening: lint, dependencies, CI, HTTP security, end-to-end smoke       |
-| 0.3.0   | 2026-09-23 | Frontend integration, auth, event bus, compliance automation, encryption |
-| 0.2.0   | 2026-09-22 | Live Kubernetes, persistence, observability, containerisation            |
-| 0.0.0   | 2026-06-12 | Initial repository skeleton                                              |
+| Version | Date       | Notes                                                                                                              |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
+| 0.5.0   | 2026-09-27 | Public-release readiness: demo data, dependency majors, quick-start, live security views, Python agents in compose |
+| 0.4.0   | 2026-09-24 | Hardening: lint, dependencies, CI, HTTP security, end-to-end smoke                                                 |
+| 0.3.0   | 2026-09-23 | Frontend integration, auth, event bus, compliance automation, encryption                                           |
+| 0.2.0   | 2026-09-22 | Live Kubernetes, persistence, observability, containerisation                                                      |
+| 0.0.0   | 2026-06-12 | Initial repository skeleton                                                                                        |
 
 <!--
 ## [0.1.0] - YYYY-MM-DD
