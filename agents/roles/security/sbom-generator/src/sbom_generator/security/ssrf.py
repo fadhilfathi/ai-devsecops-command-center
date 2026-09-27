@@ -28,9 +28,10 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import re
 import socket
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
@@ -167,7 +168,16 @@ def classify_hostname(host: str) -> Optional[str]:
     if h in _BARE_HOSTS:
         return f"banned hostname: {h}"
     for suffix in _SUFFIXES:
-        if h.endswith(suffix) or h == suffix.lstrip("."):
+        bare = suffix.lstrip(".")
+        if h.endswith(suffix):
+            return f"banned hostname suffix: {suffix}"
+        # Also block the bare, unqualified form (e.g. host "local" for
+        # suffix ".local") — but only for single-label suffixes. Multi-
+        # label suffixes like ".example.com" already cover subdomains via
+        # endswith above; treating their bare form as banned too would
+        # incorrectly block the exact public domain (e.g. "example.com"
+        # itself, which is a real, routable RFC 2606 domain).
+        if "." not in bare and h == bare:
             return f"banned hostname suffix: {suffix}"
     # IP literal?
     try:
@@ -190,6 +200,16 @@ def extract_host(url_or_host: str) -> str:
         parsed = urlparse(s)
         host = parsed.hostname or ""
         return host
+    # scp-style "[user[:pass]@]host:path" (no scheme) — strip the
+    # user@ prefix BEFORE the IPv6-bracket branch below. Doing this
+    # after bracket handling (as a previous version of this function
+    # did) meant "user@[::1]:22/x" was never bracket-parsed: the "["
+    # check only looks at the very start of the string, and with the
+    # "user@" prefix still attached the string starts with "u", not
+    # "[", so the IPv6 literal slipped past classify_hostname
+    # unclassified.
+    if "@" in s:
+        s = s.rsplit("@", 1)[-1]
     if s.startswith("["):
         # IPv6 literal, possibly with port
         end = s.find("]")
@@ -199,6 +219,107 @@ def extract_host(url_or_host: str) -> str:
     if ":" in s and s.count(":") == 1:
         return s.split(":", 1)[0]
     return s
+
+
+# ---------------------------------------------------------------------------
+# Image-reference grammar (T-07 hardening: syft scheme-injection defense)
+# ---------------------------------------------------------------------------
+#
+# ``syft`` interprets scheme prefixes (``registry:``, ``dir:``, ``file:``,
+# ``oci-archive:``, ...) embedded in the *target string itself*,
+# independent of any ``--source`` flag the caller passes on the CLI. A
+# request like ``{"type": "docker-image", "value": "dir:/etc"}`` or
+# ``"registry:10.0.0.1:5000/x"`` would therefore let an attacker read
+# arbitrary local files or reach an internal registry even though the
+# service always passes ``--source docker``/``--source oci`` — syft's own
+# scheme parsing wins.
+#
+# ``parse_image_reference`` accepts *only* the plain OCI distribution
+# reference grammar (no scheme of any kind) and returns the explicit
+# registry host, if any. Both the model-layer validator
+# (``models/request.py``) and the service layer (``agent.py``) call this
+# single function so the two layers can never drift.
+
+# Every scheme prefix syft's source-parsing recognizes. Checked
+# case-insensitively against the start of the raw value. This list is
+# defense-in-depth on top of the grammar check below (which already
+# rejects any first path segment containing a ``:`` that isn't a valid
+# ``host:port``) — it exists so an unambiguous, easily-audited reject
+# reason is available for the common attack strings.
+_SYFT_SCHEME_PREFIXES: Tuple[str, ...] = (
+    "registry",
+    "docker-daemon",
+    "docker-archive",
+    "docker",
+    "oci-dir",
+    "oci-archive",
+    "podman",
+    "singularity",
+    "dir",
+    "file",
+)
+
+_HOST_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?"
+_DNS_HOST = rf"{_HOST_LABEL}(?:\.{_HOST_LABEL})+"  # requires >= 1 dot
+_HOST_PORT_RE = re.compile(rf"^(?:{_DNS_HOST}|localhost)(?::[0-9]+)?$", re.IGNORECASE)
+_IPV6_BRACKET_RE = re.compile(r"^\[(?P<addr>[0-9a-fA-F:]+)\](?::[0-9]+)?$")
+
+_PATH_COMPONENT = r"[a-z0-9]+(?:[._-][a-z0-9]+)*"
+_TAG = r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}"
+_DIGEST = r"sha256:[0-9a-f]{64}"
+_IMAGE_REMAINDER_RE = re.compile(
+    rf"^{_PATH_COMPONENT}(?:/{_PATH_COMPONENT})*(?::{_TAG})?(?:@{_DIGEST})?$"
+)
+
+
+def parse_image_reference(value: str) -> Tuple[Optional[str], str]:
+    """Parse a docker/oci image reference into ``(host, remainder)``.
+
+    Accepts only the OCI distribution reference grammar:
+    ``[registry-host[:port]/]path-component(/path-component)*[:tag][@sha256:<64hex>]``
+    — no scheme of any kind. Raises :class:`ValueError` (with a
+    human-readable reason) for anything else, including every known
+    syft scheme prefix (``registry:``, ``dir:``, ``file:``, ...) and
+    any first path segment that contains a ``:`` but isn't a valid
+    ``host:port``.
+
+    Returns ``(None, value)`` for bare references with no explicit
+    registry host (e.g. ``nginx:1.25``, ``library/nginx`` — Docker Hub
+    is the implicit default and is not attacker-controlled).
+    """
+    v = value.strip()
+    if not v:
+        raise ValueError("empty image reference")
+    low = v.lower()
+    if "://" in low:
+        raise ValueError("image reference must not contain a URL scheme")
+    for scheme in _SYFT_SCHEME_PREFIXES:
+        if low.startswith(scheme + ":"):
+            raise ValueError(
+                f"image reference must not use the {scheme!r} scheme prefix"
+            )
+
+    first, sep, rest = v.partition("/")
+    host: Optional[str] = None
+    if sep:
+        m6 = _IPV6_BRACKET_RE.match(first)
+        if m6:
+            host = m6.group("addr")
+        elif _HOST_PORT_RE.match(first):
+            host = first.split(":", 1)[0]
+        elif ":" in first:
+            raise ValueError(
+                f"invalid registry host or scheme-like prefix: {first!r}"
+            )
+        remainder = rest if host is not None else v
+    else:
+        remainder = v
+
+    if not remainder:
+        raise ValueError("image reference is missing a path component")
+    if not _IMAGE_REMAINDER_RE.match(remainder):
+        raise ValueError(f"invalid image reference: {remainder!r}")
+    return host, remainder
 
 
 # ---------------------------------------------------------------------------
@@ -376,5 +497,6 @@ __all__ = [
     "extract_host",
     "host_matches_allowlist",
     "is_private_ip",
+    "parse_image_reference",
     "resolve_and_check",
 ]

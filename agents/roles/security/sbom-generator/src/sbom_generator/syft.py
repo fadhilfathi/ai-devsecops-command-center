@@ -96,17 +96,29 @@ async def get_syft_version(binary: str) -> Optional[str]:
 
 
 def _syft_target(source: SourceRef) -> str:
-    """Convert a :class:`SourceRef` into the positional argument Syft wants."""
+    """Convert a :class:`SourceRef` into the positional argument Syft wants.
+
+    T-07 hardening (S9-1): docker/oci image values are always prefixed
+    with an explicit, service-chosen ``registry:`` scheme. Syft parses a
+    scheme prefix embedded in the target string itself, independent of
+    any ``--source`` flag — so if the *user-supplied* value were passed
+    through unprefixed, a caller could smuggle in a different scheme
+    (``dir:``, ``file:``, ``oci-archive:``, ...) and reach the local
+    filesystem or an arbitrary registry. ``request.validate_source()``
+    (called by the one caller of this function, :meth:`SyftRunner.run`)
+    already rejects any value containing a scheme of its own via
+    ``security.ssrf.parse_image_reference`` — the explicit prefix here
+    is defense-in-depth on top of that grammar check.
+    """
     kind = source.type
     value = source.value
     if kind == SourceType.DOCKER_IMAGE:
         # Syft accepts ``registry/repo:tag`` directly.
         if ":" not in value and "@" not in value:
-            return f"{value}:latest"
-        return value
+            value = f"{value}:latest"
+        return f"registry:{value}"
     if kind == SourceType.OCI_IMAGE:
-        # Same as docker but with explicit ``--source oci`` flag.
-        return value
+        return f"registry:{value}"
     if kind == SourceType.GIT_REPOSITORY:
         return value
     if kind == SourceType.DIRECTORY:
@@ -141,14 +153,9 @@ def _build_command(
     """Compose the Syft CLI command line for the given request."""
     cmd: List[str] = [binary, "scan", target, "--quiet"]
 
-    if request.source.type == SourceType.OCI_IMAGE:
-        cmd.extend(["--source", "oci"])
-    elif request.source.type == SourceType.DOCKER_IMAGE:
-        cmd.extend(["--source", "docker"])
-
-    if request.source.type == SourceType.REGISTRY:
-        # Registry scans need to be in a non-default "registry" mode.
-        cmd.extend(["--source", "registry"])
+    # No ``--source`` flag for docker/oci/registry: ``target`` already
+    # carries an explicit, service-chosen ``registry:`` scheme prefix
+    # (see ``_syft_target``), which is authoritative on its own.
 
     # Output format selection. Syft supports the standard SPDX / CycloneDX
     # enum values plus its own JSON.

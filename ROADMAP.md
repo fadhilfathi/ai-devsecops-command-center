@@ -248,11 +248,15 @@ routes.
 
 ## Sprint 9 — Test debt, export UX, bundle size, agent triage
 
-Status: **not started**.
+Status: in progress.
 
-- **S9-1**: fix sbom-generator's 11 pre-existing failing tests
-  (`test_ssrf.py`'s DNS-mocking cases, `test_integration_live.py`'s
-  live-syft cases) and add the 3 Python agents' `pytest` suites to
+- **S9-1** (done): fixed sbom-generator's 11 pre-existing failing tests.
+  `test_ssrf.py` was mocking a module-level `asyncio.getaddrinfo` that
+  doesn't exist (fixed to patch the event loop); `extract_host` and the
+  SSRF-blocked telemetry path had real bugs (scp-style `user@host` URLs
+  bypassed the blocklist; `.value` on a plain `str` 500'd instead of
+  4xx'ing); the git-host allowlist was wrongly applied to docker/oci
+  image pulls. Added the 3 Python agents' `pytest` suites to
   `.github/workflows/ci.yml` — they're not in CI today despite being a
   real part of the compose stack since S8-5.
 - **S9-2**: `sbomExportUrl()` (SBOM page's export button) is still a
@@ -274,3 +278,8 @@ Status: **not started**.
   `vuln-intel`'s) and a heuristic fallback (the current
   severity-count logic) when no key is configured — no paid API
   required to run the platform.
+- **S9-5**: sbom-generator follow-ups from the S9-1 security review —
+  the `registry` source type passes `registry:https://host/...` to
+  syft (double scheme, so that source type likely never worked), and
+  `models/request.py` still parses git hosts with its own regex
+  instead of the hardened `security.ssrf.extract_host`.

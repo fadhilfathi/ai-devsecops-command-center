@@ -33,7 +33,7 @@ from sbom_generator.metrics import SourceType as MetricsSourceType
 from sbom_generator.config import Settings
 from sbom_generator.models.request import GenerateRequest, SourceType
 from sbom_generator.models.response import GenerateResponse
-from sbom_generator.security.ssrf import assert_safe_target
+from sbom_generator.security.ssrf import assert_safe_target, parse_image_reference
 from sbom_generator.syft import SyftRunner, SyftResult
 
 logger = logging.getLogger("sbom_generator.agent")
@@ -402,6 +402,12 @@ class SBOMGeneratorAgent:
         For remote sources, ``assert_safe_target`` resolves the hostname
         and rejects any result whose IP falls in a private/reserved
         range. A timeout or resolution failure fails closed.
+
+        ``ssrf.git_host_allowlist`` is a *git*-host allowlist (see its
+        name and ``config.DEFAULT_GIT_HOST_ALLOWLIST``) — it must not be
+        used to default-deny container-registry pulls, which have a
+        different trusted-host set entirely (``ssrf.registry_host_allowlist``,
+        T-07 registry allow-list).
         """
         kind = request.source.type
         if kind not in self._REMOTE_SOURCE_KINDS:
@@ -409,10 +415,46 @@ class SBOMGeneratorAgent:
 
         ssrf = self._settings.ssrf
         target = request.source.value
+
+        if kind == SourceType.REGISTRY:
+            # The model layer already required an http(s) URL for
+            # registry sources; extract the host the same way it does.
+            from urllib.parse import urlparse
+
+            host = urlparse(target).hostname
+            if host is None:
+                return
+            target = host
+            allowlist = ssrf.registry_host_allowlist
+        elif kind != SourceType.GIT_REPOSITORY:
+            # docker-image / oci-image. Bare refs (e.g. "nginx:1.25")
+            # have no host component at all — they resolve against
+            # Docker Hub, the implicit default, which isn't
+            # attacker-controlled. Only run the check when the
+            # reference names an explicit registry host. Uses the same
+            # strict grammar the model-layer validator already applied
+            # in ``request.validate_source()`` (called before this by
+            # ``SyftRunner.run``/the caller of ``generate()``).
+            try:
+                host, _ = parse_image_reference(target)
+            except ValueError as exc:
+                from sbom_generator.errors import SsrfBlockedError
+
+                raise SsrfBlockedError(
+                    f"SSRF defense: invalid image reference ({exc})",
+                    details={"value": target},
+                ) from exc
+            if host is None:
+                return
+            target = host
+            allowlist = ssrf.registry_host_allowlist
+        else:
+            allowlist = ssrf.git_host_allowlist
+
         try:
             result = await assert_safe_target(
                 target,
-                allowlist=ssrf.git_host_allowlist,
+                allowlist=allowlist,
                 default_deny=ssrf.default_deny,
                 dns_timeout_seconds=ssrf.dns_timeout_seconds,
             )
@@ -425,7 +467,7 @@ class SBOMGeneratorAgent:
                 "sbom.ssrf.error",
                 error_type=type(exc).__name__,
                 error=str(exc),
-                source_type=kind.value,
+                source_type=kind,
             )
             from sbom_generator.errors import SsrfBlockedError
 
@@ -459,13 +501,13 @@ class SBOMGeneratorAgent:
 
             logger.warning(
                 "SSRF block: source_type=%s target=%s reason=%s",
-                kind.value,
+                kind,
                 target,
                 result.reason,
             )
             self._telemetry.event(
                 "sbom.ssrf.blocked",
-                source_type=kind.value,
+                source_type=kind,
                 target=target,
                 reason=result.reason,
             )
@@ -475,7 +517,7 @@ class SBOMGeneratorAgent:
                 f"SSRF defense: target rejected ({result.reason})",
                 details={
                     "value": target,
-                    "source_type": kind.value,
+                    "source_type": kind,
                     "reason": result.reason,
                     "resolved_addresses": list(result.resolved_addresses),
                 },

@@ -12,11 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **S9-1**: sbom-generator: block syft scheme injection (local file read / SSRF) and enforce a registry allow-list.
+
 ### Added
+
+- **S9-1**: `ci.yml` gained a `test-python` job (matrix over sbom-generator,
+  vuln-intel, dependency-intel) so the Python agents run in CI.
 
 ### Changed
 
 ### Fixed
+
+- **S9-1**: Python agent tests fixed and run in CI. `sbom-generator`'s SSRF
+  defense had two real bugs — `extract_host` didn't strip the `user@`
+  prefix from scp-style git URLs, letting a private IP slip past the
+  blocklist unclassified, and the SSRF-blocked/error telemetry path called
+  `.value` on a plain `str`, turning a should-be-4xx block into a 500. The
+  registry allowlist was also being applied to docker/oci/registry pulls,
+  which default-denied ordinary image scans; it's now git-repository only,
+  with a bare-image-ref fast path that skips the check entirely when the
+  reference has no explicit registry host. The `test_ssrf.py` failures were
+  test bugs (mocking a module-level `asyncio.getaddrinfo` that doesn't
+  exist) — fixed to patch the event loop instead. The live-`syft`
+  integration tests now skip cleanly when `syft` isn't on `$PATH` (a
+  duplicate `pytestmark` assignment had silently dropped that skip).
 
 ## [0.5.0] - 2026-09-27
 

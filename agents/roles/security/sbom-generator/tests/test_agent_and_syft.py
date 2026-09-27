@@ -57,11 +57,22 @@ def test_syft_target_registry():
 
 
 def test_syft_target_docker_appends_latest():
-    assert _syft_target(SourceRef(type=SourceType.DOCKER_IMAGE, value="nginx")) == "nginx:latest"
+    assert _syft_target(SourceRef(type=SourceType.DOCKER_IMAGE, value="nginx")) == "registry:nginx:latest"
 
 
 def test_syft_target_docker_preserves_tag():
-    assert _syft_target(SourceRef(type=SourceType.DOCKER_IMAGE, value="nginx:1.25")) == "nginx:1.25"
+    assert _syft_target(SourceRef(type=SourceType.DOCKER_IMAGE, value="nginx:1.25")) == "registry:nginx:1.25"
+
+
+def test_syft_target_docker_always_uses_explicit_registry_scheme():
+    """T-07 (S9-1): the scheme prefix is chosen by the service, never
+    the caller — this is what stops syft from honoring a user-supplied
+    scheme embedded in the value (the grammar check in
+    ``security.ssrf.parse_image_reference`` is the other half of this
+    defense, at the model layer)."""
+    assert _syft_target(
+        SourceRef(type=SourceType.OCI_IMAGE, value="ghcr.io/org/app:v1")
+    ) == "registry:ghcr.io/org/app:v1"
 
 
 def test_syft_target_git_passthrough():

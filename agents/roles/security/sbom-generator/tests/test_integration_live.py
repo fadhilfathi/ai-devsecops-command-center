@@ -20,14 +20,18 @@ from sbom_generator.models.request import GenerateRequest, SourceRef, SourceType
 from sbom_generator.models.sbom import SBOMFormat
 from sbom_generator.syft import SyftRunner, resolve_syft, get_syft_version
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("syft") is None and not os.environ.get("SYFT_BINARY"),
-    reason="syft binary not available",
-)
-pytestmark = pytest.mark.skipif(
-    os.environ.get("SBOM_RUN_LIVE_TESTS") != "1",
-    reason="set SBOM_RUN_LIVE_TESTS=1 to run live integration tests",
-)
+pytestmark = [
+    # Second skipif was silently discarding this one (both assigned to
+    # the same `pytestmark` name) — combine into a list so both apply.
+    pytest.mark.skipif(
+        shutil.which("syft") is None and not os.environ.get("SYFT_BINARY"),
+        reason="syft binary not available",
+    ),
+    pytest.mark.skipif(
+        os.environ.get("SBOM_RUN_LIVE_TESTS") != "1",
+        reason="set SBOM_RUN_LIVE_TESTS=1 to run live integration tests",
+    ),
+]
 
 
 @pytest.fixture

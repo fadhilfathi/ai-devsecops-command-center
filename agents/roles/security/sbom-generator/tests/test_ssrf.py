@@ -26,6 +26,7 @@ from sbom_generator.security.ssrf import (
     extract_host,
     host_matches_allowlist,
     is_private_ip,
+    parse_image_reference,
     resolve_and_check,
 )
 
@@ -171,6 +172,11 @@ def test_classify_hostname_empty_fails_closed():
         ("git@github.com:o/r.git", "github.com"),  # bare scp-style without scheme
         ("github.com", "github.com"),
         ("localhost:5000", "localhost"),
+        # MAJOR fix: user@ must be stripped BEFORE bracket handling, else
+        # a bracketed IPv6 literal with userinfo is never bracket-parsed.
+        ("attacker@10.0.0.1:22/x", "10.0.0.1"),
+        ("user@[::1]:22/x", "::1"),
+        ("https://u:p@10.0.0.1/x", "10.0.0.1"),
     ],
 )
 def test_extract_host(url, expected):
@@ -227,7 +233,7 @@ def _mock_addrinfo(addresses):
 def test_resolve_and_check_all_public():
     async def run():
         with patch(
-            "sbom_generator.security.ssrf.asyncio.getaddrinfo",
+            "asyncio.base_events.BaseEventLoop.getaddrinfo",
             new=AsyncMock(return_value=_mock_addrinfo(["8.8.8.8", "1.1.1.1"])),
         ):
             return await resolve_and_check("github.com")
@@ -241,7 +247,7 @@ def test_resolve_and_check_dns_rebinding_to_private():
     """A hostname that resolves to a private IP is blocked."""
     async def run():
         with patch(
-            "sbom_generator.security.ssrf.asyncio.getaddrinfo",
+            "asyncio.base_events.BaseEventLoop.getaddrinfo",
             new=AsyncMock(return_value=_mock_addrinfo(["10.0.0.5"])),
         ):
             return await resolve_and_check("attacker.example.com")
@@ -255,7 +261,7 @@ def test_resolve_and_check_timeout_fails_closed():
     """A DNS resolution timeout must fail closed."""
     async def run():
         with patch(
-            "sbom_generator.security.ssrf.asyncio.getaddrinfo",
+            "asyncio.base_events.BaseEventLoop.getaddrinfo",
             new=AsyncMock(side_effect=asyncio.TimeoutError),
         ):
             with pytest.raises(asyncio.TimeoutError):
@@ -306,7 +312,7 @@ def test_assert_safe_target_default_deny_when_no_allowlist_match():
 def test_assert_safe_target_allows_allowlisted():
     async def run():
         with patch(
-            "sbom_generator.security.ssrf.asyncio.getaddrinfo",
+            "asyncio.base_events.BaseEventLoop.getaddrinfo",
             new=AsyncMock(return_value=_mock_addrinfo(["140.82.114.3"])),
         ):
             return await assert_safe_target(
@@ -323,7 +329,7 @@ def test_assert_safe_target_dns_rebinding_caught():
     """Hostname that resolves to a private IP is blocked even if allowlisted."""
     async def run():
         with patch(
-            "sbom_generator.security.ssrf.asyncio.getaddrinfo",
+            "asyncio.base_events.BaseEventLoop.getaddrinfo",
             new=AsyncMock(return_value=_mock_addrinfo(["192.168.1.1"])),
         ):
             return await assert_safe_target(
@@ -335,3 +341,83 @@ def test_assert_safe_target_dns_rebinding_caught():
     assert res.allowed is False
     assert "rebind" in res.reason.lower()
     assert "192.168.1.1" in res.resolved_addresses
+
+
+# ---------------------------------------------------------------------------
+# parse_image_reference (T-07 / S9-1: syft scheme-injection defense)
+# ---------------------------------------------------------------------------
+# These MUST fail on the pre-fix code (the old permissive regex
+# ``^[a-z0-9./:_@\-]+$`` plus ``_extract_image_host``/``_docker_ref_host``),
+# which let syft's own scheme parsing (independent of ``--source``) read
+# local files or reach an internal registry.
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "registry:10.0.0.1:5000/x",
+        "registry://10.0.0.1/x",
+        "docker://x",
+        "dir:/etc",
+        "file:/etc/passwd",
+        "oci-archive:/etc/shadow",
+        "oci-dir:/tmp/x",
+        "docker-archive:/x.tar",
+        "DIR:/etc",
+        "docker-daemon:x",
+        "podman:x",
+        "singularity:/x",
+    ],
+)
+def test_parse_image_reference_rejects_scheme_injection(value):
+    with pytest.raises(ValueError):
+        parse_image_reference(value)
+
+
+@pytest.mark.parametrize(
+    "value,expected_host",
+    [
+        ("127.0.0.1/x", "127.0.0.1"),
+        ("localhost:5000/x", "localhost"),
+        ("10.0.0.1:5000/img", "10.0.0.1"),
+        ("[::1]:5000/x", "::1"),
+    ],
+)
+def test_parse_image_reference_extracts_host_for_ssrf_check(value, expected_host):
+    """Not rejected by the grammar itself — the extracted host must then
+    be classified by ``classify_hostname``/``assert_safe_target``, which
+    blocks these as private/loopback."""
+    host, _ = parse_image_reference(value)
+    assert host == expected_host
+    assert classify_hostname(host) is not None
+
+
+def test_parse_image_reference_rejects_not_allowlisted_host_via_classify():
+    """``evil-registry.io`` isn't private, so the grammar/blocklist layer
+    accepts it — the registry allow-list (agent.py) is what rejects it."""
+    host, remainder = parse_image_reference("evil-registry.io/x")
+    assert host == "evil-registry.io"
+    assert remainder == "x"
+    assert classify_hostname(host) is None  # not on the blocklist
+
+
+@pytest.mark.parametrize(
+    "value,expected_host,expected_remainder",
+    [
+        ("nginx", None, "nginx"),
+        ("nginx:1.25", None, "nginx:1.25"),
+        ("library/nginx:1.25", None, "library/nginx:1.25"),
+        ("internal-namespace/img", None, "internal-namespace/img"),
+        ("docker.io/library/nginx:1.25", "docker.io", "library/nginx:1.25"),
+        (
+            "ghcr.io/org/app@sha256:" + "a" * 64,
+            "ghcr.io",
+            "org/app@sha256:" + "a" * 64,
+        ),
+        ("quay.io/org/app:v1", "quay.io", "org/app:v1"),
+    ],
+)
+def test_parse_image_reference_accepts_valid_refs(value, expected_host, expected_remainder):
+    host, remainder = parse_image_reference(value)
+    assert host == expected_host
+    assert remainder == expected_remainder

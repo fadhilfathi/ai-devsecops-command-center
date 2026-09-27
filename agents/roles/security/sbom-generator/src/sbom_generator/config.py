@@ -29,6 +29,24 @@ DEFAULT_GIT_HOST_ALLOWLIST: tuple[str, ...] = (
     "git.example.internal",  # placeholder for tenant-internal hosts
 )
 
+# Default registry-host allowlist for docker/oci/registry sources (T-07 /
+# S9-1). Matches the "Egress proxy with URL allowlist" mitigation in
+# docs/architecture/security-stack-threat-model.md § T-07: Docker Hub,
+# GHCR, ECR public, Quay, GitLab.com. Bare image refs (no explicit host,
+# e.g. ``nginx:1.25``) resolve against Docker Hub implicitly and are
+# always allowed without consulting this list. Override via
+# SBOM_GENERATOR_SSRF_REGISTRY_HOST_ALLOWLIST — adding a private registry
+# is an explicit operator opt-in.
+DEFAULT_REGISTRY_HOST_ALLOWLIST: tuple[str, ...] = (
+    "docker.io",
+    "registry-1.docker.io",
+    "index.docker.io",
+    "ghcr.io",
+    "public.ecr.aws",
+    "quay.io",
+    "registry.gitlab.com",
+)
+
 
 def _env_list(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
     raw = os.environ.get(name, "").strip()
@@ -47,6 +65,7 @@ class SsrfConfig:
       - allowlist empty -> blocklist-only, no allowlist enforcement.
     """
     git_host_allowlist: tuple[str, ...] = DEFAULT_GIT_HOST_ALLOWLIST
+    registry_host_allowlist: tuple[str, ...] = DEFAULT_REGISTRY_HOST_ALLOWLIST
     default_deny: bool = True
     dns_timeout_seconds: float = 5.0
 
@@ -54,6 +73,10 @@ class SsrfConfig:
     def from_env(cls) -> "SsrfConfig":
         allowlist = _env_list(
             "SBOM_GENERATOR_GIT_HOST_ALLOWLIST", DEFAULT_GIT_HOST_ALLOWLIST
+        )
+        registry_allowlist = _env_list(
+            "SBOM_GENERATOR_SSRF_REGISTRY_HOST_ALLOWLIST",
+            DEFAULT_REGISTRY_HOST_ALLOWLIST,
         )
         default_deny_raw = os.environ.get(
             "SBOM_GENERATOR_SSRF_DEFAULT_DENY", "true"
@@ -67,6 +90,7 @@ class SsrfConfig:
             timeout = 5.0
         return cls(
             git_host_allowlist=allowlist,
+            registry_host_allowlist=registry_allowlist,
             default_deny=default_deny,
             dns_timeout_seconds=timeout,
         )

@@ -23,7 +23,11 @@ from pydantic import BaseModel, Field, field_validator
 
 from sbom_generator.errors import SsrfBlockedError, ValidationError
 from sbom_generator.models.sbom import SBOMFormat
-from sbom_generator.security.ssrf import classify_hostname, extract_host
+from sbom_generator.security.ssrf import (
+    classify_hostname,
+    extract_host,
+    parse_image_reference,
+)
 
 
 class SourceType(str):
@@ -160,13 +164,20 @@ class GenerateRequest(BaseModel):
                     details={"source": self.source.model_dump()},
                 )
         elif kind in {SourceType.DOCKER_IMAGE, SourceType.OCI_IMAGE}:
-            if not re.match(r"^[a-z0-9./:_@\-]+$", target):
+            # T-07 hardening: strict OCI reference grammar with no scheme
+            # of any kind — syft parses scheme prefixes (``dir:``,
+            # ``file:``, ``registry:``, ...) embedded in the target
+            # string itself, independent of the ``--source`` flag we
+            # pass, so a permissive regex here would let a value like
+            # ``dir:/etc`` or ``registry:10.0.0.1:5000/x`` reach syft.
+            try:
+                image_host, _ = parse_image_reference(target)
+            except ValueError as exc:
                 raise ValidationError(
-                    "Invalid image reference", details={"value": target}
-                )
+                    "Invalid image reference", details={"value": target, "reason": str(exc)}
+                ) from exc
             # SSRF: reject image references pointing at private/loopback hosts.
             # docker.io/library/foo is fine; 10.0.0.5:5000/foo is not.
-            image_host = self._extract_image_host(target)
             if image_host is not None:
                 self._assert_host_ssrf_safe(image_host, target)
         elif kind == SourceType.GIT_REPOSITORY:
@@ -212,50 +223,6 @@ class GenerateRequest(BaseModel):
         if m:
             return m.group(1)
         return None
-
-    @staticmethod
-    def _extract_image_host(reference: str) -> Optional[str]:
-        """Extract the registry host from an OCI image reference.
-
-        Examples:
-          ``docker.io/library/alpine`` -> ``docker.io``
-          ``ghcr.io/owner/repo:tag``   -> ``ghcr.io``
-          ``10.0.0.5:5000/repo``       -> ``10.0.0.5``
-          ``[::1]:5000/repo``          -> ``::1``
-          ``alpine``                   -> ``docker.io`` (Docker Hub default)
-        """
-        # Split off the tag/digest first.
-        ref = reference.split("@", 1)[0]
-        # The first component (before the first '/') is the registry.
-        # If it contains '.' or ':' or is 'localhost', it is a registry;
-        # otherwise it's a Docker Hub library path and the implicit
-        # registry is docker.io.
-        first_slash = ref.find("/")
-        if first_slash == -1:
-            # bare name like ``alpine`` -> default registry
-            return "docker.io"
-        first = ref[:first_slash]
-        if (
-            first == "localhost"
-            or first == "localhost:"
-            or ":" in first
-            or (first.startswith("[") and first.endswith("]"))
-            or "." in first
-        ):
-            # IPv6 literal: ``[::1]``
-            if first.startswith("[") and first.endswith("]"):
-                return first[1:-1]
-            # Strip an embedded port: ``10.0.0.5:5000`` -> ``10.0.0.5``
-            if ":" in first and not first.startswith("["):
-                # Could be either host:port or just host. If second segment
-                # after the colon is all digits, treat as port.
-                host, _, port = first.partition(":")
-                if port.isdigit():
-                    return host
-                return first
-            return first
-        # No registry component -> Docker Hub default.
-        return "docker.io"
 
     @staticmethod
     def _assert_host_ssrf_safe(host: str, target: str) -> None:

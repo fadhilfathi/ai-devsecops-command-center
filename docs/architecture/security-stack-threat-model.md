@@ -299,6 +299,14 @@
 
 **Likelihood:** High (untrusted URLs are a primary input).
 
+**Status (S9-1, sbom-generator):** Scheme smuggling and the registry allow-list are now enforced in `agents/roles/security/sbom-generator`:
+
+- `security/ssrf.py::parse_image_reference` accepts only the plain OCI reference grammar (no scheme of any kind) for `docker-image`/`oci-image` sources, rejecting every syft scheme prefix (`registry:`, `dir:`, `file:`, `oci-archive:`, `docker-daemon:`, ...) and any first path segment with a `:` that isn't a valid `host:port`. `agent.py` always builds the syft target with a service-chosen `registry:` prefix, so a caller-supplied value can never select the scheme syft parses.
+- `ssrf.registry_host_allowlist` (default: Docker Hub, GHCR, ECR public, Quay, GitLab.com — see `config.DEFAULT_REGISTRY_HOST_ALLOWLIST`) enforces the "Docker Hub, GHCR, ECR public, Quay, GitHub, GitLab.com" allow-list from the mitigation above for any image reference with an explicit registry host; bare refs (Docker Hub default) skip the allow-list.
+- `extract_host` strips `user@`/`user:pass@` before IPv6-bracket parsing, closing a bypass where `user@[::1]:22/x` was never classified.
+- DNS-rebinding pinning (`resolve_and_check`) and the private/reserved IP blocklist (`classify_hostname`) already covered the ranges listed above and are unchanged.
+- **Still open:** the egress-proxy network-layer allow-list and per-tenant override described above are not implemented — the mitigations above are all in-process (Python) checks, not a network-layer control.
+
 **Mitigations:**
 
 - **Egress proxy** with URL allowlist (Docker Hub, GHCR, ECR public, Quay, GitHub, GitLab.com). Anything else is blocked at the network layer.

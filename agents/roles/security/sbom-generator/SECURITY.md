@@ -5,16 +5,18 @@ mitigations are identified.
 
 ## Threat model summary
 
-| Threat                            | Mitigation                                              |
-| --------------------------------- | ------------------------------------------------------- |
-| Malicious source path / image     | Input validation in `models/request.py`; `resolve_syft` |
-| Syft binary tampering             | Pinned `SYFT_VERSION`; image built from official script |
-| Output flooding (zip bomb)        | `_MAX_STDOUT_BYTES = 256 MiB` cap in `syft.py`          |
-| Bus message injection             | JSON-only subjects, payload validated by pydantic       |
-| Auth bypass                       | Bearer-token check + tenant header when `REQUIRE_AUTH`  |
-| Privilege escalation in container | Non-root user `aionrs:1001`; read-only root FS          |
-| Resource exhaustion               | `asyncio.Semaphore(MAX_CONCURRENT_SCANS)` + timeouts    |
-| Tenant isolation                  | Tenant header plumbed into SBOM metadata only           |
+| Threat                                               | Mitigation                                                                                                                                                                              |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Malicious source path / image                        | Input validation in `models/request.py`; `resolve_syft`                                                                                                                                 |
+| Syft scheme-injection / local-file read (SSRF, T-07) | `security/ssrf.py::parse_image_reference` — strict OCI reference grammar, no scheme prefixes allowed; `agent.py` always builds the syft target with a service-chosen `registry:` scheme |
+| SSRF to private registries / hosts (T-07)            | IP/hostname blocklist + DNS-rebinding pin (`security/ssrf.py`) + registry allow-list (`ssrf.registry_host_allowlist`)                                                                   |
+| Syft binary tampering                                | Pinned `SYFT_VERSION`; image built from official script                                                                                                                                 |
+| Output flooding (zip bomb)                           | `_MAX_STDOUT_BYTES = 256 MiB` cap in `syft.py`                                                                                                                                          |
+| Bus message injection                                | JSON-only subjects, payload validated by pydantic                                                                                                                                       |
+| Auth bypass                                          | Bearer-token check + tenant header when `REQUIRE_AUTH`                                                                                                                                  |
+| Privilege escalation in container                    | Non-root user `aionrs:1001`; read-only root FS                                                                                                                                          |
+| Resource exhaustion                                  | `asyncio.Semaphore(MAX_CONCURRENT_SCANS)` + timeouts                                                                                                                                    |
+| Tenant isolation                                     | Tenant header plumbed into SBOM metadata only                                                                                                                                           |
 
 ## Inputs we accept
 

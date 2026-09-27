@@ -242,6 +242,63 @@ def test_generated_cyclonedx_is_valid_json(client):
     assert parsed["specVersion"] == "1.5"
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "dir:/etc",
+        "file:/etc/passwd",
+        "oci-archive:/etc/shadow",
+        "registry:10.0.0.1:5000/x",
+    ],
+)
+def test_generate_rejects_scheme_injection_and_never_invokes_syft(client, value):
+    """T-07 (S9-1): a docker-image value that smuggles in a syft scheme
+    prefix must be rejected at validation — before the runner (syft) is
+    ever invoked."""
+    c, runner = client
+    r = c.post(
+        "/v1/sbom/generate",
+        json={"source": {"type": "docker-image", "value": value}},
+    )
+    assert 400 <= r.status_code < 500
+    assert not runner.calls, "syft runner must never be invoked for a rejected source"
+
+
+def test_generate_rejects_registry_not_on_allowlist(client):
+    """T-07 (S9-1): an explicit registry host not on the allow-list is
+    rejected by the async SSRF check in agent.py, even though it isn't
+    private/reserved and passes the grammar check."""
+    c, runner = client
+    r = c.post(
+        "/v1/sbom/generate",
+        json={"source": {"type": "docker-image", "value": "evil.example.com/img"}},
+    )
+    assert 400 <= r.status_code < 500
+    assert not runner.calls
+
+
+def test_generate_allows_allowlisted_registry(client, monkeypatch):
+    import asyncio
+    import socket
+    from unittest.mock import AsyncMock
+
+    async def _fake_getaddrinfo(host, port, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("140.82.114.3", 0))]
+
+    monkeypatch.setattr(
+        "asyncio.base_events.BaseEventLoop.getaddrinfo",
+        AsyncMock(side_effect=_fake_getaddrinfo),
+    )
+
+    c, runner = client
+    r = c.post(
+        "/v1/sbom/generate",
+        json={"source": {"type": "docker-image", "value": "ghcr.io/org/app:v1"}},
+    )
+    assert r.status_code == 200
+    assert runner.calls
+
+
 def test_generated_spdx_is_valid_json(client):
     c, _ = client
     r = c.post(
