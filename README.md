@@ -14,18 +14,20 @@
 [![e2e](https://github.com/fadhilfathi/ai-devsecops-command-center/actions/workflows/e2e.yml/badge.svg)](./.github/workflows/e2e.yml)
 [![Scorecard](https://img.shields.io/ossf-scorecard/?repository=fadhilfathi%2Fai-devsecops-command-center)](https://scorecard.dev/viewer/?uri=github.com/fadhilfathi/ai-devsecops-command-center)
 
-> **Status**: This repository is in **pre-alpha (Sprint 9 of 12)**. The
+> **Status**: This repository is in **pre-alpha (Sprint 10 of 12)**. The
 > architecture is being defined and the skeletons are being built. Do not
 > run anything from `main` in production. See [`CHANGELOG.md`](./CHANGELOG.md)
 > for the current state.
 
-**Sprint 8 just shipped**: public-release readiness — optional demo
-seed data, the React 19 / Tailwind 4 / TypeScript 6 dependency majors
-deferred from Sprint 7, a verified `docs/quick-start.md`, six of the
-dashboard's mock-only security screens wired to real backend routes,
-and the three Python security agents (sbom-generator, vuln-intel,
-dependency-intel) actually running inside the docker-compose stack.
-See [`docs/architecture/sprint-8/`](./docs/architecture/sprint-8/) and
+**Sprint 9 just shipped**: fixed sbom-generator's 11 pre-existing
+failing tests (which were hiding real SSRF bugs) and gated the three
+Python agents' tests in CI, replaced the SBOM page's mock-only export
+button with a real fetch-then-download flow, split the frontend into
+per-route chunks (242 KB gz → 101 KB gz main bundle), gave the triage
+agent an explainable heuristic with an optional local-LLM refinement
+pass, and fixed sbom-generator's `registry` source type (previously
+broken by a double URL scheme). See
+[`docs/architecture/sprint-9/`](./docs/architecture/sprint-9/) and
 [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---

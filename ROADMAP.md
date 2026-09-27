@@ -248,7 +248,8 @@ routes.
 
 ## Sprint 9 — Test debt, export UX, bundle size, agent triage
 
-Status: in progress.
+Status: **complete** (2026-09-27). See
+[`docs/architecture/sprint-9/`](./docs/architecture/sprint-9/).
 
 - **S9-1** (done): fixed sbom-generator's 11 pre-existing failing tests.
   `test_ssrf.py` was mocking a module-level `asyncio.getaddrinfo` that
@@ -291,3 +292,38 @@ Status: in progress.
   for git-repository hosts instead of its own regex, and rejects a
   password embedded in a git URL (`https://user:pass@host/...`) as a
   credential leak — a bare `git@host` SSH username is still allowed.
+
+## Sprint 10 — Agent debt, SBOM analytics performance, dependency review
+
+Status: in progress.
+
+- **S10-1**: `RemediationAgent` (`backend/services/agent/src/agents/registry.ts`)
+  is still the Sprint-1 placeholder — `run()` returns a hard-coded
+  `"Bump vulnerable dependency"` proposal with a `// generated in
+Sprint 2` comment for a patch, regardless of the task input. Give it
+  a real proposal derived from the actual finding (component, current
+  version, fixed version from `vuln-intel`/`dependency-intel` data) —
+  no PR-opening yet, just a correct, finding-specific proposal.
+- **S10-2**: security-service's SBOM analytics
+  (`services/security-analytics.ts`) re-parse every SBOM document a
+  tenant owns on every call to `/v1/sbom/components`,
+  `/security/risk-heatmap`, and `/security/graph` — marked `ponytail:`
+  in the code since S9-4/S9-5's review. Precompute the parsed
+  `WireSbomComponent[]`/dependency edges once at ingest
+  (`POST /v1/sboms`) and cache alongside the record instead of
+  re-parsing per request.
+- **S10-3**: review and merge (or explicitly close) the 14 open
+  Dependabot PRs — grouped production/dev Python bumps for the 3
+  agents (sbom-generator, vuln-intel, dependency-intel) plus GitHub
+  Actions version bumps (`docker/build-push-action`,
+  `actions/labeler`, `pnpm/action-setup`, `ossf/scorecard-action`,
+  `github/codeql-action`). None reviewed since they opened.
+- **S10-4**: `ponytail:` debt sweep — 13 occurrences across 12 files
+  (`grep -rn "ponytail:"`) marking deliberate simplifications with a
+  named ceiling: `security-analytics.ts` (SBOM re-parsing, depth
+  fallback — see S10-2), `redis.ts`, `db/index.ts`,
+  `topology.engine.ts`, two `http.provider.ts` files, `sbom.model.ts`,
+  `k8s-health.ts`, `runtime-security.ts`, `k8s-mappers.ts`,
+  `live.provider.ts`, and ADR 0009. Go through each, resolve the ones
+  that are now cheap to fix, and turn the rest into tracked follow-up
+  tickets instead of a comment nobody revisits.
