@@ -20,8 +20,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **S9-1**: `ci.yml` gained a `test-python` job (matrix over sbom-generator,
   vuln-intel, dependency-intel) so the Python agents run in CI.
+- **S9-2**: SBOM export downloads the real document. `api.downloadSbom()`
+  fetches security-service's `/v1/sboms/:id/export` and streams it to a Blob
+  download named from the response's sanitized `Content-Disposition`
+  filename (path-traversal/control-char safe, capped length). A 501 (stored
+  format differs from the requested one) surfaces as an inline "stored in
+  another format" message; in live mode (mocks off) every other export
+  failure now throws a typed `SbomExportError` shown inline and marks the
+  API degraded — it never silently substitutes the mock SBOM for a real
+  export failure.
+- **S9-3**: `RouteErrorBoundary` wraps the lazy-loaded route tree in
+  `App.tsx` — a page crash shows a short message and a "Reload" button
+  instead of a blank screen; a stale chunk after a redeploy (`ChunkLoadError`
+  / failed dynamic `import()`) gets an "app was updated" message instead of a
+  generic one. Resets per route.
 
 ### Changed
+
+- **S9-3**: route-level code splitting — every page route in `App.tsx` is
+  now `React.lazy` behind one `<Suspense>` boundary, so the main JS chunk
+  dropped from ~242 KB gz to ~101 KB gz.
 
 ### Fixed
 

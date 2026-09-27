@@ -138,22 +138,126 @@ describe('api URLs — one per service group (S6-1 resource-based proxy table)',
   });
 });
 
-describe('mock-only accessors', () => {
+describe('api.downloadSbom (S9-2)', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.resetModules();
   });
 
-  it('sbomExportUrl never calls fetch, even when mocks are off', async () => {
-    vi.stubEnv('VITE_USE_MOCKS', 'false');
+  // Node's global `URL` has no `createObjectURL`/`revokeObjectURL` (that's a
+  // browser-only Blob URL API) — add them as plain stubs rather than
+  // replacing the whole `URL` global, which would break `new URL(...)`
+  // elsewhere.
+  function stubDom() {
+    const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
+    const createElement = vi.fn(() => anchor);
+    vi.stubGlobal('document', { createElement, body: { appendChild: vi.fn() } });
+    const createObjectURL = vi.fn(() => 'blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    (URL as unknown as { createObjectURL: typeof createObjectURL }).createObjectURL =
+      createObjectURL;
+    (URL as unknown as { revokeObjectURL: typeof revokeObjectURL }).revokeObjectURL =
+      revokeObjectURL;
+    return { anchor, createObjectURL, revokeObjectURL };
+  }
+
+  it('downloads the mock document without calling fetch when mocks are on', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'true');
+    const { anchor } = stubDom();
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
     const { api } = await import('./api');
 
-    api.sbomExportUrl('sbom-1');
+    await api.downloadSbom('sbom-1');
 
     expect(fetchSpy).not.toHaveBeenCalled();
+    expect(anchor.click).toHaveBeenCalledTimes(1);
+  });
+
+  it('fetches the real export with the tenant header and downloads the filename from Content-Disposition', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('VITE_USE_MOCKS', 'false');
+    vi.stubEnv('VITE_TENANT_ID', 'acme-tenant');
+    const { anchor, createObjectURL, revokeObjectURL } = stubDom();
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'attachment; filename="sbom-1.cdx.json"' },
+      blob: async () => new Blob(['{}'], { type: 'application/json' }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    const { api } = await import('./api');
+
+    await api.downloadSbom('sbom-1');
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/sboms/sbom-1/export?format=cyclonedx-1.5',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'x-tenant-id': 'acme-tenant' }),
+      }),
+    );
+    expect(anchor.download).toBe('sbom-1.cdx.json');
+    expect(anchor.click).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    // Revoke is deferred a tick past the click so the browser has started
+    // reading the blob URL.
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    vi.useRealTimers();
+  });
+
+  it('throws a typed error on 501 without falling back to the mock download', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'false');
+    const { anchor } = stubDom();
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 501,
+      headers: { get: () => null },
+      json: async () => ({ message: 'stored as spdx' }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    const { api, SbomExportUnsupportedError } = await import('./api');
+
+    await expect(api.downloadSbom('sbom-1')).rejects.toBeInstanceOf(SbomExportUnsupportedError);
+    expect(anchor.click).not.toHaveBeenCalled();
+  });
+
+  it('throws a typed error and marks the API degraded on a network failure, without downloading mock content', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'false');
+    const { anchor } = stubDom();
+    const fetchSpy = vi.fn().mockRejectedValue(new Error('network down'));
+    vi.stubGlobal('fetch', fetchSpy);
+    const { api, apiHealth, SbomExportError } = await import('./api');
+
+    await expect(api.downloadSbom('sbom-1')).rejects.toBeInstanceOf(SbomExportError);
+
+    expect(anchor.click).not.toHaveBeenCalled();
+    expect(apiHealth.get().degraded).toBe(true);
+  });
+});
+
+describe('safeDownloadFilename (S9-2)', () => {
+  const fallback = 'sbom-1.cyclonedx.json';
+
+  it.each([
+    ['quoted', 'attachment; filename="sbom-1.cdx.json"', 'sbom-1.cdx.json'],
+    ['unquoted', 'attachment; filename=sbom-1.cdx.json', 'sbom-1.cdx.json'],
+    [
+      "RFC 5987 filename*=UTF-8''",
+      "attachment; filename*=UTF-8''sbom%20report.json",
+      'sbom_report.json',
+    ],
+    ['path traversal', 'attachment; filename="../../etc/passwd"', 'passwd'],
+    ['windows separator', 'attachment; filename="a\\b.json"', 'b.json'],
+    ['control chars', 'attachment; filename="a\u0000b.json"', 'ab.json'],
+    ['no header', '', fallback],
+    ['empty filename', 'attachment; filename=""', fallback],
+    ['overlong', `attachment; filename="${'a'.repeat(150)}.json"`, 'a'.repeat(100)],
+  ])('%s -> %s', async (_label, header, expected) => {
+    const { safeDownloadFilename } = await import('./api');
+    expect(safeDownloadFilename(header, fallback)).toBe(expected);
   });
 });
 

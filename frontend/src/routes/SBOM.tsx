@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SbomViewer } from '@/components/security/SbomViewer';
-import { api } from '@/lib/api';
+import { api, SbomExportError } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
 import { titleCase } from '@/lib/format';
 
@@ -23,15 +23,21 @@ export function SBOM() {
   // — when that ships, replace this with `useFetch(api.sbomList)`.
   const [activeId, setActiveId] = useState<string>('default');
   const { data } = useFetch(api.sbom, []);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const exportCurrent = () => {
-    const url = api.sbomExportUrl(activeId);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeId}.cyclonedx.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  const exportCurrent = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await api.downloadSbom(activeId);
+    } catch (err) {
+      setExportError(
+        err instanceof SbomExportError ? err.message : 'This SBOM is stored in another format.',
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -45,12 +51,13 @@ export function SBOM() {
             <Button size="sm" variant="secondary">
               <Upload className="h-3.5 w-3.5" /> Import SBOM
             </Button>
-            <Button size="sm" variant="primary" onClick={exportCurrent}>
-              <Download className="h-3.5 w-3.5" /> Export CycloneDX
+            <Button size="sm" variant="primary" onClick={exportCurrent} disabled={exporting}>
+              <Download className="h-3.5 w-3.5" /> {exporting ? 'Exporting…' : 'Export CycloneDX'}
             </Button>
           </>
         }
       />
+      {exportError && <p className="mb-3 text-xs text-danger">{exportError}</p>}
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         {/* SBOM list (assets/SBOMs) */}

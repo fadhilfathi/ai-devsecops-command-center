@@ -111,12 +111,8 @@ proxy path.
 ### Endpoints with no backend route yet (mock-only)
 
 All six S6-1 mock-only accessors were wired to real security-service
-routes in S8-4. One remains mock-only:
-
-- `api.sbomExportUrl()` — security-service has a real
-  `GET /v1/sboms/:id/export`, but the SBOM page's export button builds a
-  `data:` URL synchronously on click; wiring it up needs an async
-  fetch-then-download flow (see the `ponytail:` comment at the call site).
+routes in S8-4; `api.downloadSbom()` (the SBOM export button) followed
+in S9-2. None remain mock-only.
 
 ## See also
 

@@ -259,17 +259,17 @@ Status: in progress.
   image pulls. Added the 3 Python agents' `pytest` suites to
   `.github/workflows/ci.yml` — they're not in CI today despite being a
   real part of the compose stack since S8-5.
-- **S9-2**: `sbomExportUrl()` (SBOM page's export button) is still a
-  `data:` URL of the mock document. Replace with the real
-  fetch-then-download flow against security-service's
-  `/v1/sboms/:id/export` (added in S8-4) — an async request, a
-  loading/error state on the button, and a `Blob`/`URL.createObjectURL`
-  download instead of a synchronous data URI.
-- **S9-3**: route-level code splitting for the frontend — the SPA
-  ships a single ~242 KB gzipped JS bundle with `recharts` and
-  `reactflow` on every page regardless of route. Lazy-load the pages
-  that actually use them (Topology Viewer, Dependency Graph, the
-  charted dashboard views) via `React.lazy`/dynamic `import()`.
+- **S9-2** (done): replaced `sbomExportUrl()` with `api.downloadSbom()` —
+  an async fetch against security-service's `/v1/sboms/:id/export`
+  (added in S8-4), a `Blob`/`URL.createObjectURL` download named from
+  the response's `Content-Disposition`, a loading state on the export
+  button, a typed error on a 501 (format mismatch), and a fallback to
+  the mock download (degraded banner) on any other failure.
+- **S9-3** (done): route-level code splitting — every page route in
+  `App.tsx` is now `React.lazy` behind one `<Suspense>`; the main JS
+  chunk dropped from ~242 KB gz to ~101 KB gz, with `recharts`
+  (`CartesianChart`, ~87 KB gz) and `reactflow` (`Graph`, ~46 KB gz)
+  now split into their own on-demand chunks.
 - **S9-4**: `agent-service`'s `TriageAgent` (`agents/registry.ts`) is
   still the Sprint-1 placeholder — it only counts findings by
   severity, with a code comment saying an LLM was coming "in Sprint

@@ -167,6 +167,91 @@ function get<T>(path: string, fallback: T, opts: { mockOnly?: boolean } = {}): P
   return getRaw<T, T>(path, fallback, (raw) => raw, opts);
 }
 
+// ---- SBOM export download (S9-2) ------------------------------------------
+type SbomExportFormat = 'cyclonedx-1.5' | 'spdx-2.3';
+
+/** Thrown by `downloadSbom` on any export failure in live mode (mocks off).
+ * A page must never silently substitute mock content for a real export
+ * failure — the caller shows `message` inline instead. */
+export class SbomExportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SbomExportError';
+  }
+}
+
+/** Thrown when the stored SBOM can't be served in the requested format
+ * (security-service's `/v1/sboms/:id/export` 501s). */
+export class SbomExportUnsupportedError extends SbomExportError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SbomExportUnsupportedError';
+  }
+}
+
+function extFor(format: SbomExportFormat): string {
+  return format === 'cyclonedx-1.5' ? 'cyclonedx.json' : 'spdx.json';
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Defer the revoke past the click handler so the browser has started
+  // reading the blob URL before it's invalidated.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function downloadMockSbom(id: string, format: SbomExportFormat): void {
+  const blob = new Blob([JSON.stringify(mockSbomDocument, null, 2)], {
+    type: 'application/json',
+  });
+  triggerDownload(blob, `sbom-${id}.${extFor(format)}`);
+}
+
+/** Extracts the raw (still unsanitized) filename from a `Content-Disposition`
+ * header — RFC 5987 `filename*=UTF-8''...` preferred, then quoted/unquoted
+ * `filename=`. */
+function extractFilename(disposition: string): string | null {
+  const star = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(disposition);
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      // malformed percent-encoding — fall through to the other patterns.
+    }
+  }
+  const quoted = /filename\s*=\s*"([^"]*)"/i.exec(disposition);
+  if (quoted) return quoted[1]!;
+  const unquoted = /filename\s*=\s*([^;]+)/i.exec(disposition);
+  if (unquoted) return unquoted[1]!.trim();
+  return null;
+}
+
+/** Builds a filesystem-safe download filename from a `Content-Disposition`
+ * header, or `fallback` if the header is missing/empty/unsafe. Guards
+ * against path traversal and injected control/separator characters — the
+ * header is attacker-influenced (it round-trips through the export
+ * request). */
+export function safeDownloadFilename(disposition: string, fallback: string): string {
+  const raw = extractFilename(disposition);
+  if (!raw) return fallback;
+  // Basename only — drop any path prefix the header tried to smuggle in,
+  // Windows and POSIX separators both.
+  const base = raw.split(/[/\\]/).pop() ?? '';
+  const safe = base
+    // eslint-disable-next-line no-control-regex -- intentionally stripping control chars
+    .replace(/[\u0000-\u001f\u007f]/g, '') // control chars
+    .replace(/\.\./g, '') // traversal sequences
+    .replace(/[^A-Za-z0-9._-]/g, '_') // restrict charset
+    .slice(0, 100);
+  return safe || fallback;
+}
+
 // ---- Security dashboard aggregate -> dashboard KPIs / event stream -------
 // security-service exposes one aggregate (`/security/dashboard`); the
 // Sprint 1 dashboard screen wants two separate shapes, so both accessors
@@ -255,13 +340,52 @@ export const api = {
   /** Sprint 2 full SBOM document for the viewer. */
   sbomDocument: (id: string) =>
     get<SbomDocument>(`/sboms/${encodeURIComponent(id)}`, mockSbomDocument),
-  /** CycloneDX export URL — pages use this directly with a temporary <a>. */
-  // ponytail: security-service's `/v1/sboms/:id/export` (S8-4) needs an
-  // async fetch + blob URL, which the SBOM page's synchronous <a>-click
-  // export flow doesn't support yet — stays a `data:` URL of the locally
-  // held document until that page is reworked to fetch-then-download.
-  sbomExportUrl: (_id: string, _format: 'cyclonedx-1.5' | 'spdx-2.3' = 'cyclonedx-1.5') =>
-    `data:application/json,${encodeURIComponent(JSON.stringify(mockSbomDocument, null, 2))}`,
+  /** Download the CycloneDX/SPDX export of an SBOM. With mocks on, downloads
+   * the mock document. In live mode a failed export NEVER falls back to
+   * mock content — it throws `SbomExportUnsupportedError` (501, stored
+   * format differs from `format`) or the base `SbomExportError` (any other
+   * failure), marking the API degraded like `get()` does; the caller shows
+   * the message inline. */
+  downloadSbom: async (id: string, format: SbomExportFormat = 'cyclonedx-1.5'): Promise<void> => {
+    if (USE_MOCKS) {
+      downloadMockSbom(id, format);
+      return;
+    }
+    if (isAuthRequired()) {
+      throw new SbomExportError('Log in to export this SBOM.');
+    }
+    const path = `/sboms/${encodeURIComponent(id)}/export?format=${format}`;
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = token
+        ? { authorization: `Bearer ${token}` }
+        : { 'x-tenant-id': TENANT_ID };
+      const res = await fetch(`/api${path}`, { credentials: 'include', headers });
+      if (res.status === 401) {
+        sessionExpired();
+      }
+      if (res.status === 501) {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null;
+        throw new SbomExportUnsupportedError(
+          body?.message ?? 'This SBOM is stored in another format',
+        );
+      }
+      if (!res.ok) {
+        console.warn(`AionUi: ${path} -> HTTP ${res.status}`);
+        recordFailure(path);
+        throw new SbomExportError('Failed to export this SBOM. Try again later.');
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('content-disposition') ?? '';
+      const filename = safeDownloadFilename(disposition, `sbom-${id}.${extFor(format)}`);
+      triggerDownload(blob, filename);
+    } catch (err) {
+      if (err instanceof SbomExportError) throw err;
+      console.warn(`AionUi: ${path} -> request failed`, err);
+      recordFailure(path);
+      throw new SbomExportError('Failed to export this SBOM. Try again later.');
+    }
+  },
 
   // ---- Compliance --------------------------------------------------------
   compliance: () => get<ComplianceControl[]>('/controls', mockCompliance),

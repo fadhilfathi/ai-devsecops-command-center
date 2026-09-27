@@ -4,7 +4,7 @@ import { Download, Filter, Search, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { api } from '@/lib/api';
+import { api, SbomExportError } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
 import { fmtRel, severityClasses, titleCase } from '@/lib/format';
 import type { Ecosystem, SbomComponentEnhanced, Severity } from '@/types';
@@ -27,8 +27,9 @@ const ROW_HEIGHT = 56;
  *
  * Sprint 2 / S2.6 visualization #1. Consumes `GET /api/sbom/{id}` (S2.5).
  * Filters: ecosystem, license, max depth. Search by component name.
- * Export: CycloneDX JSON via a data URL when mocks are on, or a real
- * `/api/sbom/{id}/export?format=cyclonedx-1.5` URL in production.
+ * Export: `api.downloadSbom` — a mock document download when mocks are
+ * on, or a real fetch-then-download against
+ * `/api/sboms/{id}/export?format=cyclonedx-1.5` in production (S9-2).
  *
  * Virtualization: react-window. Row height fixed at 44px.
  */
@@ -51,6 +52,8 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
   const [ecosystemFilter, setEcosystemFilter] = useState<Set<Ecosystem>>(new Set());
   const [licenseFilter, setLicenseFilter] = useState<string | null>(null);
   const [maxDepth, setMaxDepth] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const components = data?.components ?? [];
   const licenses = useMemo(
@@ -69,14 +72,18 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
     });
   }, [components, search, ecosystemFilter, licenseFilter, maxDepth]);
 
-  const handleExport = () => {
-    const url = api.sbomExportUrl(sbomId);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${sbomId}.cyclonedx.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await api.downloadSbom(sbomId);
+    } catch (err) {
+      setExportError(
+        err instanceof SbomExportError ? err.message : 'This SBOM is stored in another format.',
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   const clearFilters = () => {
@@ -102,8 +109,9 @@ export function SbomViewer({ sbomId }: { sbomId: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5" /> Export CycloneDX
+          {exportError && <p className="text-xs text-danger">{exportError}</p>}
+          <Button size="sm" variant="secondary" onClick={handleExport} disabled={exporting}>
+            <Download className="h-3.5 w-3.5" /> {exporting ? 'Exporting…' : 'Export CycloneDX'}
           </Button>
         </div>
       </div>
