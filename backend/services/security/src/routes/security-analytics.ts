@@ -11,11 +11,11 @@ import type { AssetRepository } from '../repositories/asset.repository.js';
 import type { FindingRepository } from '../repositories/finding.repository.js';
 import type { SbomRepository } from '../repositories/sbom.repository.js';
 import {
-  buildDependencyGraph,
   computeRiskHeatmap,
   computeSecurityScore,
   computeVulnTimeline,
-  extractSbomComponents,
+  dependencyGraphFromIndex,
+  wireComponentsFromIndex,
 } from '../services/security-analytics.js';
 
 interface Deps {
@@ -67,26 +67,32 @@ export const buildSecurityAnalyticsRoutes: FastifyPluginAsync<Deps> = async (
 
   server.get('/security/risk-heatmap', async (req) => {
     const tenantId = requireTenant(req.tenantId);
-    const [tenantFindings, tenantSboms] = await Promise.all([
+    const [tenantFindings, indexComponents] = await Promise.all([
       findings.list(tenantId),
-      sboms.list(tenantId),
+      sboms.listComponents(tenantId),
     ]);
-    const components = extractSbomComponents(tenantSboms, tenantFindings);
+    const components = wireComponentsFromIndex(indexComponents, tenantFindings);
     return computeRiskHeatmap(tenantFindings, components);
   });
 
   // Tenant-wide component graph, bounded to the top 50 nodes by severity
-  // (see `buildDependencyGraph`'s `cap` default) — not scoped to a single
-  // SBOM id. `sbomId` is accepted and echoed back for the frontend's
-  // `GraphData.sbomId` field only; it does not filter the graph.
+  // (see `dependencyGraphFromIndex`'s `cap` default) — not scoped to a
+  // single SBOM id. `sbomId` is accepted and echoed back for the
+  // frontend's `GraphData.sbomId` field only; it does not filter the graph.
   server.get('/security/graph', async (req) => {
     const tenantId = requireTenant(req.tenantId);
     const q = GraphQuerySchema.parse(req.query ?? {});
-    const [tenantFindings, tenantSboms] = await Promise.all([
+    const [tenantFindings, indexComponents, indexEdges] = await Promise.all([
       findings.list(tenantId),
-      sboms.list(tenantId),
+      sboms.listComponents(tenantId),
+      sboms.listEdges(tenantId),
     ]);
-    return buildDependencyGraph(tenantSboms, tenantFindings, q.sbomId ?? 'tenant');
+    return dependencyGraphFromIndex(
+      indexComponents,
+      indexEdges,
+      tenantFindings,
+      q.sbomId ?? 'tenant',
+    );
   });
 
   logger.debug('security-service analytics routes registered');

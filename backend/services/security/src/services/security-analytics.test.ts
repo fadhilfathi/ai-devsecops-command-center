@@ -4,12 +4,15 @@ import type { SbomRecord } from '../repositories/sbom.repository.js';
 import {
   buildDependencyGraph,
   computeRiskHeatmap,
+  computeSbomIndex,
   computeSecurityScore,
   computeVulnTimeline,
+  dependencyGraphFromIndex,
   ecosystemFromPurl,
   extractSbomComponents,
   severityToCvss,
   toWireVulnerabilities,
+  wireComponentsFromIndex,
 } from './security-analytics.js';
 
 const TENANT = 'tenant-a';
@@ -142,6 +145,39 @@ describe('extractSbomComponents', () => {
     const chalk = out.find((c) => c.name === 'chalk')!;
     expect(chalk.depth).toBe(1);
     expect(chalk.vulnerabilities).toBe(0);
+  });
+});
+
+describe('S10-2 component index equality', () => {
+  it('extractSbomComponents (parses the document) matches wireComponentsFromIndex (reads the precomputed index) for the same SBOM', () => {
+    const record = sbomRecord();
+    const findings = [
+      finding({ packageName: 'lodash', packageVersion: '4.17.20', severity: 'high' }),
+    ];
+
+    const viaParse = extractSbomComponents([record], findings);
+
+    const { components, edges } = computeSbomIndex(record);
+    const indexComponents = components.map((c) => ({
+      ...c,
+      tenantId: record.tenantId,
+      sbomId: record.id,
+      assetId: record.assetId,
+    }));
+    const viaIndex = wireComponentsFromIndex(indexComponents, findings);
+
+    expect(viaIndex).toEqual(viaParse);
+
+    const indexEdges = edges.map((e) => ({ ...e, tenantId: record.tenantId, sbomId: record.id }));
+    const graphViaParse = buildDependencyGraph([record], findings, 'sbom-1', 50);
+    const graphViaIndex = dependencyGraphFromIndex(
+      indexComponents,
+      indexEdges,
+      findings,
+      'sbom-1',
+      50,
+    );
+    expect(graphViaIndex).toEqual(graphViaParse);
   });
 });
 

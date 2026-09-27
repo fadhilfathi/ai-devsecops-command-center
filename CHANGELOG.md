@@ -28,6 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Deterministic and zero-cost, no LLM pass (see
   `backend/services/agent/src/agents/remediation.ts`).
 
+### Changed
+
+- **S10-2**: `security-service` no longer re-parses every stored SBOM
+  document on each `/v1/sbom/components`, `/security/risk-heatmap`, and
+  `/security/graph` request. Components and dependency edges are now
+  extracted once at ingest time (`POST /v1/sboms`, and the demo seed) into
+  a normalised in-memory index (`SbomRepository.replaceComponents`/
+  `listComponents`/`listEdges`); the routes read that index and join it
+  against current findings instead of parsing the raw CycloneDX document.
+  Output is byte-identical to the old parse-per-request path (see the
+  `S10-2 component index equality` test in
+  `backend/services/security/src/services/security-analytics.test.ts`).
+
 ## [0.6.0] - 2026-09-27
 
 Sprint 9 — SBOM pipeline security, real exports, code splitting,

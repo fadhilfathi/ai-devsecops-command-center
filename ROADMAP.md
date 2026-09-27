@@ -303,14 +303,16 @@ Status: in progress.
   Sprint-1 hard-coded placeholder. `remediation.apply` stays
   not-implemented — proposals only, no PR-opening. See
   `backend/services/agent/src/agents/remediation.ts`.
-- **S10-2**: security-service's SBOM analytics
-  (`services/security-analytics.ts`) re-parse every SBOM document a
-  tenant owns on every call to `/v1/sbom/components`,
-  `/security/risk-heatmap`, and `/security/graph` — marked `ponytail:`
-  in the code since S9-4/S9-5's review. Precompute the parsed
-  `WireSbomComponent[]`/dependency edges once at ingest
-  (`POST /v1/sboms`) and cache alongside the record instead of
-  re-parsing per request.
+- **S10-2** (done): security-service's SBOM analytics
+  (`services/security-analytics.ts`) no longer re-parse every SBOM
+  document a tenant owns on every call to `/v1/sbom/components`,
+  `/security/risk-heatmap`, and `/security/graph`. Components and
+  dependency edges are precomputed once at ingest (`POST /v1/sboms`,
+  demo seed) into an in-memory index on `SbomRepository`
+  (`replaceComponents`/`listComponents`/`listEdges`); the routes read
+  the index and join it against current findings instead of parsing the
+  document. security-service has no Pg SBOM repository yet, so this is
+  in-memory only.
 - **S10-3**: review and merge (or explicitly close) the 14 open
   Dependabot PRs — grouped production/dev Python bumps for the 3
   agents (sbom-generator, vuln-intel, dependency-intel) plus GitHub

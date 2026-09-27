@@ -6,6 +6,7 @@ import type { AssetRepository } from './repositories/asset.repository.js';
 import type { ScanRepository } from './repositories/scan.repository.js';
 import type { FindingRepository } from './repositories/finding.repository.js';
 import type { SbomRepository } from './repositories/sbom.repository.js';
+import { computeSbomIndex } from './services/security-analytics.js';
 
 export async function seedDemoData(
   repos: {
@@ -63,7 +64,7 @@ export async function seedDemoData(
   // endpoints have something non-empty to join against the findings above.
   // `chalk` carries no finding — it exercises the "no known vulnerabilities"
   // path in the SBOM viewer and dependency graph.
-  await repos.sboms?.create({
+  const sbom = await repos.sboms?.create({
     tenantId,
     assetId: api.id,
     format: 'cyclonedx',
@@ -107,6 +108,10 @@ export async function seedDemoData(
       ],
     },
   });
+  if (sbom) {
+    const { components, edges } = computeSbomIndex(sbom);
+    await repos.sboms?.replaceComponents(tenantId, sbom.id, sbom.assetId, components, edges);
+  }
 
   void web;
 }

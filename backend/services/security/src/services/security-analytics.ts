@@ -11,7 +11,11 @@
  * between two independently-versioned packages, not a shared TS type.
  */
 import type { VulnerabilityFinding, SecurityScan, Asset, FindingSeverity } from '@aicc/shared';
-import type { SbomRecord } from '../repositories/sbom.repository.js';
+import type {
+  SbomRecord,
+  SbomComponentRecord,
+  SbomEdgeRecord,
+} from '../repositories/sbom.repository.js';
 
 // ---------- wire types ----------
 
@@ -280,33 +284,25 @@ interface ParsedSbom {
   edges: GraphEdge[];
 }
 
-/** Parse one SBOM record into wire components + dependency edges, joined
- * against `findings` by package name (+ version when present). */
-function parseSbomRecord(record: SbomRecord, findings: VulnerabilityFinding[]): ParsedSbom {
-  const doc = isRawSbomDocument(record.document) ? record.document : {};
+/** A component's fields as known from the raw document alone, before
+ * joining against findings (vulnerability count/highest severity depend
+ * on the tenant's *current* findings, so they're never precomputed). */
+type BaseComponent = Omit<WireSbomComponent, 'vulnerabilities' | 'highestSeverity'>;
+
+/** Parse one SBOM document into base components + dependency edges. No
+ * findings join — this is the part that's safe to precompute once at
+ * ingest and store via `SbomRepository.replaceComponents`. */
+function parseRawComponents(doc: RawSbomDocument): {
+  components: BaseComponent[];
+  edges: GraphEdge[];
+} {
   const rawComponents = doc.components ?? [];
   const depths = computeDepths(doc);
 
-  const findingsByPackage = new Map<string, VulnerabilityFinding[]>();
-  for (const f of findings) {
-    if (!f.packageName) continue;
-    const key = f.packageName.toLowerCase();
-    const list = findingsByPackage.get(key) ?? [];
-    list.push(f);
-    findingsByPackage.set(key, list);
-  }
-
-  const components: WireSbomComponent[] = rawComponents.map((c) => {
+  const components: BaseComponent[] = rawComponents.map((c) => {
     const name = c.name ?? 'unknown';
     const version = c.version ?? '';
     const id = c['bom-ref'] ?? `${name}@${version || '*'}`;
-    const matches = (findingsByPackage.get(name.toLowerCase()) ?? []).filter(
-      (f) => !f.packageVersion || !version || f.packageVersion === version,
-    );
-    const highestSeverity = matches.reduce<Severity | undefined>((acc, f) => {
-      const sev = severityFromBackend(f.severity);
-      return acc === undefined || severityRank(sev) > severityRank(acc) ? sev : acc;
-    }, undefined);
     return {
       id,
       name,
@@ -314,16 +310,14 @@ function parseSbomRecord(record: SbomRecord, findings: VulnerabilityFinding[]): 
       purl: c.purl ?? '',
       license: licenseLabel(c.licenses),
       supplier: typeof c.supplier === 'string' ? c.supplier : (c.supplier?.name ?? undefined),
-      vulnerabilities: matches.length,
       ecosystem: ecosystemFromPurl(c.purl),
       depth: depths.get(id) ?? 0,
-      highestSeverity,
     };
   });
 
   // Edges reference `bom-ref`s directly; any edge touching a ref that
   // isn't a real component (e.g. the synthetic root) is dropped later in
-  // `buildDependencyGraph`, once we know which ids made the node cut.
+  // `rankAndCapGraph`, once we know which ids made the node cut.
   const edges: GraphEdge[] = [];
   for (const d of doc.dependencies ?? []) {
     if (!d.ref) continue;
@@ -335,14 +329,83 @@ function parseSbomRecord(record: SbomRecord, findings: VulnerabilityFinding[]): 
   return { components, edges };
 }
 
-// ---------- public aggregations ----------
+function buildFindingsByPackage(
+  findings: VulnerabilityFinding[],
+): Map<string, VulnerabilityFinding[]> {
+  const findingsByPackage = new Map<string, VulnerabilityFinding[]>();
+  for (const f of findings) {
+    if (!f.packageName) continue;
+    const key = f.packageName.toLowerCase();
+    const list = findingsByPackage.get(key) ?? [];
+    list.push(f);
+    findingsByPackage.set(key, list);
+  }
+  return findingsByPackage;
+}
 
-// ponytail: every call below re-parses every SBOM document the tenant owns
-// on every request (components list, graph, heatmap) — ceiling is fine at
-// demo/seed scale but degrades linearly with SBOM count and document size.
-// Upgrade path: precompute WireSbomComponent[]/edges once at ingest time
-// (`POST /v1/sboms`) and cache alongside the record, or cap parsing to the
-// latest SBOM per asset instead of every historical one.
+/** Join one base component against the tenant's findings by package name
+ * (+ version when present). */
+function joinFindings(
+  base: BaseComponent,
+  findingsByPackage: Map<string, VulnerabilityFinding[]>,
+): WireSbomComponent {
+  const matches = (findingsByPackage.get(base.name.toLowerCase()) ?? []).filter(
+    (f) => !f.packageVersion || !base.version || f.packageVersion === base.version,
+  );
+  const highestSeverity = matches.reduce<Severity | undefined>((acc, f) => {
+    const sev = severityFromBackend(f.severity);
+    return acc === undefined || severityRank(sev) > severityRank(acc) ? sev : acc;
+  }, undefined);
+  return { ...base, vulnerabilities: matches.length, highestSeverity };
+}
+
+/** Parse one SBOM record into wire components + dependency edges, joined
+ * against `findings` by package name (+ version when present). */
+function parseSbomRecord(record: SbomRecord, findings: VulnerabilityFinding[]): ParsedSbom {
+  const doc = isRawSbomDocument(record.document) ? record.document : {};
+  const { components: base, edges } = parseRawComponents(doc);
+  const findingsByPackage = buildFindingsByPackage(findings);
+  const components = base.map((b) => joinFindings(b, findingsByPackage));
+  return { components, edges };
+}
+
+/**
+ * S10-2 — extract one SBOM record's component index for storage via
+ * `SbomRepository.replaceComponents`, so `/v1/sbom/components`,
+ * `/security/risk-heatmap`, and `/security/graph` never re-parse the raw
+ * document at request time.
+ */
+export function computeSbomIndex(record: SbomRecord): {
+  components: Array<Omit<SbomComponentRecord, 'tenantId' | 'sbomId' | 'assetId'>>;
+  edges: Array<Omit<SbomEdgeRecord, 'tenantId' | 'sbomId'>>;
+} {
+  const doc = isRawSbomDocument(record.document) ? record.document : {};
+  return parseRawComponents(doc);
+}
+
+/** Join the stored component index against the tenant's current findings
+ * — the index-backed equivalent of `extractSbomComponents`. */
+export function wireComponentsFromIndex(
+  indexComponents: SbomComponentRecord[],
+  findings: VulnerabilityFinding[],
+): WireSbomComponent[] {
+  const findingsByPackage = buildFindingsByPackage(findings);
+  return indexComponents.map((c) => {
+    const base: BaseComponent = {
+      id: c.id,
+      name: c.name,
+      version: c.version,
+      purl: c.purl,
+      license: c.license,
+      supplier: c.supplier,
+      ecosystem: c.ecosystem as Ecosystem,
+      depth: c.depth,
+    };
+    return joinFindings(base, findingsByPackage);
+  });
+}
+
+// ---------- public aggregations ----------
 
 /** Flat component listing across every SBOM the tenant has, for the
  * "lightweight index" list view. */
@@ -353,21 +416,16 @@ export function extractSbomComponents(
   return records.flatMap((r) => parseSbomRecord(r, findings).components);
 }
 
-/**
- * Bounded dependency graph across every SBOM the tenant has. Capped at
- * `cap` nodes (default 50) to keep the reactflow canvas responsive;
- * vulnerable components are always kept first.
- */
-export function buildDependencyGraph(
-  records: SbomRecord[],
-  findings: VulnerabilityFinding[],
+/** Rank nodes by severity (most severe first) then depth, cap at `cap`,
+ * and drop any edge that no longer touches two kept nodes. Shared by
+ * `buildDependencyGraph` (parses documents; kept for tests/back-compat)
+ * and `dependencyGraphFromIndex` (reads the precomputed component index). */
+function rankAndCapGraph(
+  allNodes: WireSbomComponent[],
+  allEdges: GraphEdge[],
   sbomId: string,
-  cap = 50,
+  cap: number,
 ): GraphData {
-  const parsed = records.map((r) => parseSbomRecord(r, findings));
-  const allNodes = parsed.flatMap((p) => p.components);
-  const allEdges = parsed.flatMap((p) => p.edges);
-
   // `severityRank` indexes into SEVERITIES (critical=0 .. info=4), so the
   // most severe components sort first with a plain ascending comparator.
   const ranked = [...allNodes].sort((a, b) => {
@@ -391,6 +449,37 @@ export function buildDependencyGraph(
   const edges = allEdges.filter((e) => keptIds.has(e.source) && keptIds.has(e.target));
 
   return { sbomId, nodes, edges };
+}
+
+/**
+ * Bounded dependency graph across every SBOM the tenant has. Capped at
+ * `cap` nodes (default 50) to keep the reactflow canvas responsive;
+ * vulnerable components are always kept first.
+ */
+export function buildDependencyGraph(
+  records: SbomRecord[],
+  findings: VulnerabilityFinding[],
+  sbomId: string,
+  cap = 50,
+): GraphData {
+  const parsed = records.map((r) => parseSbomRecord(r, findings));
+  const allNodes = parsed.flatMap((p) => p.components);
+  const allEdges = parsed.flatMap((p) => p.edges);
+  return rankAndCapGraph(allNodes, allEdges, sbomId, cap);
+}
+
+/** Index-backed equivalent of `buildDependencyGraph` — reads the
+ * precomputed component/edge index instead of parsing SBOM documents. */
+export function dependencyGraphFromIndex(
+  indexComponents: SbomComponentRecord[],
+  indexEdges: SbomEdgeRecord[],
+  findings: VulnerabilityFinding[],
+  sbomId: string,
+  cap = 50,
+): GraphData {
+  const allNodes = wireComponentsFromIndex(indexComponents, findings);
+  const allEdges: GraphEdge[] = indexEdges.map((e) => ({ source: e.source, target: e.target }));
+  return rankAndCapGraph(allNodes, allEdges, sbomId, cap);
 }
 
 /** Map every finding to the browser `Vulnerability` shape, joined through

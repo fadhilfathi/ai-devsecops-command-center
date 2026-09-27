@@ -5,7 +5,7 @@ import { EventTypes } from '@aicc/shared';
 import type { SbomRepository, SbomFormat } from '../repositories/sbom.repository.js';
 import type { AssetRepository } from '../repositories/asset.repository.js';
 import type { FindingRepository } from '../repositories/finding.repository.js';
-import { extractSbomComponents } from '../services/security-analytics.js';
+import { computeSbomIndex, wireComponentsFromIndex } from '../services/security-analytics.js';
 
 interface Deps {
   logger: Logger;
@@ -55,11 +55,11 @@ export const buildSbomRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
   // from `/v1/sboms/:id` (the full per-SBOM document).
   server.get('/v1/sbom/components', async (req) => {
     const tenantId = requireTenant(req.tenantId);
-    const [records, tenantFindings] = await Promise.all([
-      sboms.list(tenantId),
+    const [indexComponents, tenantFindings] = await Promise.all([
+      sboms.listComponents(tenantId),
       findings.list(tenantId),
     ]);
-    const items = extractSbomComponents(records, tenantFindings);
+    const items = wireComponentsFromIndex(indexComponents, tenantFindings);
     return { items, total: items.length };
   });
 
@@ -85,6 +85,8 @@ export const buildSbomRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
         format: body.format as SbomFormat,
         document: body.document,
       });
+      const { components, edges } = computeSbomIndex(record);
+      await sboms.replaceComponents(tenantId, record.id, record.assetId, components, edges);
       await bus.publish({
         type: EventTypes.INTEGRATION_SYNC_COMPLETED,
         version: 1,
