@@ -169,13 +169,13 @@ export interface ProviderRegistry {
   get(id: string): KubernetesProvider | undefined;
   /** Default provider id, used when the request does not specify one. */
   defaultId(): string;
+  /** Evicts a tenant/cluster's cached live client — call after cluster deletion or credential rotation. */
+  evictLive(tenantId: string, clusterId: string): void;
 }
 
 export function buildProviderRegistry(ctx: ProviderContext): ProviderRegistry {
-  const providers: KubernetesProvider[] = [
-    new FixtureProvider(),
-    new LiveProvider({ clusters: ctx.clusters, logger: ctx.logger }),
-  ];
+  const liveProvider = new LiveProvider({ clusters: ctx.clusters, logger: ctx.logger });
+  const providers: KubernetesProvider[] = [new FixtureProvider(), liveProvider];
   return {
     list() {
       return providers;
@@ -185,6 +185,9 @@ export function buildProviderRegistry(ctx: ProviderContext): ProviderRegistry {
     },
     defaultId() {
       return process.env.AICC_K8S_PROVIDER ?? 'fixture';
+    },
+    evictLive(tenantId, clusterId) {
+      liveProvider.evict(tenantId, clusterId);
     },
   };
 }

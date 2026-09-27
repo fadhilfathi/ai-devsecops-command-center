@@ -38,6 +38,7 @@ import {
   type TestConnectionResult,
 } from './registry.js';
 import type { ClusterConnection, ClusterRepository } from '../repositories/cluster.repository.js';
+import { checkServerUrlDns, type HostnameResolver } from '../ssrf-guard.js';
 import {
   mapNamespace,
   mapPod,
@@ -81,6 +82,8 @@ export interface LiveProviderDeps {
   clusters: ClusterRepository;
   logger: Logger;
   clientFactory?: ClientFactory;
+  /** Injectable DNS resolver for the connect-time SSRF re-check. Defaults to real `dns.lookup`. */
+  resolveHostname?: HostnameResolver;
 }
 
 /** Max cached client sets — plain insertion-order LRU (evict oldest on overflow). */
@@ -108,12 +111,31 @@ export class LiveProvider implements KubernetesProvider {
   private readonly clusters: ClusterRepository;
   private readonly logger: Logger;
   private readonly clientFactory: ClientFactory;
+  private readonly resolveHostname: HostnameResolver | undefined;
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor(deps: LiveProviderDeps) {
     this.clusters = deps.clusters;
     this.logger = deps.logger;
     this.clientFactory = deps.clientFactory ?? defaultClientFactory;
+    this.resolveHostname = deps.resolveHostname;
+  }
+
+  /**
+   * Re-runs the DNS-resolving SSRF check on a connection's `server` right
+   * before it's used. A hostname that resolved to a safe address at
+   * create time can be repointed at 169.254.169.254 afterwards (DNS
+   * rebinding); re-checking here — on every use, cached client or not —
+   * catches that instead of only checking once at onboarding.
+   */
+  private async assertServerAllowed(server: string): Promise<void> {
+    const check = await checkServerUrlDns(server, {
+      allowPrivateApi: process.env.AICC_K8S_ALLOW_PRIVATE_API === 'true',
+      resolveHostname: this.resolveHostname,
+    });
+    if (!check.ok) {
+      throw new UnsupportedError(`cluster server URL rejected: ${check.reason}`);
+    }
   }
 
   private async clientsFor(clusterId: string, tenantId: string): Promise<K8sClients> {
@@ -129,6 +151,7 @@ export class LiveProvider implements KubernetesProvider {
       this.cache.delete(key);
       throw new UnsupportedError(`cluster ${clusterId} has no live connection configured`);
     }
+    await this.assertServerAllowed(conn.server);
     const fingerprint = fingerprintOf(conn);
     const cached = this.cache.get(key);
     if (cached && cached.fingerprint === fingerprint) {
@@ -147,6 +170,11 @@ export class LiveProvider implements KubernetesProvider {
     return clients;
   }
 
+  /** Drops a tenant/cluster's cached client set — call after credential rotation or deletion. */
+  evict(tenantId: string, clusterId: string): void {
+    this.cache.delete(`${tenantId}:${clusterId}`);
+  }
+
   private async clusterNameFor(clusterId: string, tenantId: string): Promise<string> {
     const cluster = await this.clusters.findById(clusterId, tenantId);
     if (!cluster) throw new UnsupportedError(`cluster ${clusterId} not found for tenant`);
@@ -156,6 +184,7 @@ export class LiveProvider implements KubernetesProvider {
   async testConnection(input: TestConnectionInput): Promise<TestConnectionResult> {
     const started = Date.now();
     try {
+      await this.assertServerAllowed(input.server);
       const clients = this.clientFactory({
         server: input.server,
         token: input.token,

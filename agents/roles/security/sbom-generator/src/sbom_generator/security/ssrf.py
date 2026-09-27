@@ -91,10 +91,22 @@ _BLOCKED_HOSTNAME_SUFFIXES: Sequence[str] = (
     ".example.com",
     ".example.net",
     ".example.org",
-    # Cloud metadata hostnames (defense in depth — already covered by 169.254.0.0/16)
+    # Cloud metadata hostnames (defense in depth — already covered by
+    # 169.254.0.0/16 for the IP, but some VPCs route the hostname to
+    # a different IP, e.g. IPv6). Belt-and-suspenders per
+    # SecurityArchitect 2026-06-12 refinement.
     "metadata.google.internal",
+    "metadata.google",
     "metadata.azure.com",
+    "metadata.azure",
+    # AWS IMDSv1 + IMDSv2 hostnames. The IP 169.254.169.254 is caught
+    # by the link-local block, but the hostname may resolve to a
+    # different IP in IPv6-only or split-horizon DNS configurations.
+    "metadata.aws.internal",
     "instance-data.ec2.internal",
+    # OpenStack / IBM Cloud / Alibaba (defense in depth)
+    "metadata.service.network",
+    "metadata",
 )
 
 # Bare hostnames (no dot) that must be rejected.

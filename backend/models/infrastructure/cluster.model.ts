@@ -122,6 +122,35 @@ export const ClusterConnectionTestResponseSchema = z.object({
 });
 export type ClusterConnectionTestResponse = z.infer<typeof ClusterConnectionTestResponseSchema>;
 
+/** POST /v1/kubernetes/clusters body. Credentials never round-trip in a response. */
+export const ClusterCreateRequestSchema = z.object({
+  name: z.string().min(1).max(200),
+  provider: ClusterProviderSchema,
+  environment: z.enum(['prod', 'staging', 'dev', 'sandbox']).default('dev'),
+  labels: z.record(z.string(), z.string()).default({}),
+  server: z.string().url(),
+  /** Bearer/service-account token. Never returned by the API. */
+  token: z.string().min(1).optional(),
+  /** Base64-encoded CA bundle. Never returned by the API. */
+  caBundle: z.string().optional(),
+  insecureSkipVerify: z.boolean().default(false),
+});
+export type ClusterCreateRequest = z.infer<typeof ClusterCreateRequestSchema>;
+
+/**
+ * PATCH /v1/kubernetes/clusters/:id body. The server URL and provider
+ * are immutable after creation — only metadata and credentials rotate.
+ */
+export const ClusterUpdateRequestSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  environment: z.enum(['prod', 'staging', 'dev', 'sandbox']).optional(),
+  labels: z.record(z.string(), z.string()).optional(),
+  token: z.string().min(1).optional(),
+  caBundle: z.string().optional(),
+  insecureSkipVerify: z.boolean().optional(),
+});
+export type ClusterUpdateRequest = z.infer<typeof ClusterUpdateRequestSchema>;
+
 export function toClusterJSONSchema(): Record<string, unknown> {
   return z.toJSONSchema(ClusterSchema, {
     target: 'draft-2020-12',

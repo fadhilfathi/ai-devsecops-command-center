@@ -2,9 +2,13 @@ import { test, expect, vi } from 'vitest';
 import { createLogger } from '@aicc/shared';
 import { LiveProvider, type ClientFactory, type K8sClients } from './live.provider.js';
 import { buildClusterRepository } from '../repositories/cluster.repository.js';
+import type { HostnameResolver } from '../ssrf-guard.js';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const logger = createLogger({ service: 'test', version: '0.0.0', level: 'silent' });
+// Stub resolver used by tests that aren't exercising the SSRF/DNS checks
+// themselves — keeps every pre-existing test off the real network.
+const PUBLIC_RESOLVER: HostnameResolver = async () => [{ address: '203.0.113.10' }];
 
 function fakeClients(overrides: Partial<K8sClients> = {}): K8sClients {
   return {
@@ -37,7 +41,12 @@ function fakeClients(overrides: Partial<K8sClients> = {}): K8sClients {
 test('testConnection returns ok with server version on success', async () => {
   const clients = fakeClients();
   const clientFactory: ClientFactory = () => clients;
-  const provider = new LiveProvider({ clusters: buildClusterRepository(), logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters: buildClusterRepository(),
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   const res = await provider.testConnection({
     server: 'https://api.example.com',
@@ -53,7 +62,12 @@ test('testConnection returns ok:false and never leaks the token on failure', asy
   const clientFactory: ClientFactory = () => {
     throw new Error('connect ECONNREFUSED 10.0.0.1:6443');
   };
-  const provider = new LiveProvider({ clusters: buildClusterRepository(), logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters: buildClusterRepository(),
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   const res = await provider.testConnection({
     server: 'https://api.example.com',
@@ -101,7 +115,12 @@ test('listNamespaces builds a client from the cluster connection and maps namesp
     } as unknown as K8sClients['core'],
   });
   const clientFactory: ClientFactory = vi.fn(() => clients);
-  const provider = new LiveProvider({ clusters, logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   const namespaces = await provider.listNamespaces(TENANT, cluster.id);
 
@@ -124,7 +143,12 @@ test('listPods passes namespace and labelSelector through to the namespaced call
   const listNamespacedPod = vi.fn(async () => ({ items: [] }));
   const clients = fakeClients({ core: { listNamespacedPod } as unknown as K8sClients['core'] });
   const clientFactory: ClientFactory = () => clients;
-  const provider = new LiveProvider({ clusters, logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   await provider.listPods(TENANT, {
     clusterId: cluster.id,
@@ -151,7 +175,12 @@ test('listPods with no namespace calls listPodForAllNamespaces', async () => {
   const clients = fakeClients({
     core: { listPodForAllNamespaces } as unknown as K8sClients['core'],
   });
-  const provider = new LiveProvider({ clusters, logger, clientFactory: () => clients });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory: () => clients,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   await provider.listPods(TENANT, { clusterId: cluster.id });
 
@@ -173,7 +202,12 @@ test('listClusters filters out fixture-provider clusters', async () => {
     provider: 'eks',
   });
 
-  const provider = new LiveProvider({ clusters, logger, clientFactory: () => fakeClients() });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory: () => fakeClients(),
+    resolveHostname: PUBLIC_RESOLVER,
+  });
   const items = await provider.listClusters(TENANT);
 
   // both are "live" here since 'unknown' !== 'fixture'; assert the real cluster is present
@@ -225,7 +259,12 @@ test('listWorkloads unions deployments, statefulsets, and daemonsets', async () 
       })),
     } as unknown as K8sClients['apps'],
   });
-  const provider = new LiveProvider({ clusters, logger, clientFactory: () => clients });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory: () => clients,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   const workloads = await provider.listWorkloads(TENANT, { clusterId: cluster.id });
 
@@ -242,7 +281,12 @@ test('client cache: same connection is reused (factory called once)', async () =
     token: 'tok',
   });
   const clientFactory = vi.fn(() => fakeClients());
-  const provider = new LiveProvider({ clusters, logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   await provider.listNamespaces(TENANT, cluster.id);
   await provider.listNamespaces(TENANT, cluster.id);
@@ -260,7 +304,12 @@ test('client cache: a deleted cluster is never served from cache', async () => {
     token: 'tok',
   });
   const clientFactory = vi.fn(() => fakeClients());
-  const provider = new LiveProvider({ clusters, logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   await provider.listNamespaces(TENANT, cluster.id);
   await clusters.remove(cluster.id, TENANT);
@@ -291,7 +340,12 @@ test('client cache: a rotated token invalidates the cached client', async () => 
     },
   };
   const clientFactory = vi.fn(() => fakeClients());
-  const provider = new LiveProvider({ clusters, logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   await provider.listNamespaces(TENANT, 'cluster-1');
   await provider.listNamespaces(TENANT, 'cluster-1');
@@ -302,10 +356,133 @@ test('client cache: a rotated token invalidates the cached client', async () => 
   expect(clientFactory).toHaveBeenCalledTimes(2);
 });
 
+test('evict() drops the cached client so the next call rebuilds it', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
+
+  await provider.listNamespaces(TENANT, cluster.id);
+  provider.evict(TENANT, cluster.id);
+  await provider.listNamespaces(TENANT, cluster.id);
+
+  expect(clientFactory).toHaveBeenCalledTimes(2);
+});
+
+test('listNamespaces rejects when the cluster hostname resolves to a metadata address, factory never called', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  const resolveHostname = vi.fn(async () => [{ address: '169.254.169.254' }]);
+  const provider = new LiveProvider({ clusters, logger, clientFactory, resolveHostname });
+
+  await expect(provider.listNamespaces(TENANT, cluster.id)).rejects.toThrow(/server URL rejected/);
+  expect(clientFactory).not.toHaveBeenCalled();
+});
+
+test('listNamespaces rejects when hostname resolution throws (fail closed)', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  const resolveHostname = vi.fn(async () => {
+    throw new Error('ENOTFOUND');
+  });
+  const provider = new LiveProvider({ clusters, logger, clientFactory, resolveHostname });
+
+  await expect(provider.listNamespaces(TENANT, cluster.id)).rejects.toThrow(/server URL rejected/);
+  expect(clientFactory).not.toHaveBeenCalled();
+});
+
+test('listNamespaces succeeds when hostname resolves to a private address', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  const resolveHostname = vi.fn(async () => [{ address: '10.0.0.5' }]);
+  const provider = new LiveProvider({ clusters, logger, clientFactory, resolveHostname });
+
+  await expect(provider.listNamespaces(TENANT, cluster.id)).resolves.toBeDefined();
+  expect(clientFactory).toHaveBeenCalledTimes(1);
+});
+
+test('an existing cluster whose hostname now resolves to a metadata address fails at connect time even from cache', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  let resolved = [{ address: '10.0.0.5' }];
+  const resolveHostname = vi.fn(async () => resolved);
+  const provider = new LiveProvider({ clusters, logger, clientFactory, resolveHostname });
+
+  await provider.listNamespaces(TENANT, cluster.id);
+  expect(clientFactory).toHaveBeenCalledTimes(1);
+
+  // DNS rebinds after the cluster was onboarded.
+  resolved = [{ address: '169.254.169.254' }];
+  await expect(provider.listNamespaces(TENANT, cluster.id)).rejects.toThrow(/server URL rejected/);
+  // Still only the one prior call — the rebind is caught before the
+  // (still-cached) client would have been reused.
+  expect(clientFactory).toHaveBeenCalledTimes(1);
+});
+
+test('testConnection rejects a server hostname resolving to a metadata address, client never built', async () => {
+  const clientFactory = vi.fn(() => fakeClients());
+  const resolveHostname = vi.fn(async () => [{ address: '169.254.169.254' }]);
+  const provider = new LiveProvider({
+    clusters: buildClusterRepository(),
+    logger,
+    clientFactory,
+    resolveHostname,
+  });
+
+  const res = await provider.testConnection({ server: 'https://api.example.com', token: 'tok' });
+
+  expect(res.ok).toBe(false);
+  expect(clientFactory).not.toHaveBeenCalled();
+});
+
 test('client cache: cap evicts the least-recently-used entry', async () => {
   const clusters = buildClusterRepository();
   const clientFactory = vi.fn(() => fakeClients());
-  const provider = new LiveProvider({ clusters, logger, clientFactory });
+  const provider = new LiveProvider({
+    clusters,
+    logger,
+    clientFactory,
+    resolveHostname: PUBLIC_RESOLVER,
+  });
 
   const ids: string[] = [];
   for (let i = 0; i < 257; i += 1) {

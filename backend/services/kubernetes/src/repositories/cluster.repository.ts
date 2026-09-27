@@ -34,10 +34,21 @@ export interface ClusterConnection {
   insecureSkipVerify?: boolean;
 }
 
+/** PATCH input — server URL and provider are immutable after creation. */
+export interface UpdateClusterInput {
+  name?: string;
+  environment?: 'prod' | 'staging' | 'dev' | 'sandbox';
+  labels?: Record<string, string>;
+  token?: string;
+  caBundle?: string;
+  insecureSkipVerify?: boolean;
+}
+
 export interface ClusterRepository {
   list(tenantId: UUID): Promise<Cluster[]>;
   findById(id: UUID, tenantId: UUID): Promise<Cluster | undefined>;
   create(input: CreateClusterInput): Promise<Cluster>;
+  update(id: UUID, tenantId: UUID, patch: UpdateClusterInput): Promise<Cluster | undefined>;
   remove(id: UUID, tenantId: UUID): Promise<boolean>;
   /** Returns the provider id, or `undefined` if not configured. */
   getProviderIdForCluster(id: UUID, tenantId: UUID): Promise<string | undefined>;
@@ -117,6 +128,34 @@ export function buildClusterRepository(keyring?: Keyring): ClusterRepository {
       };
       store.set(cluster.id, cluster);
       return stripCredentials(cluster);
+    },
+    async update(id, tenantId, patch) {
+      const c = store.get(id);
+      if (!c || c.tenantId !== tenantId) return undefined;
+      if (patch.name !== undefined) c.name = patch.name;
+      if (patch.environment !== undefined) c.environment = patch.environment;
+      if (patch.labels !== undefined) c.labels = patch.labels;
+      const credsChanged =
+        patch.token !== undefined ||
+        patch.caBundle !== undefined ||
+        patch.insecureSkipVerify !== undefined;
+      if (credsChanged) {
+        c._credentials = {
+          token:
+            patch.token !== undefined ? encryptField(keyring, patch.token) : c._credentials?.token,
+          caBundle:
+            patch.caBundle !== undefined
+              ? encryptField(keyring, patch.caBundle)
+              : c._credentials?.caBundle,
+          insecureSkipVerify:
+            patch.insecureSkipVerify !== undefined
+              ? patch.insecureSkipVerify
+              : c._credentials?.insecureSkipVerify,
+        };
+      }
+      c.updatedAt = new Date().toISOString();
+      store.set(id, c);
+      return stripCredentials(c);
     },
     async remove(id, tenantId) {
       const c = store.get(id);
@@ -286,6 +325,47 @@ export function buildPgClusterRepository(
         ],
       );
       return rowToCluster(rows[0]!);
+    },
+    async update(id, tenantId, patch) {
+      const tokenChanged = patch.token !== undefined;
+      const caBundleChanged = patch.caBundle !== undefined;
+      const tokenEnc =
+        tokenChanged && keyring ? encryptSecret(keyring, patch.token as string) : null;
+      const caBundleEnc =
+        caBundleChanged && keyring ? encryptSecret(keyring, patch.caBundle as string) : null;
+      const tokenPlain = tokenChanged && !keyring ? (patch.token as string) : null;
+      const caBundlePlain = caBundleChanged && !keyring ? (patch.caBundle as string) : null;
+      const { rows } = await db.query<ClusterRow>(
+        `UPDATE clusters SET
+           name = COALESCE($3, name),
+           environment = COALESCE($4, environment),
+           labels = COALESCE($5, labels),
+           token = CASE WHEN $6 THEN $7 ELSE token END,
+           ca_bundle = CASE WHEN $8 THEN $9 ELSE ca_bundle END,
+           token_enc = CASE WHEN $6 THEN $10 ELSE token_enc END,
+           ca_bundle_enc = CASE WHEN $8 THEN $11 ELSE ca_bundle_enc END,
+           credential_key_id = CASE WHEN $6 OR $8 THEN $12 ELSE credential_key_id END,
+           insecure_skip_verify = COALESCE($13, insecure_skip_verify),
+           updated_at = now()
+         WHERE id = $1 AND tenant_id = $2
+         RETURNING *`,
+        [
+          id,
+          tenantId,
+          patch.name ?? null,
+          patch.environment ?? null,
+          patch.labels !== undefined ? JSON.stringify(patch.labels) : null,
+          tokenChanged,
+          tokenPlain,
+          caBundleChanged,
+          caBundlePlain,
+          tokenEnc,
+          caBundleEnc,
+          keyring ? keyring.activeKeyId : null,
+          patch.insecureSkipVerify ?? null,
+        ],
+      );
+      return rows[0] ? rowToCluster(rows[0]) : undefined;
     },
     async remove(id, tenantId) {
       const { rows } = await db.query(

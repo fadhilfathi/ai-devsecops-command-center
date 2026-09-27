@@ -65,6 +65,13 @@ Set real values anyway if you want realistic behavior:
   ```bash
   echo "v1:$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")"
   ```
+- **`AICC_K8S_ALLOW_PRIVATE_API`** — kubernetes-service's cluster
+  `server` URL SSRF guard rejects loopback addresses by default (a real
+  cluster API server is never on `localhost`). Set to `true` for local
+  dev against a port-forwarded or `kind` cluster. RFC1918/private
+  ranges are allowed either way; link-local/cloud-metadata addresses
+  (`169.254.0.0/16`, `fd00:ec2::254`) are always rejected regardless of
+  this flag (`backend/services/kubernetes/src/ssrf-guard.ts`).
 
 Then bring the stack up:
 

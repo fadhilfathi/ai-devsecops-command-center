@@ -128,6 +128,42 @@ describe.each([
     });
   });
 
+  it('update rotates credentials and metadata; getConnection reflects the new token', async () => {
+    const repo = await build();
+    const created = await repo.create({
+      tenantId: tenantA,
+      name: 'rotate-me',
+      server: 'https://rotate.example.com',
+      provider: 'eks',
+      token: 'old-token',
+      caBundle: 'old-ca',
+    });
+
+    const updated = await repo.update(created.id, tenantA, {
+      name: 'renamed',
+      token: 'new-token',
+    });
+
+    expect(updated).toMatchObject({ name: 'renamed' });
+    expect(updated).not.toHaveProperty('token');
+    const conn = await repo.getConnection(created.id, tenantA);
+    expect(conn?.token).toBe('new-token');
+    expect(conn?.caBundle).toBe('old-ca'); // untouched field survives the rotation
+  });
+
+  it('update is tenant-scoped: another tenant cannot update it', async () => {
+    const repo = await build();
+    const created = await repo.create({
+      tenantId: tenantA,
+      name: 'scoped',
+      server: 'https://scoped.example.com',
+      provider: 'eks',
+    });
+
+    expect(await repo.update(created.id, tenantB, { name: 'hijacked' })).toBeUndefined();
+    expect((await repo.findById(created.id, tenantA))?.name).toBe('scoped');
+  });
+
   it('list/findById never expose credential fields', async () => {
     const repo = await build();
     await repo.create({

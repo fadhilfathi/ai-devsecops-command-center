@@ -12,6 +12,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **S11-1**: `kubernetes-service` cluster management —
+  `POST /v1/kubernetes/clusters`, `PATCH /v1/kubernetes/clusters/:id`,
+  `DELETE /v1/kubernetes/clusters/:id`. Mutating routes require the
+  `platform_admin` role; responses never include `token`/`caBundle`.
+  Server URLs are checked against a new SSRF guard
+  (`backend/services/kubernetes/src/ssrf-guard.ts`): https-only,
+  link-local/cloud-metadata addresses always rejected, RFC1918/unique-
+  local private ranges allowed by default (on-prem is the common case),
+  loopback rejected unless `AICC_K8S_ALLOW_PRIVATE_API=true`. `DELETE`
+  and credential rotation evict the cluster's cached `LiveProvider`
+  client via a new `LiveProvider.evict()` / `ProviderRegistry.evictLive()`.
+
+### Security
+
+- Closed an SSRF oracle in `kubernetes-service`'s
+  `POST /v1/kubernetes/test-connection`: it took an arbitrary caller-
+  supplied `server` URL with no auth or SSRF check and echoed back
+  version/error info, letting any authenticated caller probe internal
+  hosts (169.254.169.254, loopback, etc). Now requires `platform_admin`
+  (shared `requireAdmin` gate, moved to `src/rbac.ts`), runs the SSRF
+  guard before dialing out, and never echoes the provider's raw error
+  text back to the caller.
+- Added DNS-resolved SSRF checks (`checkServerUrlDns` in
+  `src/ssrf-guard.ts`): a cluster `server` hostname (as opposed to an IP
+  literal) is now resolved and every returned address classified against
+  the same link-local/metadata/loopback policy, rejecting if any address
+  is forbidden. Runs at cluster-create and test-connection time, and
+  again in `LiveProvider` right before each connect (cached client or
+  not), so a hostname repointed at an internal address after onboarding
+  (DNS rebinding) is still caught. Resolution failure fails closed.
+
 ## [0.7.0] - 2026-09-27
 
 Sprint 10 — remediation proposals, SBOM index, dependency catch-up,

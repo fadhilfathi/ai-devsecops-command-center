@@ -373,19 +373,31 @@ Deliberate corners cut, each with a named ceiling and an upgrade trigger:
   `Service.hasReadyEndpoints` is always `false` (would need a separate
   `Endpoints` list call per service). Upgrade: wire it when the topology
   view needs ready-endpoint state.
+- `backend/services/kubernetes/src/ssrf-guard.ts` (`checkServerUrlDns`) —
+  DNS-resolved SSRF checks run at create/test-connection time and again
+  right before each connect, but `@kubernetes/client-node` re-resolves
+  the hostname itself per HTTP request, so a very fast DNS rebind timed
+  between the connect-time check and the client's own dial-out (TOCTOU)
+  could still slip through. Upgrade: pin the resolved IP into the HTTP
+  agent (resolve once, connect to the IP, set Host/SNI from the
+  hostname) if this is ever observed exploited.
 
 ## Sprint 11 — Cluster delete, remediation follow-through, remediation UI, security persistence
 
 Status: not started.
 
-- **S11-1**: cluster CRUD delete route in `kubernetes-service`.
-  `backend/services/kubernetes/src/routes/kubernetes.ts` today only
-  registers `GET` routes — there's no way to remove a cluster short of a
-  direct database delete, which means the S10-4 cache-eviction check in
-  `LiveProvider.clientsFor` (a deleted cluster is never served from cache)
-  has never been exercised by a real API call. Add `DELETE
-/v1/kubernetes/clusters/:id`, tenant-scoped, removing the cluster
-  registry row so the existing eviction path actually fires.
+- **S11-1** (done): cluster CRUD in `kubernetes-service`. Added
+  `POST /v1/kubernetes/clusters`, `PATCH /v1/kubernetes/clusters/:id`,
+  `DELETE /v1/kubernetes/clusters/:id`, all `platform_admin`-only and
+  tenant-scoped; responses never include `token`/`caBundle`. `DELETE`
+  and credential rotation now call the new `LiveProvider.evict()` (via
+  `ProviderRegistry.evictLive()`) so the S10-4 cache-eviction path is
+  actually exercised by a real API call instead of only by
+  `clientsFor`'s per-call existence check. Added an SSRF guard
+  (`src/ssrf-guard.ts`) on the `server` URL: https-only, link-local/cloud-
+  metadata addresses (169.254.0.0/16, `fd00:ec2::254`) always rejected,
+  RFC1918/unique-local private ranges allowed by default, loopback
+  rejected unless `AICC_K8S_ALLOW_PRIVATE_API=true`.
 - **S11-2**: `remediation.apply` via `integration-service`'s GitHub
   provider. `providers/registry.ts`'s `GithubProvider` today only verifies
   inbound webhook signatures and records a sync row (`handleEvent`) — it

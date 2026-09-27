@@ -21,35 +21,41 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { type EventBus, type Logger, type UUID } from '@aicc/shared';
-import type {
-  Cluster,
-  ClusterListResponse,
-  NamespaceListResponse,
-  Workload,
-  WorkloadListResponse,
-  Pod,
-  PodListResponse,
-  Service,
-  ServiceListResponse,
-  Ingress,
-  IngressListResponse,
-  Deployment,
-  DeploymentListResponse,
-  StatefulSet,
-  StatefulSetListResponse,
-  DaemonSet,
-  DaemonSetListResponse,
-  NetworkPolicy,
-  NetworkPolicyListResponse,
+import {
+  ClusterCreateRequestSchema,
+  ClusterUpdateRequestSchema,
+  type Cluster,
+  type ClusterListResponse,
+  type NamespaceListResponse,
+  type Workload,
+  type WorkloadListResponse,
+  type Pod,
+  type PodListResponse,
+  type Service,
+  type ServiceListResponse,
+  type Ingress,
+  type IngressListResponse,
+  type Deployment,
+  type DeploymentListResponse,
+  type StatefulSet,
+  type StatefulSetListResponse,
+  type DaemonSet,
+  type DaemonSetListResponse,
+  type NetworkPolicy,
+  type NetworkPolicyListResponse,
 } from '@aicc/models';
 import type { ClusterRepository } from '../repositories/cluster.repository.js';
 import type { KubernetesProvider, ProviderRegistry } from '../providers/registry.js';
+import { checkServerUrlDns, type HostnameResolver } from '../ssrf-guard.js';
+import { requireAdmin } from '../rbac.js';
 
 interface Deps {
   logger: Logger;
   clusters: ClusterRepository;
   providers: ProviderRegistry;
   bus: EventBus;
+  /** Injectable DNS resolver for the SSRF check on cluster onboarding. Defaults to real `dns.lookup`. */
+  resolveHostname?: HostnameResolver;
 }
 
 const ListQuerySchema = z.object({
@@ -105,7 +111,7 @@ export const buildKubernetesRoutes: FastifyPluginAsync<Deps> = async (
   server: FastifyInstance,
   opts,
 ) => {
-  const { logger, clusters, providers, bus } = opts;
+  const { logger, clusters, providers, bus, resolveHostname } = opts;
 
   // ---- providers (auxiliary) -------------------------------------------
   server.get('/v1/kubernetes/providers', async () => ({
@@ -120,6 +126,69 @@ export const buildKubernetesRoutes: FastifyPluginAsync<Deps> = async (
     logger.debug({ count: items.length }, 'listed clusters');
     return { items, total: items.length };
   });
+
+  server.post<{ Reply: Cluster }>(
+    '/v1/kubernetes/clusters',
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const tenantId = requireTenant(req.tenantId);
+      const body = ClusterCreateRequestSchema.parse(req.body);
+      // `ClusterProviderSchema` (the real cloud-vendor enum) never includes
+      // 'fixture' — fixture clusters are seeded in code, not onboarded via
+      // this API — so every request here is checked against the SSRF policy.
+      const check = await checkServerUrlDns(body.server, {
+        allowPrivateApi: process.env.AICC_K8S_ALLOW_PRIVATE_API === 'true',
+        resolveHostname,
+      });
+      if (!check.ok) {
+        const e = new Error(check.reason) as Error & { statusCode?: number };
+        e.statusCode = 400;
+        throw e;
+      }
+      const cluster = await clusters.create({ tenantId, ...body });
+      logger.info({ clusterId: cluster.id }, 'cluster created');
+      reply.code(201);
+      return cluster;
+    },
+  );
+
+  server.patch<{ Params: { id: string }; Reply: Cluster }>(
+    '/v1/kubernetes/clusters/:id',
+    { preHandler: requireAdmin },
+    async (req) => {
+      const tenantId = requireTenant(req.tenantId);
+      const body = ClusterUpdateRequestSchema.parse(req.body);
+      const updated = await clusters.update(req.params.id as UUID, tenantId, body);
+      if (!updated) {
+        const e = new Error('cluster not found') as Error & { statusCode?: number };
+        e.statusCode = 404;
+        throw e;
+      }
+      // A credential rotation changes the connection fingerprint, so the
+      // next call naturally rebuilds the live client (see LiveProvider);
+      // evicting here just frees the stale entry a little sooner.
+      providers.evictLive(tenantId, updated.id);
+      logger.info({ clusterId: updated.id }, 'cluster updated');
+      return updated;
+    },
+  );
+
+  server.delete<{ Params: { id: string } }>(
+    '/v1/kubernetes/clusters/:id',
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const tenantId = requireTenant(req.tenantId);
+      const removed = await clusters.remove(req.params.id as UUID, tenantId);
+      if (!removed) {
+        const e = new Error('cluster not found') as Error & { statusCode?: number };
+        e.statusCode = 404;
+        throw e;
+      }
+      providers.evictLive(tenantId, req.params.id);
+      logger.info({ clusterId: req.params.id }, 'cluster deleted');
+      reply.code(204);
+    },
+  );
 
   // ---- namespaces ------------------------------------------------------
   server.get<{
