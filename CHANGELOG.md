@@ -52,6 +52,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on `starlette.datastructures.State`'s old always-truthy `__bool__`;
   Starlette now defines `__len__`, so an empty state is falsy.
 
+### Fixed
+
+- **S10-4**: `kubernetes` service's `LiveProvider` per-cluster client
+  cache could keep serving a deleted cluster's client and never picked
+  up a rotated token/caBundle until process restart. `clientsFor` now
+  re-checks the cluster repository on every use — a cache entry is only
+  reused when the cluster still exists for the tenant and a connection
+  fingerprint (hash of server/token/caBundle/insecureSkipVerify) matches
+  the cached one; otherwise it rebuilds. Cache capped at 256 entries
+  (insertion-order LRU). See `docs/adr/0009-live-kubernetes-provider.md`.
+- **S10-4**: `@aicc/shared`'s Redis Streams `EventBus` now reclaims
+  entries left pending by a crashed/failed consumer. The read loop
+  periodically (`reclaimIntervalMs`, default 30s) runs `XAUTOCLAIM` for
+  entries idle at least `minIdleMs` (default 60s) and re-runs them
+  through the same handler/ack path; once an entry's `XPENDING`
+  delivery count exceeds `maxDeliveries` (default 5) it's moved to a
+  dead-letter stream (`aicc:events:dlq:<type>`, envelope + error
+  metadata) and the original is acked. See
+  `docs/adr/0014-redis-streams-event-bus.md`.
+
 ## [0.6.0] - 2026-09-27
 
 Sprint 9 — SBOM pipeline security, real exports, code splitting,

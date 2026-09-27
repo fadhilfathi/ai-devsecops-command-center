@@ -319,15 +319,56 @@ Status: in progress.
   `actions/labeler` v7.0.0, `pnpm/action-setup` v6.1.0,
   `ossf/scorecard-action` v2.4.4, `github/codeql-action` v4.38.2 (every
   occurrence, including `scorecard.yml`'s `upload-sarif`). Python prod
-  + dev deps bumped for sbom-generator, vuln-intel, dependency-intel;
-  fixed one vuln-intel test broken by a Starlette `State.__len__`
-  change. All 14 PRs now superseded.
-- **S10-4**: `ponytail:` debt sweep — 13 occurrences across 12 files
-  (`grep -rn "ponytail:"`) marking deliberate simplifications with a
-  named ceiling: `security-analytics.ts` (SBOM re-parsing, depth
-  fallback — see S10-2), `redis.ts`, `db/index.ts`,
-  `topology.engine.ts`, two `http.provider.ts` files, `sbom.model.ts`,
-  `k8s-health.ts`, `runtime-security.ts`, `k8s-mappers.ts`,
-  `live.provider.ts`, and ADR 0009. Go through each, resolve the ones
-  that are now cheap to fix, and turn the rest into tracked follow-up
-  tickets instead of a comment nobody revisits.
+  - dev deps bumped for sbom-generator, vuln-intel, dependency-intel;
+    fixed one vuln-intel test broken by a Starlette `State.__len__`
+    change. All 14 PRs now superseded.
+- **S10-4** (done): `ponytail:` debt sweep — 13 occurrences across 12
+  files (`grep -rn "ponytail:"`). Resolved the two that were real risks:
+  `live.provider.ts`'s per-cluster client cache now re-checks the
+  cluster repository on every use (a deleted cluster is never served
+  from cache) and rebuilds on a connection-fingerprint mismatch (rotated
+  token/caBundle), capped at 256 entries (LRU); `redis.ts` now reclaims
+  a crashed/failed consumer's pending entries via `XAUTOCLAIM`
+  (`reclaimIntervalMs`, default 30s) and dead-letters an entry
+  (`aicc:events:dlq:<type>`) once its `XPENDING` delivery count exceeds
+  `maxDeliveries` (default 5). ADR 0009 and ADR 0014 updated. The
+  remaining 9 occurrences are accepted simplifications — see "Known
+  simplifications" below.
+
+### Known simplifications (S10-4)
+
+Deliberate corners cut, each with a named ceiling and an upgrade trigger:
+
+- `backend/services/topology/src/inventory/http.provider.ts:63` and
+  `backend/services/cost-intelligence/src/inventory/http.provider.ts:61`
+  — an HMAC access token is minted per inventory call instead of cached;
+  cheap today. Upgrade: add a short-lived (< ttl) in-memory cache if
+  inventory polling volume makes per-call signing measurable.
+- `backend/services/topology/src/engine/topology.engine.ts:211` — a
+  NetworkPolicy `ipBlock` peer never matches (no synthetic source IP to
+  test against) since topology only models pod-to-pod traffic. Upgrade:
+  model a synthetic "external" node if `ipBlock`-scoped policies need to
+  show up in the graph.
+- `backend/services/security/src/services/security-analytics.ts:250` —
+  SBOMs without a `dependencies` graph (hand-authored demo fixtures) get
+  depth 0 for every component. Upgrade: drop the fallback once every SBOM
+  is produced by sbom-pipeline-service, which always emits the graph.
+- `backend/services/k8s-health/src/routes/k8s-health.ts:127` and
+  `backend/services/runtime-security/src/routes/runtime-security.ts:153`
+  — event-bus publish is fire-and-forget (logged on rejection) rather
+  than awaited in the request path, since downstream consumers dedupe.
+  Upgrade: await + retry if a consumer ever needs delivery guarantees
+  stronger than at-least-once-eventually.
+- `backend/packages/shared/src/db/index.ts:55` — migrations are split on
+  a literal `;`, which breaks if a statement embeds one in a string or
+  identifier. Fine for the schema DDL migrations actually written.
+  Upgrade: swap in a real SQL statement splitter if a migration ever
+  needs an embedded semicolon.
+- `backend/models/security/sbom.model.ts:109` — `SbomComponentSchema` is
+  typed `z.ZodType<any>` to break the circular `pedigree` self-reference.
+  Upgrade: hand-write the interface if callers need precise typing of
+  nested pedigree components.
+- `backend/services/kubernetes/src/providers/k8s-mappers.ts:331` —
+  `Service.hasReadyEndpoints` is always `false` (would need a separate
+  `Endpoints` list call per service). Upgrade: wire it when the topology
+  view needs ready-endpoint state.

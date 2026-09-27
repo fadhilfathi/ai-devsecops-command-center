@@ -18,10 +18,14 @@ wires it to a real Kubernetes API server.
 - Use `@kubernetes/client-node` (1.x, OSS, no cost) as the API client.
 - `LiveProvider` builds one client set (`CoreV1Api`, `AppsV1Api`,
   `NetworkingV1Api`, `VersionApi`) per cluster via
-  `KubeConfig.loadFromClusterAndUser`, then caches it in a plain
-  in-process `Map<"tenantId:clusterId", K8sClients>` for the life of the
-  process (tenant-scoped key so no client is ever shared across tenants).
-  (ponytail: no TTL/eviction — add one if clusters churn at runtime.)
+  `KubeConfig.loadFromClusterAndUser`, then caches it in-process in a
+  `Map<"tenantId:clusterId", { clients, fingerprint }>` (tenant-scoped key
+  so no client is ever shared across tenants). Every use re-checks the
+  cluster repository: a deleted (or cross-tenant) cluster is never served
+  from cache, and a fingerprint (hash of server/token/caBundle/
+  insecureSkipVerify) mismatch — e.g. a rotated credential — rebuilds the
+  client instead of serving the stale one. Capped at 256 entries via a
+  simple insertion-order LRU (S10-4).
 - The client factory is injectable (`clientFactory` constructor option)
   so tests supply fakes instead of hitting a real API server.
 - Every `list*` call maps raw `V1*` API objects through pure functions

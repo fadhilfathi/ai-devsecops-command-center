@@ -231,3 +231,103 @@ test('listWorkloads unions deployments, statefulsets, and daemonsets', async () 
 
   expect(workloads.map((w) => w.kind).sort()).toEqual(['daemonset', 'deployment', 'statefulset']);
 });
+
+test('client cache: same connection is reused (factory called once)', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  const provider = new LiveProvider({ clusters, logger, clientFactory });
+
+  await provider.listNamespaces(TENANT, cluster.id);
+  await provider.listNamespaces(TENANT, cluster.id);
+
+  expect(clientFactory).toHaveBeenCalledTimes(1);
+});
+
+test('client cache: a deleted cluster is never served from cache', async () => {
+  const clusters = buildClusterRepository();
+  const cluster = await clusters.create({
+    tenantId: TENANT,
+    name: 'prod',
+    server: 'https://api.prod.example.com',
+    provider: 'eks',
+    token: 'tok',
+  });
+  const clientFactory = vi.fn(() => fakeClients());
+  const provider = new LiveProvider({ clusters, logger, clientFactory });
+
+  await provider.listNamespaces(TENANT, cluster.id);
+  await clusters.remove(cluster.id, TENANT);
+
+  await expect(provider.listNamespaces(TENANT, cluster.id)).rejects.toThrow(/no live connection/);
+});
+
+test('client cache: a rotated token invalidates the cached client', async () => {
+  let token = 'old-token';
+  const clusters = {
+    async list() {
+      return [];
+    },
+    async findById() {
+      return { name: 'prod' } as import('@aicc/models').Cluster;
+    },
+    async create() {
+      throw new Error('not used');
+    },
+    async remove() {
+      return true;
+    },
+    async getProviderIdForCluster() {
+      return 'live';
+    },
+    async getConnection() {
+      return { server: 'https://api.prod.example.com', token };
+    },
+  };
+  const clientFactory = vi.fn(() => fakeClients());
+  const provider = new LiveProvider({ clusters, logger, clientFactory });
+
+  await provider.listNamespaces(TENANT, 'cluster-1');
+  await provider.listNamespaces(TENANT, 'cluster-1');
+  expect(clientFactory).toHaveBeenCalledTimes(1);
+
+  token = 'new-token';
+  await provider.listNamespaces(TENANT, 'cluster-1');
+  expect(clientFactory).toHaveBeenCalledTimes(2);
+});
+
+test('client cache: cap evicts the least-recently-used entry', async () => {
+  const clusters = buildClusterRepository();
+  const clientFactory = vi.fn(() => fakeClients());
+  const provider = new LiveProvider({ clusters, logger, clientFactory });
+
+  const ids: string[] = [];
+  for (let i = 0; i < 257; i += 1) {
+    const cluster = await clusters.create({
+      tenantId: TENANT,
+      name: `c${i}`,
+      server: `https://api.${i}.example.com`,
+      provider: 'eks',
+      token: 'tok',
+    });
+    ids.push(cluster.id);
+    await provider.listNamespaces(TENANT, cluster.id);
+  }
+
+  clientFactory.mockClear();
+  // The very first cluster's client should have been evicted (cap = 256),
+  // so accessing it again rebuilds via the factory.
+  await provider.listNamespaces(TENANT, ids[0]!);
+  expect(clientFactory).toHaveBeenCalledTimes(1);
+
+  clientFactory.mockClear();
+  // The most recently created cluster is still cached.
+  await provider.listNamespaces(TENANT, ids[256]!);
+  expect(clientFactory).toHaveBeenCalledTimes(0);
+});

@@ -3,10 +3,13 @@
  *
  * Talks to a real Kubernetes API server via `@kubernetes/client-node`.
  * Read-only: only `list*` and `getCode` calls are issued. One client
- * set is built per cluster and cached in-process for the lifetime of
- * the service (ponytail: plain `Map`, no TTL/eviction — add one if
- * clusters get added/removed frequently at runtime).
+ * set is built per cluster and cached in-process, keyed by tenant +
+ * cluster + a fingerprint of the connection (server/token/caBundle/
+ * insecureSkipVerify) so a deleted cluster or a rotated credential
+ * invalidates the cache entry on next use rather than serving stale
+ * access. Capped at `MAX_CACHE_ENTRIES` (simple insertion-order LRU).
  */
+import { createHash } from 'node:crypto';
 import {
   KubeConfig,
   CoreV1Api,
@@ -80,6 +83,23 @@ export interface LiveProviderDeps {
   clientFactory?: ClientFactory;
 }
 
+/** Max cached client sets — plain insertion-order LRU (evict oldest on overflow). */
+const MAX_CACHE_ENTRIES = 256;
+
+interface CacheEntry {
+  clients: K8sClients;
+  fingerprint: string;
+}
+
+/** Hash of the connection fields that determine client identity — never store plaintext in the cache key. */
+function fingerprintOf(conn: ClusterConnection): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([conn.server, conn.token, conn.caBundle, conn.insecureSkipVerify ?? false]),
+    )
+    .digest('hex');
+}
+
 export class LiveProvider implements KubernetesProvider {
   readonly id = 'live';
   readonly name = 'Live Kubernetes API';
@@ -88,7 +108,7 @@ export class LiveProvider implements KubernetesProvider {
   private readonly clusters: ClusterRepository;
   private readonly logger: Logger;
   private readonly clientFactory: ClientFactory;
-  private readonly cache = new Map<string, K8sClients>();
+  private readonly cache = new Map<string, CacheEntry>();
 
   constructor(deps: LiveProviderDeps) {
     this.clusters = deps.clusters;
@@ -100,14 +120,30 @@ export class LiveProvider implements KubernetesProvider {
     // Tenant-scoped key: a cached client for one tenant's cluster must
     // never be served to another tenant, even with a colliding clusterId.
     const key = `${tenantId}:${clusterId}`;
-    const cached = this.cache.get(key);
-    if (cached) return cached;
+    // Always re-check the repository: a deleted cluster (or one moved to
+    // another tenant) must never be served from cache, and a rotated
+    // credential must invalidate the cached client rather than being
+    // silently ignored until process restart.
     const conn = await this.clusters.getConnection(clusterId, tenantId);
     if (!conn) {
+      this.cache.delete(key);
       throw new UnsupportedError(`cluster ${clusterId} has no live connection configured`);
     }
+    const fingerprint = fingerprintOf(conn);
+    const cached = this.cache.get(key);
+    if (cached && cached.fingerprint === fingerprint) {
+      // Move to the end so the LRU cap evicts the truly-least-recently-used entry.
+      this.cache.delete(key);
+      this.cache.set(key, cached);
+      return cached.clients;
+    }
     const clients = this.clientFactory(conn);
-    this.cache.set(key, clients);
+    this.cache.delete(key);
+    this.cache.set(key, { clients, fingerprint });
+    if (this.cache.size > MAX_CACHE_ENTRIES) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) this.cache.delete(oldest);
+    }
     return clients;
   }
 

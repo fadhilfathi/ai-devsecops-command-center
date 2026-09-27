@@ -16,10 +16,23 @@ const silentLogger = {
  * so they behave like multiple clients against the same server) plus
  * per-group cursors/pending sets.
  */
+interface PendingEntry {
+  fields: string[];
+  deliveryCount: number;
+  idleSince: number;
+}
+
+interface GroupState {
+  cursor: number;
+  pending: Map<string, PendingEntry>;
+}
+
 class FakeRedisServer {
   streams = new Map<string, Array<{ id: string; fields: string[] }>>();
-  groups = new Map<string, Map<string, { cursor: number; pending: Set<string> }>>();
+  groups = new Map<string, Map<string, GroupState>>();
   seq = 0;
+  failDlqWrites = false;
+  dlqXaddArgs: string[][] = [];
 
   nextId(): string {
     this.seq += 1;
@@ -31,10 +44,18 @@ class FakeRedis implements RedisLike {
   constructor(private readonly server: FakeRedisServer) {}
 
   async xadd(...args: unknown[]): Promise<unknown> {
-    const [key, , , , , field, value] = args as string[];
+    // key [MAXLEN ~ n] * field value [field value ...]
+    const strArgs = args as string[];
+    const key = strArgs[0]!;
+    if (key.startsWith('aicc:events:dlq:')) {
+      this.server.dlqXaddArgs.push(strArgs);
+      if (this.server.failDlqWrites) throw new Error('dlq write failed');
+    }
+    const starIdx = strArgs.indexOf('*');
+    const fields = strArgs.slice(starIdx + 1);
     const id = this.server.nextId();
     const list = this.server.streams.get(key) ?? [];
-    list.push({ id, fields: [field, value] });
+    list.push({ id, fields });
     this.server.streams.set(key, list);
     return id;
   }
@@ -51,7 +72,7 @@ class FakeRedis implements RedisLike {
     }
     groupMap.set(group, {
       cursor: (this.server.streams.get(key) ?? []).length,
-      pending: new Set(),
+      pending: new Map(),
     });
     return 'OK';
   }
@@ -80,7 +101,9 @@ class FakeRedis implements RedisLike {
       return null;
     }
     groupState.cursor += pending.length;
-    for (const m of pending) groupState.pending.add(m.id);
+    for (const m of pending) {
+      groupState.pending.set(m.id, { fields: m.fields, deliveryCount: 1, idleSince: Date.now() });
+    }
     return [[key, pending.map((m) => [m.id, m.fields])]];
   }
 
@@ -88,6 +111,54 @@ class FakeRedis implements RedisLike {
     const [key, group, id] = args as string[];
     this.server.groups.get(key)?.get(group)?.pending.delete(id);
     return 1;
+  }
+
+  async xautoclaim(...args: unknown[]): Promise<unknown> {
+    // key group consumer minIdleMs cursor COUNT count
+    const [key, group, , minIdleMs, , , count] = args as [
+      string,
+      string,
+      string,
+      number,
+      string,
+      string,
+      number,
+    ];
+    const groupState = this.server.groups.get(key)?.get(group);
+    if (!groupState) return ['0-0', []];
+    const now = Date.now();
+    const claimable = Array.from(groupState.pending.entries())
+      .filter(([, entry]) => now - entry.idleSince >= minIdleMs)
+      .slice(0, count ?? 10);
+    for (const [, entry] of claimable) {
+      entry.deliveryCount += 1;
+      entry.idleSince = now;
+    }
+    return ['0-0', claimable.map(([id, entry]) => [id, entry.fields])];
+  }
+
+  async xpending(...args: unknown[]): Promise<unknown> {
+    // key group IDLE minIdleMs start end count
+    const [key, group, , , start, end, count] = args as [
+      string,
+      string,
+      string,
+      number,
+      string,
+      string,
+      number,
+    ];
+    const groupState = this.server.groups.get(key)?.get(group);
+    if (!groupState) return [];
+    return Array.from(groupState.pending.entries())
+      .filter(([id]) => (start === '-' || id >= start) && (end === '+' || id <= end))
+      .slice(0, count)
+      .map(([id, entry]) => [
+        id,
+        'fake-consumer',
+        Date.now() - entry.idleSince,
+        entry.deliveryCount,
+      ]);
   }
 
   async ping(): Promise<unknown> {
@@ -103,7 +174,15 @@ class FakeRedis implements RedisLike {
   }
 }
 
-function makeBus(overrides: Partial<{ serviceName: string; blockMs: number }> = {}): {
+function makeBus(
+  overrides: Partial<{
+    serviceName: string;
+    blockMs: number;
+    reclaimIntervalMs: number;
+    minIdleMs: number;
+    maxDeliveries: number;
+  }> = {},
+): {
   bus: RedisStreamsEventBus;
   server: FakeRedisServer;
 } {
@@ -113,6 +192,9 @@ function makeBus(overrides: Partial<{ serviceName: string; blockMs: number }> = 
     serviceName: overrides.serviceName ?? 'test-service',
     logger: silentLogger,
     blockMs: overrides.blockMs ?? 20,
+    reclaimIntervalMs: overrides.reclaimIntervalMs,
+    minIdleMs: overrides.minIdleMs,
+    maxDeliveries: overrides.maxDeliveries,
     redisFactory: () => new FakeRedis(server),
   });
   return { bus, server };
@@ -241,6 +323,71 @@ test('same group (two consumers of the same service) only delivers once', async 
   await new Promise((r) => setTimeout(r, 60));
   expect(count).toBe(1);
 
+  await bus.close();
+});
+
+test('reclaim: a message re-delivered after failures is acked once the handler succeeds', async () => {
+  const { bus, server } = makeBus({ reclaimIntervalMs: 0, minIdleMs: 0, maxDeliveries: 5 });
+  let attempts = 0;
+  await bus.subscribe('test.event', () => {
+    attempts += 1;
+    if (attempts < 3) throw new Error('boom');
+  });
+  await bus.publish({ type: 'test.event', version: 1, source: 'test', tenantId: 't-1', data: {} });
+
+  await waitFor(() => expect(attempts).toBeGreaterThanOrEqual(3));
+  await waitFor(() => {
+    const groupState = server.groups.get('aicc:events:test.event')?.get('test-service');
+    expect(groupState?.pending.size).toBe(0);
+  });
+
+  await bus.close();
+});
+
+test('reclaim: a message that always fails is dead-lettered after maxDeliveries and acked', async () => {
+  const { bus, server } = makeBus({ reclaimIntervalMs: 0, minIdleMs: 0, maxDeliveries: 2 });
+  await bus.subscribe('test.event', () => {
+    throw new Error('boom');
+  });
+  await bus.publish({ type: 'test.event', version: 1, source: 'test', tenantId: 't-1', data: {} });
+
+  await waitFor(() => {
+    const dlq = server.streams.get('aicc:events:dlq:test.event');
+    expect(dlq?.length).toBe(1);
+  });
+  await waitFor(() => {
+    const groupState = server.groups.get('aicc:events:test.event')?.get('test-service');
+    expect(groupState?.pending.size).toBe(0);
+  });
+  const [dlqEntry] = server.streams.get('aicc:events:dlq:test.event')!;
+  const idx = dlqEntry.fields.indexOf('error');
+  expect(dlqEntry.fields[idx + 1]).toMatch(/exceeded maxDeliveries/);
+
+  await bus.close();
+});
+
+test('dead-letter stream is capped with MAXLEN', async () => {
+  const { bus, server } = makeBus({ reclaimIntervalMs: 0, minIdleMs: 0, maxDeliveries: 2 });
+  await bus.subscribe('test.event', () => {
+    throw new Error('boom');
+  });
+  await bus.publish({ type: 'test.event', version: 1, source: 'test', tenantId: 't-1', data: {} });
+  await waitFor(() => expect(server.dlqXaddArgs.length).toBeGreaterThan(0));
+  expect(server.dlqXaddArgs[0]).toContain('MAXLEN');
+  await bus.close();
+});
+
+test('a failed dead-letter write leaves the message pending instead of acking it', async () => {
+  const { bus, server } = makeBus({ reclaimIntervalMs: 0, minIdleMs: 0, maxDeliveries: 2 });
+  server.failDlqWrites = true;
+  await bus.subscribe('test.event', () => {
+    throw new Error('boom');
+  });
+  await bus.publish({ type: 'test.event', version: 1, source: 'test', tenantId: 't-1', data: {} });
+  await waitFor(() => expect(server.dlqXaddArgs.length).toBeGreaterThan(1));
+  const groupState = server.groups.get('aicc:events:test.event')?.get('test-service');
+  expect(groupState?.pending.size).toBe(1);
+  expect(server.streams.get('aicc:events:dlq:test.event') ?? []).toHaveLength(0);
   await bus.close();
 });
 

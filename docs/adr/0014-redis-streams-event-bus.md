@@ -31,10 +31,13 @@ actually publish or subscribe today) already `depends_on` it, unused.
   the group's cursor without double-processing.
 - **At-least-once, no ack on handler failure.** A handler that throws
   leaves its message pending (`XACK` skipped) rather than dropping it
-  or retrying inline. Deferred: no dead-letter queue and no
-  `XAUTOCLAIM`-based reclaim of a crashed consumer's pending entries —
-  today they sit pending until reclaimed by hand. Add
-  `XAUTOCLAIM` reclaim if this becomes an operational problem.
+  or retrying inline. Every read loop periodically (`reclaimIntervalMs`,
+  default 30s) runs `XAUTOCLAIM` for entries idle at least `minIdleMs`
+  (default 60s), re-running the handler through the same ack path. Once
+  an entry's delivery count (from `XPENDING`) exceeds `maxDeliveries`
+  (default 5) it is moved to a dead-letter stream
+  (`aicc:events:dlq:<type>`, envelope + error metadata) and the original
+  is acked — S10-4.
 - **Trimming can drop unacked entries.** `XADD ... MAXLEN ~ 10000`
   trims by length, not by pending state, so a stream that keeps
   growing while a consumer is down or failing will eventually evict
@@ -60,12 +63,12 @@ actually publish or subscribe today) already `depends_on` it, unused.
   with a plain `PING`. The six redis-wired services' `/readyz` probes
   it the same way `incident`/`kubernetes` already probe Postgres:
   probe fails → `503`.
-- **Deferred (not in this cut):** dead-letter queue, `XAUTOCLAIM` of
-  stale pending entries, trimming that respects pending entries, cross-stream ordering guarantees (Streams
-  only order within one key), and any schema registry for envelope
-  payloads. None of these block the S6-3 goal (a real, restart-durable
-  transport behind the existing `EventBus` interface); all are
-  additive later.
+- **Deferred (not in this cut):** trimming that respects pending
+  entries, cross-stream ordering guarantees (Streams only order within
+  one key), and any schema registry for envelope payloads. None of
+  these block the S6-3 goal (a real, restart-durable transport behind
+  the existing `EventBus` interface); all are additive later.
+  Dead-letter + `XAUTOCLAIM` reclaim are implemented (S10-4).
 
 ## Consequences
 
