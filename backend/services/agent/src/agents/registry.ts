@@ -9,10 +9,11 @@
  * agents run synchronously inside the same process; Sprint 2 will
  * dispatch them to isolated workers.
  */
-import type { EventBus, Logger, UUID } from '@aicc/shared';
+import type { EventBus, Logger } from '@aicc/shared';
 import { EventTypes } from '@aicc/shared';
 import type { TaskQueue, AgentTask } from '../services/task-queue.js';
 import { triage } from './triage.js';
+import { proposeRemediation, applyRemediation } from './remediation.js';
 
 export interface AgentContext {
   bus: EventBus;
@@ -31,16 +32,6 @@ export interface Agent {
 export interface AgentRegistry {
   agents(): Agent[];
   dispatch(task: AgentTask, ctx: AgentContext): Promise<AgentTask>;
-}
-
-function newId(): UUID {
-  return (
-    globalThis.crypto?.randomUUID?.() ??
-    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    })
-  );
 }
 
 class TriageAgent implements Agent {
@@ -68,14 +59,10 @@ class RemediationAgent implements Agent {
   }
   async run(task: AgentTask, ctx: AgentContext): Promise<Record<string, unknown>> {
     ctx.logger.info({ taskId: task.id, kind: task.kind }, 'remediation agent running');
-    return {
-      proposal: {
-        id: newId(),
-        summary: 'Bump vulnerable dependency',
-        patch: '// generated in Sprint 2',
-      },
-      proposedAt: new Date().toISOString(),
-    };
+    if (task.kind === 'remediation.apply') {
+      return { ...applyRemediation() };
+    }
+    return { ...proposeRemediation(task.input) };
   }
 }
 

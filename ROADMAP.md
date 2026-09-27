@@ -297,13 +297,12 @@ Status: **complete** (2026-09-27). See
 
 Status: in progress.
 
-- **S10-1**: `RemediationAgent` (`backend/services/agent/src/agents/registry.ts`)
-  is still the Sprint-1 placeholder — `run()` returns a hard-coded
-  `"Bump vulnerable dependency"` proposal with a `// generated in
-Sprint 2` comment for a patch, regardless of the task input. Give it
-  a real proposal derived from the actual finding (component, current
-  version, fixed version from `vuln-intel`/`dependency-intel` data) —
-  no PR-opening yet, just a correct, finding-specific proposal.
+- **S10-1** (done): `RemediationAgent` proposes a real, finding-specific
+  dependency bump per package (deterministic; semver/PEP440-ish version
+  comparison; `manual_review`/`unresolved` fallbacks) instead of the
+  Sprint-1 hard-coded placeholder. `remediation.apply` stays
+  not-implemented — proposals only, no PR-opening. See
+  `backend/services/agent/src/agents/remediation.ts`.
 - **S10-2**: security-service's SBOM analytics
   (`services/security-analytics.ts`) re-parse every SBOM document a
   tenant owns on every call to `/v1/sbom/components`,

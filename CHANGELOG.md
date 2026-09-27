@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **S10-1**: `agent-service`'s `RemediationAgent` now proposes real
+  dependency-bump fixes instead of the Sprint-1 hard-coded
+  `"Bump vulnerable dependency"` placeholder. Given findings grouped by
+  package, it picks the lowest fixed version that resolves every finding
+  for that package (semver for npm/cargo/go/maven/nuget, a small
+  PEP440-ish comparator for pypi), classifies the bump
+  (`patch`/`minor`/`major`) with a matching risk level, and returns a
+  suggested `manifestHint` command per ecosystem. Unparseable versions
+  fall back to a `manual_review` proposal; packages with no fixed
+  version go to `unresolved`. `remediation.apply` returns a
+  not-implemented result — the agent never opens PRs or touches a repo.
+  Deterministic and zero-cost, no LLM pass (see
+  `backend/services/agent/src/agents/remediation.ts`).
+
 ## [0.6.0] - 2026-09-27
 
 Sprint 9 — SBOM pipeline security, real exports, code splitting,

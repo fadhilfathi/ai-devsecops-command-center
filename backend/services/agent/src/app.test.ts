@@ -128,6 +128,77 @@ test('POST /v1/agents/tasks with a triage.findings task returns a heuristic tria
   }
 });
 
+test('POST /v1/agents/tasks with a remediation.propose task returns a bump proposal', async () => {
+  const prev = process.env.AUTH_DEV_BYPASS;
+  process.env.AUTH_DEV_BYPASS = 'true';
+  try {
+    const server = await buildServer();
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/agents/tasks',
+      headers: { 'x-tenant-id': 'tenant-a' },
+      payload: {
+        kind: 'remediation.propose',
+        payload: {
+          findings: [
+            {
+              cveId: 'CVE-2024-1234',
+              package: { name: 'leftpad', ecosystem: 'npm', version: '1.0.0' },
+              fixedVersions: ['1.0.1'],
+              severity: 'high',
+            },
+          ],
+        },
+      },
+    });
+    expect(res.statusCode).toBe(202);
+    const taskId = res.json().task.id as string;
+
+    let task = res.json().task;
+    for (let i = 0; i < 20 && task.status === 'pending'; i++) {
+      await new Promise((r) => setImmediate(r));
+      const poll = await server.inject({ method: 'GET', url: `/v1/agents/tasks/${taskId}` });
+      task = poll.json().task;
+    }
+    expect(task.status).toBe('completed');
+    expect(task.result.proposals[0]).toMatchObject({ to: '1.0.1', bump: 'patch' });
+    expect(task.result.engine).toBe('heuristic');
+    await server.close();
+  } finally {
+    if (prev === undefined) delete process.env.AUTH_DEV_BYPASS;
+    else process.env.AUTH_DEV_BYPASS = prev;
+  }
+});
+
+test('POST /v1/agents/tasks with a remediation.apply task reports not implemented', async () => {
+  const prev = process.env.AUTH_DEV_BYPASS;
+  process.env.AUTH_DEV_BYPASS = 'true';
+  try {
+    const server = await buildServer();
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/agents/tasks',
+      headers: { 'x-tenant-id': 'tenant-a' },
+      payload: { kind: 'remediation.apply', payload: {} },
+    });
+    const taskId = res.json().task.id as string;
+
+    let task = res.json().task;
+    for (let i = 0; i < 20 && task.status === 'pending'; i++) {
+      await new Promise((r) => setImmediate(r));
+      const poll = await server.inject({ method: 'GET', url: `/v1/agents/tasks/${taskId}` });
+      task = poll.json().task;
+    }
+    expect(task.status).toBe('completed');
+    expect(task.result.applied).toBe(false);
+    expect(task.result.message).toMatch(/not implemented/i);
+    await server.close();
+  } finally {
+    if (prev === undefined) delete process.env.AUTH_DEV_BYPASS;
+    else process.env.AUTH_DEV_BYPASS = prev;
+  }
+});
+
 test('security headers: no ACAO on a cross-origin request, strict CSP present', async () => {
   const server = await buildServer();
   const res = await server.inject({
