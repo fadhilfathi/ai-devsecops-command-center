@@ -7,7 +7,7 @@
  *   - Validate the request body with the S2.4 Zod schema
  *   - Apply RBAC: `platform_admin` or `security_engineer` only
  *   - Apply per-route rate limit: 10 req/s
- *   - Forward to dependency-intel-service (port 4009)
+ *   - Forward to dependency-intel-service (port 5003)
  *   - Publish `security.risk.calculated` for each risk weight in the
  *     returned graph
  */
@@ -52,7 +52,7 @@ export const buildRiskCalculateRoute: FastifyPluginAsync<Deps> = async (
         tags: ['security', 'risk'],
         summary: 'Compute the dependency risk graph and composite risk scores for an SBOM',
         description:
-          'Proxies to dependency-intel-service (port 4009). Emits `security.risk.calculated` per risk weight.',
+          'Proxies to dependency-intel-service (port 5003). Emits `security.risk.calculated` per risk weight.',
       },
     },
     async (req: FastifyRequest<{ Body: unknown }>, reply) => {

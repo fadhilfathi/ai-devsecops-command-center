@@ -12,7 +12,7 @@ generator service in production.
 | Base        | `python:3.11-slim`                                |
 | Syft binary | Anchore Syft, pinned via `SYFT_VERSION` build arg |
 | User        | `aionrs` (uid 1001)                               |
-| Port        | `4007`                                            |
+| Port        | `5001`                                            |
 | Healthcheck | `GET /healthz` every 30s                          |
 
 ## Resource requests / limits (recommended)

@@ -81,7 +81,7 @@ class Settings:
     bus_url: str = "nats://localhost:4222"
     bus_subject_prefix: str = "aionrs.security.sbom"
     host: str = "0.0.0.0"
-    port: int = 4007
+    port: int = 5001
     workspace_root: Path = field(
         default_factory=lambda: Path(
             os.environ.get("SBOM_WORKSPACE", "/var/lib/aionrs/sbom-workspace")
@@ -109,7 +109,7 @@ class Settings:
                 "BUS_SUBJECT_PREFIX", "aionrs.security.sbom"
             ),
             host=os.environ.get("HOST", "0.0.0.0"),
-            port=int(os.environ.get("PORT", "4007")),
+            port=int(os.environ.get("PORT", "5001")),
             workspace_root=Path(workspace) if workspace else cls.workspace_root,
             request_timeout_seconds=int(
                 os.environ.get("REQUEST_TIMEOUT_SECONDS", "600")

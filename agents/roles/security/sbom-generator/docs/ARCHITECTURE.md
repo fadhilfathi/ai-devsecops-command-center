@@ -137,7 +137,7 @@ to reason about for resource control.
 | S2.1.2  | Supports Docker / OCI / Git / filesystems / archives           | ✅     |
 | S2.1.3  | Outputs CycloneDX 1.5 JSON and XML                             | ✅     |
 | S2.1.4  | Outputs SPDX 2.3 JSON and tag-value                            | ✅     |
-| S2.1.5  | Service runs on port 4007                                      | ✅     |
+| S2.1.5  | Service runs on port 5001                                      | ✅     |
 | S2.1.6  | Bounded concurrency + per-request timeout                      | ✅     |
 | S2.1.7  | Health, readiness, metrics endpoints                           | ✅     |
 | S2.1.8  | Emits `sbom.generated` events on the bus                       | ✅     |

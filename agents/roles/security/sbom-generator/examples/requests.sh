@@ -1,7 +1,7 @@
 # Example requests
 
 ```bash
-ENDPOINT=http://127.0.0.1:4007
+ENDPOINT=http://127.0.0.1:5001
 
 # 1. Health check
 curl -fsS ${ENDPOINT}/healthz | jq .

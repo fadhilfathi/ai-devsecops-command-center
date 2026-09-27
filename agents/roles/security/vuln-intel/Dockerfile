@@ -2,7 +2,7 @@
 # vuln-intel — Vulnerability Intelligence Service
 # Sprint 2 deliverable S2.2 — Owner: VulnerabilityIntelligenceAgent
 #
-# Listens on port 4008. Ingest CVEs from NVD 2.0, GitHub Security Advisories
+# Listens on port 5002. Ingest CVEs from NVD 2.0, GitHub Security Advisories
 # (GHSA), and OSV.dev, normalize them to a unified schema, attach EPSS-based
 # exploit likelihood scores, and expose the data through a FastAPI surface
 # for the security-service API layer (S2.5) and the UI (S2.6).
@@ -50,11 +50,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Drop privileges
 USER app
 
-EXPOSE 4008 9098
+EXPOSE 5002
 
 # Healthcheck — uvicorn exposes /livez on the app port
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; \
-sys.exit(0 if urllib.request.urlopen('http://localhost:4008/livez',timeout=2).status==200 else 1)"
+sys.exit(0 if urllib.request.urlopen('http://localhost:5002/livez',timeout=2).status==200 else 1)"
 
 ENTRYPOINT ["python", "-m", "vuln_intel"]

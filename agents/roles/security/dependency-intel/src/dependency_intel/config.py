@@ -22,13 +22,13 @@ class Settings(BaseSettings):
     tenant_id: str = Field(default="default", min_length=1, max_length=64)
 
     host: str = Field(default="0.0.0.0")  # noqa: S104
-    port: int = Field(default=4009, ge=1, le=65535)
+    port: int = Field(default=5003, ge=1, le=65535)
 
     data_dir: Path = Field(default=Path("./data"))
     graph_filename: str = Field(default="graphs.jsonl")
 
     # Upstream service
-    vuln_intel_url: str = Field(default="http://localhost:4008")
+    vuln_intel_url: str = Field(default="http://localhost:5002")
     vuln_intel_timeout_s: float = Field(default=10.0, ge=1.0, le=60.0)
 
     # Algorithm knobs

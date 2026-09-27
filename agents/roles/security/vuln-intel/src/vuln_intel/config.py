@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     tenant_id: str = Field(default="default", min_length=1, max_length=64)
 
     host: str = Field(default="0.0.0.0")  # noqa: S104 — bind inside the cluster
-    port: int = Field(default=4008, ge=1, le=65535)
+    port: int = Field(default=5002, ge=1, le=65535)
 
     # ---------------------------------------------------------------- storage
     data_dir: Path = Field(default=Path("./data"))

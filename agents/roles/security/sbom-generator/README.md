@@ -2,7 +2,7 @@
 
 > **Sprint 2 / S2.1** — Syft-wrapped Python service that produces
 > software bills-of-materials (SBOMs) for any artifact the platform
-> encounters. Runs as a FastAPI HTTP service on **port 4007** and
+> encounters. Runs as a FastAPI HTTP service on **port 5001** and
 > participates in the AionRs event bus as a security domain agent.
 
 The service is a thin, opinionated wrapper around the
@@ -46,9 +46,9 @@ python3 -m pip install -e .[dev]
 In another terminal:
 
 ```bash
-curl -fsS http://127.0.0.1:4007/healthz | jq .
+curl -fsS http://127.0.0.1:5001/healthz | jq .
 
-curl -fsS -X POST http://127.0.0.1:4007/v1/sbom/quick \
+curl -fsS -X POST http://127.0.0.1:5001/v1/sbom/quick \
     -H 'Content-Type: application/json' \
     -d '{"source":"nginx:1.25","format":"cyclonedx-json"}' | jq .components_count
 ```
@@ -57,7 +57,7 @@ curl -fsS -X POST http://127.0.0.1:4007/v1/sbom/quick \
 
 ```bash
 ./scripts/build.sh                                # → aionrs/sbom-generator:dev
-docker run --rm -p 4007:4007 aionrs/sbom-generator:dev
+docker run --rm -p 5001:5001 aionrs/sbom-generator:dev
 ```
 
 The image ships with Syft `1.6.0` (override with `--build-arg
@@ -140,7 +140,7 @@ The bus implementation is pluggable — `NATSClient` (default) or
 
 | Env var                   | Default                          | Notes                                                           |
 | ------------------------- | -------------------------------- | --------------------------------------------------------------- |
-| `PORT`                    | `4007`                           |                                                                 |
+| `PORT`                    | `5001`                           |                                                                 |
 | `HOST`                    | `0.0.0.0`                        |                                                                 |
 | `SYFT_BINARY`             | `syft`                           | Absolute path or `$PATH` lookup                                 |
 | `BUS_URL`                 | `nats://localhost:4222`          | Use `memory://` to disable the bus                              |

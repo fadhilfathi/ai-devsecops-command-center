@@ -13,9 +13,9 @@ info:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
 servers:
-  - url: http://localhost:4007
+  - url: http://localhost:5001
     description: Local development
-  - url: http://sbom-generator.aionrs.svc.cluster.local:4007
+  - url: http://sbom-generator.aionrs.svc.cluster.local:5001
     description: Kubernetes service
 tags:
   - name: ops

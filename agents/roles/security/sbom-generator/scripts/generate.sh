@@ -3,7 +3,7 @@
 # generator. Demonstrates the most common request payloads.
 set -euo pipefail
 
-ENDPOINT="${ENDPOINT:-http://127.0.0.1:4007}"
+ENDPOINT="${ENDPOINT:-http://127.0.0.1:5001}"
 
 show() {
     echo

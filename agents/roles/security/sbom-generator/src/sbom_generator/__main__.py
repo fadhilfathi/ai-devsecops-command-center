@@ -23,7 +23,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.environ.get("PORT", "4007")),
+        default=int(os.environ.get("PORT", "5001")),
     )
     parser.add_argument(
         "--workers",

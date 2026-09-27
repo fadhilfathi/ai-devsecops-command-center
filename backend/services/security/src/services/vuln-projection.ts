@@ -35,7 +35,7 @@ import type { Logger } from '@aicc/shared';
  * @param vuln  Rich per-(CVE, package) vulnerability record
  * @param opts.inGraph     Whether the affected package is in the dependency graph
  *                         (Sprint 2: default `false`; Sprint 2.1: plumbed from
- *                         dependency-intel :4009 lookup)
+ *                         dependency-intel :5003 lookup)
  * @param opts.tenantId    Tenant id (stamped at emit; optional in the wire format)
  * @param opts.now         Override `detected_at` (defaults to `vuln.detectedAt ?? new Date()`)
  * @param opts.logger      Optional logger for the `autoActionable` decision

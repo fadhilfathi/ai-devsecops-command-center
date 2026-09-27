@@ -227,7 +227,14 @@ routes.
   Aggregation logic lives in `security-analytics.ts` (pure, unit-tested).
   `sbomExportUrl()` stays mock-only — it needs an async fetch-then-download
   flow the SBOM page doesn't have yet.
-- **S8-5**: port clash — security-service defaults `SBOM_PIPELINE_URL`,
-  `VULN_INTEL_URL` and `DEPENDENCY_INTEL_URL` to `localhost:4007-4009`,
-  which Sprint 4 assigned to k8s-health, runtime-security and inventory.
-  Give the Python agents their own ports and add them to compose.
+- **S8-5** (done): port clash — security-service defaulted
+  `SBOM_PIPELINE_URL`, `VULN_INTEL_URL` and `DEPENDENCY_INTEL_URL` to
+  `localhost:4007-4009`, which Sprint 4 assigned to k8s-health,
+  runtime-security and inventory, and none of the three ran in compose.
+  Moved the agents to 5001-5003 (config default + Dockerfile
+  EXPOSE/HEALTHCHECK/CMD + README in each), updated security-service's
+  defaults to match, added the three as internal-only compose services
+  (`depends_on: service_healthy`), and deleted the now-redundant
+  per-agent `sbom-generator/docker-compose.yml`. security-service's
+  `/readyz` now also checks the three agents' liveness endpoints, so
+  the e2e smoke's existing `security` readyz check covers them.

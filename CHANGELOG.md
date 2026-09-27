@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S8-5**: Python agents (sbom-generator, vuln-intel, dependency-intel)
+  moved off the Sprint-4 Node service ports (4007-4009) onto their own
+  range (5001-5003) and added to `docker-compose.yml` as internal-only
+  services; security-service's defaults and `/readyz` (now checks the
+  three agents' liveness) updated to match. Deleted the redundant
+  per-agent `sbom-generator/docker-compose.yml`.
 - **S8-4**: real backend routes for vulnerabilities, SBOM components,
   security score, timeline, heatmap, graph — security-service gains
   `GET /v1/vulnerabilities`, `/v1/sbom/components` (+

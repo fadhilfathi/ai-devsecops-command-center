@@ -89,8 +89,10 @@ RUN useradd --system --uid 10000 --create-home --shell /usr/sbin/nologin sbomgen
 USER sbomgen
 WORKDIR /workspace
 
+EXPOSE 5001
+
 # tini handles signal forwarding for graceful shutdown.
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["uvicorn", "sbom_generator.service:create_app", "--factory", \
-     "--host", "0.0.0.0", "--port", "4007", \
+     "--host", "0.0.0.0", "--port", "5001", \
      "--log-level", "info"]

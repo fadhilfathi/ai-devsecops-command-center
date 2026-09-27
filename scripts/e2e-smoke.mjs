@@ -57,6 +57,8 @@ export function mintAccessToken(claims, { secret, issuer, audience, ttlSeconds =
 const SERVICES = [
   { name: 'auth', port: 3001, route: '/v1/auth/me', ready: true },
   { name: 'agent', port: 3002, route: '/v1/agents', ready: true },
+  // security's /readyz also checks the three Python agents (sbom-generator,
+  // vuln-intel, dependency-intel — S8-5), so a 200 here proves they're up too.
   { name: 'security', port: 3003, route: '/v1/assets', ready: true },
   { name: 'incident', port: 3004, route: '/v1/incidents', ready: true },
   { name: 'compliance', port: 3005, route: '/v1/controls', ready: true },

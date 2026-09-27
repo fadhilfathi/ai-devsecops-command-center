@@ -23,10 +23,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 USER app
 
-EXPOSE 4009 9099
+EXPOSE 5003
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; \
-sys.exit(0 if urllib.request.urlopen('http://localhost:4009/livez',timeout=2).status==200 else 1)"
+sys.exit(0 if urllib.request.urlopen('http://localhost:5003/livez',timeout=2).status==200 else 1)"
 
 ENTRYPOINT ["python", "-m", "dependency_intel"]

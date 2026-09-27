@@ -173,7 +173,13 @@ No `PORT` env var needed — each service's built-in default (see
 matches what `vite`'s dev proxy (`frontend/proxy-table.mjs`) expects: auth
 3001, agent 3002, security 3003, incident 3004, compliance 3005,
 integration 3006, kubernetes 4006, k8s-health 4007, runtime-security 4008,
-inventory 4009, cost-intelligence 4010, topology 4011, reporting 4012. Set
+inventory 4009, cost-intelligence 4010, topology 4011, reporting 4012. The
+three Python agents security-service proxies to (sbom-generator, vuln-intel,
+dependency-intel) run on 5001-5003 and are only reachable from
+security-service, not from the browser or the vite dev proxy — start them
+separately (`cd agents/roles/security/<agent> && ...`) if you're running
+security-service outside docker-compose and need real (non-mocked)
+SBOM/vulnerability/risk data. Set
 `PORT` only to override one:
 
 ```bash

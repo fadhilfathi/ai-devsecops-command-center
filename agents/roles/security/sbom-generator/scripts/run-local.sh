@@ -24,10 +24,10 @@ PY="${PYTHON:-python3}"
 echo ">> installing in editable mode"
 "${PY}" -m pip install -e .[dev]
 
-echo ">> starting service on :4007"
+echo ">> starting service on :5001"
 exec "${PY}" -m sbom_generator \
     --host 127.0.0.1 \
-    --port "${PORT:-4007}" \
+    --port "${PORT:-5001}" \
     --log-level "${LOG_LEVEL:-INFO}" \
     --syft-binary "$(command -v syft)" \
     --bus-url "${BUS_URL:-memory://}"

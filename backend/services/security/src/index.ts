@@ -4,10 +4,10 @@
  * Sprint 2 responsibilities (extending Sprint 1):
  *   - Sprint 1 surface: /v1/assets, /v1/scans, /v1/findings, /v1/sboms
  *   - Sprint 2 surface (new):
- *       POST /sbom/generate              — proxy to sbom-pipeline-service (4007)
- *       POST /sbom/analyze               — proxy to sbom-pipeline-service (4007)
- *       POST /vulnerabilities/ingest     — proxy to vuln-intel-service (4008)
- *       POST /risk/calculate             — proxy to dependency-intel-service (4009)
+ *       POST /sbom/generate              — proxy to sbom-pipeline-service (5001)
+ *       POST /sbom/analyze               — proxy to sbom-pipeline-service (5001)
+ *       POST /vulnerabilities/ingest     — proxy to vuln-intel-service (5002)
+ *       POST /risk/calculate             — proxy to dependency-intel-service (5003)
  *       GET  /security/dashboard         — aggregate (local)
  *   - OpenAPI / Swagger at /docs
  *   - Per-route rate limit (10 req/s default)
@@ -162,7 +162,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
       info: {
         title: 'AICC Security Service API',
         description:
-          'S2.5 — security API layer. Proxies to sbom-pipeline-service (4007), vuln-intel-service (4008), dependency-intel-service (4009), and aggregates the security dashboard.',
+          'S2.5 — security API layer. Proxies to sbom-pipeline-service (5001), vuln-intel-service (5002), dependency-intel-service (5003), and aggregates the security dashboard.',
         version: SERVICE_VERSION,
       },
       servers: [{ url: `http://localhost:${env.PORT}`, description: 'Local' }],
@@ -202,7 +202,14 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   });
 
   // ---------- Routes ----------
-  await server.register(buildHealthRoutes, { logger, cfg, bus });
+  await server.register(buildHealthRoutes, {
+    logger,
+    cfg,
+    bus,
+    sbomPipelineUrl: env.SBOM_PIPELINE_URL,
+    vulnIntelUrl: env.VULN_INTEL_URL,
+    dependencyIntelUrl: env.DEPENDENCY_INTEL_URL,
+  });
 
   // Sprint 1 routes
   await server.register(buildAssetRoutes, { logger, assets });

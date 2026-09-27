@@ -2,7 +2,7 @@
 
 > Builds dependency graphs from SBOMs, propagates risk transitively, and
 > correlates vulnerabilities from vuln-intel (S2.2). FastAPI service,
-> port **4009**.
+> port **5003**.
 
 ## Responsibilities
 
@@ -60,9 +60,9 @@ The full Pydantic schema lives in
 
 | Var                         | Default                 | Notes                          |
 | --------------------------- | ----------------------- | ------------------------------ |
-| `DEP_INTEL_PORT`            | `4009`                  | API port                       |
+| `DEP_INTEL_PORT`            | `5003`                  | API port                       |
 | `DEP_INTEL_DATA_DIR`        | `./data`                | Where graphs are stored        |
-| `DEP_INTEL_VULN_INTEL_URL`  | `http://localhost:4008` | Upstream S2.2 service          |
+| `DEP_INTEL_VULN_INTEL_URL`  | `http://localhost:5002` | Upstream S2.2 service          |
 | `DEP_INTEL_RISK_ALPHA`      | `0.6`                   | Propagation weight in `[0,1]`  |
 | `DEP_INTEL_RISK_DAMPING`    | `0.85`                  | PageRank damping factor        |
 | `DEP_INTEL_MAX_GRAPH_NODES` | `50000`                 | Reject graphs larger than this |
@@ -73,7 +73,7 @@ The full Pydantic schema lives in
 ```bash
 cd agents/roles/security/dependency-intel
 pip install -e ".[dev]"
-DEP_INTEL_PORT=4009 python -m dependency_intel
+DEP_INTEL_PORT=5003 python -m dependency_intel
 ```
 
 ## Algorithms in brief

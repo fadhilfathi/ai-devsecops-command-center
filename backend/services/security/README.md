@@ -23,10 +23,10 @@ HTTP client
 ┌─────────────────────────┐
 │   security-service      │  (this service, port 4003)
 │   ┌──────────────────┐  │
-│   │ /sbom/generate   │──┼─HTTP──▶ sbom-pipeline-service   :4007  (Python)
-│   │ /sbom/analyze    │──┼─HTTP──▶ sbom-pipeline-service   :4007  (Python)
-│   │ /vulns/ingest    │──┼─HTTP──▶ vuln-intel-service      :4008  (Python)
-│   │ /risk/calculate  │──┼─HTTP──▶ dependency-intel-service:4009  (Python)
+│   │ /sbom/generate   │──┼─HTTP──▶ sbom-pipeline-service   :5001  (Python)
+│   │ /sbom/analyze    │──┼─HTTP──▶ sbom-pipeline-service   :5001  (Python)
+│   │ /vulns/ingest    │──┼─HTTP──▶ vuln-intel-service      :5002  (Python)
+│   │ /risk/calculate  │──┼─HTTP──▶ dependency-intel-service:5003  (Python)
 │   │ /security/dash   │  │  ──▶ local aggregate (in-memory)
 │   └──────────────────┘  │
 │   OpenAPI: /docs        │
@@ -125,7 +125,7 @@ Tenant scoping is enforced via JWT claim (`tenantId`) and the
 ### `POST /sbom/generate`
 
 Generate an SBOM from a container image, git repo, or filesystem path.
-Proxies to `sbom-pipeline-service` (port 4007).
+Proxies to `sbom-pipeline-service` (port 5001).
 
 **RBAC:** `platform_admin`, `security_engineer`
 **Rate limit:** 10 req/s
@@ -180,7 +180,7 @@ curl -sS -X POST http://localhost:4003/sbom/generate \
 ### `POST /sbom/analyze`
 
 Analyse an existing SBOM for license compatibility and outdated deps.
-Proxies to `sbom-pipeline-service` (port 4007).
+Proxies to `sbom-pipeline-service` (port 5001).
 
 **RBAC:** `platform_admin`, `security_engineer`
 **Rate limit:** 10 req/s
@@ -217,7 +217,7 @@ JSON
 ### `POST /vulnerabilities/ingest`
 
 Ingest vulnerabilities by id (CVE/GHSA/OSV) and normalise across sources.
-Proxies to `vuln-intel-service` (port 4008).
+Proxies to `vuln-intel-service` (port 5002).
 
 **RBAC:** `platform_admin`, `security_engineer`
 **Rate limit:** 10 req/s
@@ -289,7 +289,7 @@ curl -sS -X POST http://localhost:4003/vulnerabilities/ingest \
 ### `POST /risk/calculate`
 
 Compute the dependency risk graph + composite risk scores for an SBOM.
-Proxies to `dependency-intel-service` (port 4009).
+Proxies to `dependency-intel-service` (port 5003).
 
 **RBAC:** `platform_admin`, `security_engineer`
 **Rate limit:** 10 req/s
@@ -443,9 +443,9 @@ See `.env.example`. Critical vars for S2.5:
 | Variable                               | Default                 | Description                                                                  |
 | -------------------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
 | `PORT`                                 | `4003`                  | Service port                                                                 |
-| `SBOM_PIPELINE_URL`                    | `http://localhost:4007` | Downstream SBOM pipeline                                                     |
-| `VULN_INTEL_URL`                       | `http://localhost:4008` | Downstream vuln intel                                                        |
-| `DEPENDENCY_INTEL_URL`                 | `http://localhost:4009` | Downstream dep intel                                                         |
+| `SBOM_PIPELINE_URL`                    | `http://localhost:5001` | Downstream SBOM pipeline                                                     |
+| `VULN_INTEL_URL`                       | `http://localhost:5002` | Downstream vuln intel                                                        |
+| `DEPENDENCY_INTEL_URL`                 | `http://localhost:5003` | Downstream dep intel                                                         |
 | `SECURITY_INGEST_RATE_LIMIT_MAX`       | `10`                    | Per-route req/s cap (SBOM/vuln-ingest routes)                                |
 | `SECURITY_INGEST_RATE_LIMIT_WINDOW_MS` | `1000`                  | Per-route window                                                             |
 | `OTEL_SERVICE_NAME`                    | `security-service`      | Injected as the `service` label on every metric (per metrics-spec.md §5.1.1) |
@@ -528,7 +528,7 @@ A vulnerability record is flagged `auto_actionable: true` on the wire
 2. **`affected.fixedIn.length > 0`** — a fix version exists
 3. **`inGraph === true`** — the affected package is reachable in the
    tenant's resolved dependency graph (looked up from
-   `dependency-intel-service` `:4009` in Sprint 2.1; **currently a
+   `dependency-intel-service` `:5003` in Sprint 2.1; **currently a
    placeholder `false`** in the route handler)
 
 If any of the three is missing, `auto_actionable` is `false` and the

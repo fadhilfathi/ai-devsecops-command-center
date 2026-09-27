@@ -7,7 +7,7 @@
  *   - Validate the request body with the S2.4 Zod schema
  *   - Apply RBAC: `platform_admin` or `security_engineer` only
  *   - Apply per-route rate limit: 10 req/s
- *   - Forward to vuln-intel-service (port 4008)
+ *   - Forward to vuln-intel-service (port 5002)
  *   - Publish `security.vulnerability.detected` for each newly
  *     ingested vulnerability (severity → bus severity)
  */
@@ -55,7 +55,7 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
         tags: ['security', 'vulnerabilities'],
         summary: 'Ingest vulnerabilities by id (CVE/GHSA/OSV) and normalise across sources',
         description:
-          'Proxies to vuln-intel-service (port 4008). Emits `security.vulnerability.detected` for each ingested vulnerability.',
+          'Proxies to vuln-intel-service (port 5002). Emits `security.vulnerability.detected` for each ingested vulnerability.',
       },
     },
     async (req: FastifyRequest<{ Body: unknown }>, reply) => {
@@ -87,7 +87,7 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
         // to the GitOps wire format (`VulnerabilityGitOpsRecord`) and emit
         // one event per (CVE, affected package) pair. Sprint 2 default:
         // `inGraph: false` (Sprint 2.1 plumbs the actual dependency-graph
-        // lookup via dependency-intel :4009).
+        // lookup via dependency-intel :5003).
         for (const v of validated.data.ingested) {
           const event: SecurityVulnerabilityDetectedEvent = {
             vulnerabilityId: v.id,
@@ -126,7 +126,7 @@ export const buildVulnerabilityIngestRoute: FastifyPluginAsync<Deps> = async (
             // Reconstruct the per-(CVE, package) Vulnerability shape for the projection.
             const perPkgVuln = { ...v, affected: [affected] };
             const gitOpsRecord = toGitOpsRecord(perPkgVuln, {
-              inGraph: false, // Sprint 2.1: lookup from dependency-intel :4009
+              inGraph: false, // Sprint 2.1: lookup from dependency-intel :5003
               tenantId,
               now: new Date(),
               logger,

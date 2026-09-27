@@ -124,13 +124,13 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 4007
+              containerPort: 5001
               protocol: TCP
           env:
             - name: SYFT_BINARY
               value: /usr/local/bin/syft
             - name: PORT
-              value: '4007'
+              value: '5001'
             - name: HOST
               value: '0.0.0.0'
             - name: REQUEST_TIMEOUT_SECONDS
@@ -286,7 +286,7 @@ spec:
               app.kubernetes.io/name: api-gateway
       ports:
         - protocol: TCP
-          port: 4007
+          port: 5001
   # Egress: DNS (UDP+TCP 53 to kube-dns) + the egress proxy.
   egress:
     - to:

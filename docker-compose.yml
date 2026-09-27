@@ -126,6 +126,9 @@ services:
       EVENT_BUS_DRIVER: redis
       REDIS_URL: redis://redis:6379
       AICC_DEMO_SEED: 'true'
+      SBOM_PIPELINE_URL: http://sbom-generator:5001
+      VULN_INTEL_URL: http://vuln-intel:5002
+      DEPENDENCY_INTEL_URL: http://dependency-intel:5003
     ports:
       - '3003:3003'
     depends_on:
@@ -133,6 +136,71 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      sbom-generator:
+        condition: service_healthy
+      vuln-intel:
+        condition: service_healthy
+      dependency-intel:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Python security agents (S8-5) — internal only, not published to the host
+  # or proxied to the browser; security-service is their only caller.
+  # ---------------------------------------------------------------------------
+  sbom-generator:
+    restart: unless-stopped
+    networks:
+      - ccnet
+    build:
+      context: agents/roles/security/sbom-generator
+      dockerfile: Dockerfile
+    container_name: cc-sbom-generator
+    environment:
+      PORT: '5001'
+      HOST: '0.0.0.0'
+      BUS_URL: 'memory://'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5001/healthz', timeout=3).status == 200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  vuln-intel:
+    restart: unless-stopped
+    networks:
+      - ccnet
+    build:
+      context: agents/roles/security/vuln-intel
+      dockerfile: Dockerfile
+    container_name: cc-vuln-intel
+    environment:
+      VULN_INTEL_PORT: '5002'
+      VULN_INTEL_HOST: '0.0.0.0'
+    # Healthcheck comes from the image's own Dockerfile HEALTHCHECK.
+
+  dependency-intel:
+    restart: unless-stopped
+    networks:
+      - ccnet
+    build:
+      context: agents/roles/security/dependency-intel
+      dockerfile: Dockerfile
+    container_name: cc-dependency-intel
+    environment:
+      DEP_INTEL_PORT: '5003'
+      DEP_INTEL_HOST: '0.0.0.0'
+      DEP_INTEL_VULN_INTEL_URL: http://vuln-intel:5002
+    depends_on:
+      vuln-intel:
+        condition: service_healthy
+    # Healthcheck comes from the image's own Dockerfile HEALTHCHECK.
 
   incident-service:
     <<: *service-base

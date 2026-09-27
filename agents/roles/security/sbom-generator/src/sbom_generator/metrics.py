@@ -44,8 +44,8 @@ The component-count buckets are D7 LOCKED (Sprint 2.7 round 6 closure,
 2026-06-12). The scheme is the SAME across all metrics that carry the
 ``sbom_size_bucket`` label, in particular:
 
-* ``devsecops_sbom_components_total`` (this module, sbom-generator :4007)
-* ``devsecops_risk_calculation_duration_seconds`` (dependency-intel :4009,
+* ``devsecops_sbom_components_total`` (this module, sbom-generator :5001)
+* ``devsecops_risk_calculation_duration_seconds`` (dependency-intel :5003,
   consumed by ``infra/observability/prometheus/alert-rules.yml`` for the
   5 ``RiskCalcHighLatency*`` alerts + the per-bucket SLO targets in
   ``docs/observability/slos-security-stack.md`` §3)

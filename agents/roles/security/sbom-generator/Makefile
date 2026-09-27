@@ -6,7 +6,7 @@
         docker-build docker-run clean sbom-self
 
 PY ?= python3
-PORT ?= 4007
+PORT ?= 5001
 
 help:
 	@echo "Targets:"
@@ -17,7 +17,7 @@ help:
 	@echo "  lint         run ruff"
 	@echo "  format       run ruff format"
 	@echo "  typecheck    run mypy"
-	@echo "  run          start the service on :$${PORT:-4007}"
+	@echo "  run          start the service on :$${PORT:-5001}"
 	@echo "  docker-build build the container image"
 	@echo "  docker-run   run the container locally"
 	@echo "  sbom-self    generate a CycloneDX SBOM for the agent itself"
@@ -52,7 +52,7 @@ docker-build:
 	./scripts/build.sh
 
 docker-run:
-	docker run --rm -p $(PORT):4007 aionrs/sbom-generator:dev
+	docker run --rm -p $(PORT):5001 aionrs/sbom-generator:dev
 
 sbom-self:
 	@curl -fsS -X POST http://127.0.0.1:$(PORT)/v1/sbom/quick \

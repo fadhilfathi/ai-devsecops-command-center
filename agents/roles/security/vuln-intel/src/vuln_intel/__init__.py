@@ -9,7 +9,7 @@ Quickstart::
 
     python -m vuln_intel
 
-The service binds to ``0.0.0.0:${VULN_INTEL_PORT}`` (default 4008).
+The service binds to ``0.0.0.0:${VULN_INTEL_PORT}`` (default 5002).
 """
 from __future__ import annotations
 

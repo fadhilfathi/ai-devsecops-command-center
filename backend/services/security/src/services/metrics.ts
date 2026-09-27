@@ -11,13 +11,13 @@
  *
  * Ownership boundary (locked 2026-06-12):
  *   - security-service :4003 (this file): owns the 6 proxy-layer metrics below
- *   - sbom-pipeline :4007:   devsecops_sbom_generation_duration_seconds,
+ *   - sbom-pipeline :5001:   devsecops_sbom_generation_duration_seconds,
  *                            devsecops_active_scans{scanner_type="syft"},
  *                            devsecops_queue_depth{queue_name="sbom_jobs"}
- *   - vuln-intel :4008:      devsecops_vulnerability_ingestion_total,
+ *   - vuln-intel :5002:      devsecops_vulnerability_ingestion_total,
  *                            devsecops_queue_depth{queue_name="cve_processing"},
  *                            devsecops_vuln_feed_last_refresh_timestamp_seconds
- *   - dependency-intel :4009: devsecops_risk_calculation_duration_seconds
+ *   - dependency-intel :5003: devsecops_risk_calculation_duration_seconds
  *   - All 3 Python services: devsecops_eventbus_lag_seconds (PlatformArchitect platform SLI)
  *
  * Cardinality: with the `service` label auto-injected, all 6 metrics

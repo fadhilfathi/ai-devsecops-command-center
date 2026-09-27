@@ -29,7 +29,7 @@ docs/                      adr/, architecture/, compliance/, observability/, run
 scripts/                   smoke_*.py, verify_compile.py
 ```
 
-Ports: auth 3001, agent 3002, security 3003, incident 3004, compliance 3005, integration 3006, kubernetes 4006, k8s-health 4007, runtime-security 4008, inventory 4009, cost-intelligence 4010, topology 4011, reporting 4012.
+Ports: auth 3001, agent 3002, security 3003, incident 3004, compliance 3005, integration 3006, kubernetes 4006, k8s-health 4007, runtime-security 4008, inventory 4009, cost-intelligence 4010, topology 4011, reporting 4012. Python agents (internal only, called by security-service): sbom-generator 5001, vuln-intel 5002, dependency-intel 5003.
 
 ## Commands
 

@@ -11,10 +11,13 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4003),
   LOG_LEVEL: z.string().default('info'),
 
-  // Downstream Python service URLs (Sprint 2)
-  SBOM_PIPELINE_URL: z.string().url().default('http://localhost:4007'),
-  VULN_INTEL_URL: z.string().url().default('http://localhost:4008'),
-  DEPENDENCY_INTEL_URL: z.string().url().default('http://localhost:4009'),
+  // Downstream Python service URLs (Sprint 2). Ports 5001-5003 are the
+  // Python agents' own range — distinct from the Node services on
+  // 4006-4012 (S8-5; they used to collide with k8s-health/runtime-security/
+  // inventory).
+  SBOM_PIPELINE_URL: z.string().url().default('http://localhost:5001'),
+  VULN_INTEL_URL: z.string().url().default('http://localhost:5002'),
+  DEPENDENCY_INTEL_URL: z.string().url().default('http://localhost:5003'),
 
   // Auth: AUTH_JWT_SECRET/ISSUER/AUDIENCE/DEV_BYPASS are read directly from
   // process.env by `loadServiceConfig()` (@aicc/shared/http) — same

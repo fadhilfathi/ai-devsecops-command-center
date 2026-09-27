@@ -75,7 +75,7 @@ def client(fake_sbom, monkeypatch):
     settings = Settings(
         syft_binary="syft",
         bus_url="memory://",
-        port=4007,
+        port=5001,
         require_auth=False,
     )
     app = create_app(settings=settings)

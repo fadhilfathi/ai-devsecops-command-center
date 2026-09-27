@@ -1,7 +1,7 @@
 # vuln-intel — Vulnerability Intelligence Service (S2.2)
 
 > CVE ingestion, normalization, severity scoring, and EPSS-based exploit
-> likelihood. FastAPI service, port **4008**.
+> likelihood. FastAPI service, port **5002**.
 
 ## Responsibilities
 
@@ -63,7 +63,7 @@ consumers (compliance, risk layer) don't have to relearn the field names.
 
 | Var                           | Default                 | Notes                                       |
 | ----------------------------- | ----------------------- | ------------------------------------------- |
-| `VULN_INTEL_PORT`             | `4008`                  | API port                                    |
+| `VULN_INTEL_PORT`             | `5002`                  | API port                                    |
 | `VULN_INTEL_TENANT_ID`        | `default`               | Tenant ID for single-tenant mode            |
 | `VULN_INTEL_DATA_DIR`         | `./data`                | Where the JSONL store is kept               |
 | `NVD_API_KEY`                 | unset                   | 5 req/30s without key, 50 req/30s with key  |
@@ -80,7 +80,7 @@ consumers (compliance, risk layer) don't have to relearn the field names.
 ```bash
 cd agents/roles/security/vuln-intel
 pip install -e ".[dev]"
-VULN_INTEL_PORT=4008 python -m vuln_intel
+VULN_INTEL_PORT=5002 python -m vuln_intel
 ```
 
 ## Source provenance & licensing

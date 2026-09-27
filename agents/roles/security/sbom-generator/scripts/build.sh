@@ -18,4 +18,4 @@ docker build \
     "${ROOT}"
 
 echo ">> done. image: ${IMAGE_TAG}"
-echo "   run with:  docker run --rm -p 4007:4007 ${IMAGE_TAG}"
+echo "   run with:  docker run --rm -p 5001:5001 ${IMAGE_TAG}"
