@@ -12,6 +12,7 @@
 import type { EventBus, Logger, UUID } from '@aicc/shared';
 import { EventTypes } from '@aicc/shared';
 import type { TaskQueue, AgentTask } from '../services/task-queue.js';
+import { triage } from './triage.js';
 
 export interface AgentContext {
   bus: EventBus;
@@ -52,14 +53,8 @@ class TriageAgent implements Agent {
   }
   async run(task: AgentTask, ctx: AgentContext): Promise<Record<string, unknown>> {
     ctx.logger.info({ taskId: task.id, kind: task.kind }, 'triage agent running');
-    // Placeholder logic — Sprint 2 will plug the LLM.
-    const findings = (task.input?.findings as Array<{ severity: string; cveId?: string }>) ?? [];
-    const critical = findings.filter((f) => f.severity === 'critical').length;
-    return {
-      decision: critical > 0 ? 'open_incident' : 'log_only',
-      counts: { total: findings.length, critical },
-      triagedAt: new Date().toISOString(),
-    };
+    const result = await triage(task.input, ctx.logger);
+    return { ...result };
   }
 }
 

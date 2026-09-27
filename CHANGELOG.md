@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S9-4**: `agent-service`'s `TriageAgent` now runs a deterministic,
+  explainable heuristic (severity + KEV + EPSS + exposure + asset
+  criticality scoring, human-readable rationale per finding) instead of
+  the Sprint-1 severity-count placeholder, with an opt-in LLM refinement
+  pass (`AICC_AGENT_LLM_ENABLED`, OpenAI-compatible endpoint incl. a
+  local Ollama server) that can only nudge the heuristic's priority by
+  one level and falls back to the heuristic on any failure. See
+  `docs/adr/0020-triage-heuristic-and-optional-llm.md`.
 - **S9-1**: `ci.yml` gained a `test-python` job (matrix over sbom-generator,
   vuln-intel, dependency-intel) so the Python agents run in CI.
 - **S9-2**: SBOM export downloads the real document. `api.downloadSbom()`

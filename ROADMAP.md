@@ -270,14 +270,15 @@ Status: in progress.
   chunk dropped from ~242 KB gz to ~101 KB gz, with `recharts`
   (`CartesianChart`, ~87 KB gz) and `reactflow` (`Graph`, ~46 KB gz)
   now split into their own on-demand chunks.
-- **S9-4**: `agent-service`'s `TriageAgent` (`agents/registry.ts`) is
-  still the Sprint-1 placeholder — it only counts findings by
-  severity, with a code comment saying an LLM was coming "in Sprint
-  2". Give it a real triage decision with an opt-in LLM call
-  (`AICC_AGENT_LLM_ENABLED`, OpenAI-compatible client like
-  `vuln-intel`'s) and a heuristic fallback (the current
-  severity-count logic) when no key is configured — no paid API
-  required to run the platform.
+- **S9-4** (done): `agent-service`'s `TriageAgent` runs a deterministic
+  heuristic (severity + KEV + EPSS + exposure + asset criticality
+  scoring, explainable rationale) by default, with an opt-in LLM
+  refinement pass (`AICC_AGENT_LLM_ENABLED`, OpenAI-compatible client
+  like `vuln-intel`'s, clamp ±1 priority level, fails closed to the
+  heuristic) — no paid API required to run the platform. See
+  `docs/adr/0020-triage-heuristic-and-optional-llm.md`.
+  `RemediationAgent` (`agents/registry.ts`) is still the Sprint-1
+  placeholder — next up if a future sprint needs it.
 - **S9-5**: sbom-generator follow-ups from the S9-1 security review —
   the `registry` source type passes `registry:https://host/...` to
   syft (double scheme, so that source type likely never worked), and

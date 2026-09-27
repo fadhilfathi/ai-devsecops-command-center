@@ -95,6 +95,39 @@ test('a token for tenant A plus a forged x-tenant-id header still only sees tena
   }
 });
 
+test('POST /v1/agents/tasks with a triage.findings task returns a heuristic triage result', async () => {
+  const prev = process.env.AUTH_DEV_BYPASS;
+  process.env.AUTH_DEV_BYPASS = 'true';
+  try {
+    const server = await buildServer();
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/agents/tasks',
+      headers: { 'x-tenant-id': 'tenant-a' },
+      payload: { kind: 'triage.findings', payload: { findings: [{ severity: 'critical' }] } },
+    });
+    expect(res.statusCode).toBe(202);
+    const taskId = res.json().task.id as string;
+
+    // Dispatch runs via setImmediate; poll until it completes.
+    let task = res.json().task;
+    for (let i = 0; i < 20 && task.status === 'pending'; i++) {
+      await new Promise((r) => setImmediate(r));
+      const poll = await server.inject({ method: 'GET', url: `/v1/agents/tasks/${taskId}` });
+      task = poll.json().task;
+    }
+    expect(task.status).toBe('completed');
+    expect(task.result.decision).toBe('open_incident');
+    expect(task.result.priority).toBe('P1');
+    expect(task.result.engine).toBe('heuristic');
+    expect(Array.isArray(task.result.rationale)).toBe(true);
+    await server.close();
+  } finally {
+    if (prev === undefined) delete process.env.AUTH_DEV_BYPASS;
+    else process.env.AUTH_DEV_BYPASS = prev;
+  }
+});
+
 test('security headers: no ACAO on a cross-origin request, strict CSP present', async () => {
   const server = await buildServer();
   const res = await server.inject({

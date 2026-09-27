@@ -195,6 +195,29 @@ $env:PORT=3999; pnpm --filter @aicc/auth-service dev
 `pnpm --filter <svc> dev` accepts `x-tenant-id`/`x-user-id` headers with no
 token — useful for `curl`, not wired into the frontend's dev-login flow.
 
+## Optional: LLM-assisted triage (bring your own endpoint, e.g. local Ollama)
+
+`agent-service`'s triage agent (`backend/services/agent/src/agents/triage.ts`)
+runs a deterministic, zero-cost heuristic by default — no key, no network
+call. You can opt into an LLM refinement pass that can only nudge the
+heuristic's priority by one level; any failure (disabled, no key, timeout,
+bad response) silently falls back to the heuristic. Set in
+`backend/services/agent/.env`:
+
+```bash
+AICC_AGENT_LLM_ENABLED=true
+AICC_AGENT_LLM_API_KEY=sk-...
+AICC_AGENT_LLM_BASE_URL=https://api.openai.com/v1
+AICC_AGENT_LLM_MODEL=gpt-4o-mini
+AICC_AGENT_LLM_TIMEOUT_MS=10000
+```
+
+Zero-cost option: point `AICC_AGENT_LLM_BASE_URL` at a local
+[Ollama](https://ollama.com) or llama.cpp server exposing an
+OpenAI-compatible `/chat/completions` endpoint (e.g.
+`http://localhost:11434/v1`) — `AICC_AGENT_LLM_API_KEY` can be any
+non-empty placeholder value in that case.
+
 ## Troubleshooting
 
 - **Port already in use** (`3001`, `5173`, `5432`, `6379`, ...): something
