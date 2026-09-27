@@ -53,7 +53,9 @@ def test_syft_target_archive():
 
 
 def test_syft_target_registry():
-    assert _syft_target(SourceRef(type=SourceType.REGISTRY, value="r.example.com")) == "registry:r.example.com"
+    assert _syft_target(
+        SourceRef(type=SourceType.REGISTRY, value="https://ghcr.io/org/app:1.0")
+    ) == "registry:ghcr.io/org/app:1.0"
 
 
 def test_syft_target_docker_appends_latest():

@@ -34,6 +34,7 @@ from sbom_generator.errors import (
 from sbom_generator.metrics import Ecosystem
 from sbom_generator.models.request import GenerateRequest, SourceRef, SourceType
 from sbom_generator.models.sbom import SBOM, SBOMFormat, normalize_syft_output
+from sbom_generator.security.ssrf import registry_url_to_image_ref
 
 logger = logging.getLogger("sbom_generator.syft")
 
@@ -128,8 +129,13 @@ def _syft_target(source: SourceRef) -> str:
     if kind == SourceType.ARCHIVE:
         return f"archive:{value}"
     if kind == SourceType.REGISTRY:
-        # ``registry:hostname`` causes Syft to enumerate the catalog.
-        return f"registry:{value}"
+        # ``request.validate_source()`` (the one caller of this function)
+        # already validated ``value`` via the same converter; re-run it
+        # here to get the plain ``host[:port]/path[:tag|@digest]`` ref
+        # with no ``http(s)://`` scheme — passing the raw URL through
+        # would make syft treat it as an image literally named "https".
+        ref, _host = registry_url_to_image_ref(value)
+        return f"registry:{ref}"
     raise ValidationError(
         f"unsupported source.type={kind!r}",
         details={"valid": [

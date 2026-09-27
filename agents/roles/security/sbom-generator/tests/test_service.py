@@ -299,6 +299,46 @@ def test_generate_allows_allowlisted_registry(client, monkeypatch):
     assert runner.calls
 
 
+def test_generate_rejects_registry_source_not_on_allowlist(client):
+    """S9-5: a ``registry`` source pointing at a non-allowlisted, public
+    host is rejected by the async allow-list check — the grammar/blocklist
+    checks alone don't catch it (the host isn't private/reserved)."""
+    c, runner = client
+    r = c.post(
+        "/v1/sbom/generate",
+        json={
+            "source": {
+                "type": "registry",
+                "value": "http://evil.example.com/x",
+            }
+        },
+    )
+    assert 400 <= r.status_code < 500
+    assert not runner.calls
+
+
+def test_generate_allows_allowlisted_registry_source(client, monkeypatch):
+    import asyncio
+    import socket
+    from unittest.mock import AsyncMock
+
+    async def _fake_getaddrinfo(host, port, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("140.82.114.3", 0))]
+
+    monkeypatch.setattr(
+        "asyncio.base_events.BaseEventLoop.getaddrinfo",
+        AsyncMock(side_effect=_fake_getaddrinfo),
+    )
+
+    c, runner = client
+    r = c.post(
+        "/v1/sbom/generate",
+        json={"source": {"type": "registry", "value": "https://ghcr.io/org/app:1.0"}},
+    )
+    assert r.status_code == 200
+    assert runner.calls
+
+
 def test_generated_spdx_is_valid_json(client):
     c, _ = client
     r = c.post(

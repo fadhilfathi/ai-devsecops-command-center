@@ -102,15 +102,15 @@ The quick endpoint infers `source.type` from the value (image → `docker-image`
 
 ## Source kinds
 
-| `type`           | Description                   | Example                                |
-| ---------------- | ----------------------------- | -------------------------------------- |
-| `directory`      | Local filesystem directory    | `/var/lib/myapp`                       |
-| `file`           | Single file                   | `/var/lib/myapp/Pipfile`               |
-| `docker-image`   | Container image reference     | `nginx:1.25`                           |
-| `oci-image`      | OCI image fetched by digest   | `ghcr.io/aionrs/api:v1.0.0`            |
-| `git-repository` | Git repo (https/git/ssh/file) | `https://github.com/aionrs/aionrs.git` |
-| `archive`        | Tarball / zip                 | `https://example.com/release.tar.gz`   |
-| `registry`       | Enumerate a registry catalog  | `https://registry.example.com`         |
+| `type`           | Description                                                                                                          | Example                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `directory`      | Local filesystem directory                                                                                           | `/var/lib/myapp`                       |
+| `file`           | Single file                                                                                                          | `/var/lib/myapp/Pipfile`               |
+| `docker-image`   | Container image reference                                                                                            | `nginx:1.25`                           |
+| `oci-image`      | OCI image fetched by digest                                                                                          | `ghcr.io/aionrs/api:v1.0.0`            |
+| `git-repository` | Git repo (https/git/ssh/file)                                                                                        | `https://github.com/aionrs/aionrs.git` |
+| `archive`        | Tarball / zip                                                                                                        | `https://example.com/release.tar.gz`   |
+| `registry`       | Registry host + repository (+ tag/digest), as an `http(s)://host[:port]/repo[:tag]` URL — no userinfo/query/fragment | `https://ghcr.io/org/app:1.0`          |
 
 ## Output formats
 

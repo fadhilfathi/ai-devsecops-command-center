@@ -27,6 +27,7 @@ from sbom_generator.security.ssrf import (
     classify_hostname,
     extract_host,
     parse_image_reference,
+    registry_url_to_image_ref,
 )
 
 
@@ -197,32 +198,34 @@ class GenerateRequest(BaseModel):
                     "or scp-style [user@]host:path form",
                     details={"value": target, "scheme": parsed.scheme or None},
                 )
-            # SSRF: classify the host portion against the blocklist.
-            git_host = self._extract_git_host(target)
-            if git_host is not None:
-                self._assert_host_ssrf_safe(git_host, target)
-        elif kind == SourceType.REGISTRY:
-            parsed = urlparse(target)
-            if parsed.scheme not in {"https", "http"}:
+            # A password embedded in the URL is a secret that would end up
+            # in request payloads and logs; reject it outright. A bare
+            # username (``git@host`` — the standard SSH service account)
+            # is fine and is not a credential.
+            if parsed.password:
                 raise ValidationError(
-                    "registry source requires http(s) URL",
+                    "git-repository URL must not contain credentials",
                     details={"value": target},
                 )
-            # SSRF: classify the URL host against the blocklist.
-            if parsed.hostname:
-                self._assert_host_ssrf_safe(parsed.hostname, target)
-
-    @staticmethod
-    def _extract_git_host(target: str) -> Optional[str]:
-        """Extract the host portion of a git URL or scp-style form."""
-        parsed = urlparse(target)
-        if parsed.hostname:
-            return parsed.hostname
-        # scp-style: ``user@host:path``
-        m = re.match(r"^[\w-]+@([\w.\-]+):", target)
-        if m:
-            return m.group(1)
-        return None
+            # SSRF: classify the host portion against the blocklist. Uses
+            # the same hardened parser as docker/oci/registry so there is
+            # one host-extraction path for every source kind.
+            git_host = extract_host(target)
+            if git_host:
+                self._assert_host_ssrf_safe(git_host, target)
+        elif kind == SourceType.REGISTRY:
+            # A registry source is a registry host + repository (+
+            # tag/digest), not an arbitrary URL. Convert it to the same
+            # plain OCI image-reference grammar the docker/oci sources
+            # use, and run it through the same allow-list/blocklist path.
+            try:
+                _ref, registry_host = registry_url_to_image_ref(target)
+            except ValueError as exc:
+                raise ValidationError(
+                    "Invalid registry reference",
+                    details={"value": target, "reason": str(exc)},
+                ) from exc
+            self._assert_host_ssrf_safe(registry_host, target)
 
     @staticmethod
     def _assert_host_ssrf_safe(host: str, target: str) -> None:

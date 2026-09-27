@@ -279,8 +279,15 @@ Status: in progress.
   `docs/adr/0020-triage-heuristic-and-optional-llm.md`.
   `RemediationAgent` (`agents/registry.ts`) is still the Sprint-1
   placeholder — next up if a future sprint needs it.
-- **S9-5**: sbom-generator follow-ups from the S9-1 security review —
-  the `registry` source type passes `registry:https://host/...` to
-  syft (double scheme, so that source type likely never worked), and
-  `models/request.py` still parses git hosts with its own regex
-  instead of the hardened `security.ssrf.extract_host`.
+- **S9-5** (done): sbom-generator follow-ups from the S9-1 security
+  review. The `registry` source type passed `registry:https://host/...`
+  to syft (double scheme — never worked); it now converts the
+  validated `http(s)://host[:port]/repo[:tag]` URL into a plain OCI
+  image ref and runs it through the same `parse_image_reference`
+  grammar + allow-list/blocklist/DNS-rebind check as docker/oci, so all
+  three image-ish source types share one path. Rejects userinfo, query
+  strings, and fragments in the registry URL.
+  `models/request.py` now uses the hardened `security.ssrf.extract_host`
+  for git-repository hosts instead of its own regex, and rejects a
+  password embedded in a git URL (`https://user:pass@host/...`) as a
+  credential leak — a bare `git@host` SSH username is still allowed.

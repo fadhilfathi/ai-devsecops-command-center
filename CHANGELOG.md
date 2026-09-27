@@ -12,9 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **S9-5**: sbom-generator's `registry` source type was passing
+  `registry:https://host/...` to syft — a double scheme that syft
+  would parse as an image literally named `https`, so the source type
+  never actually worked.
+
 ### Security
 
 - **S9-1**: sbom-generator: block syft scheme injection (local file read / SSRF) and enforce a registry allow-list.
+- **S9-5**: sbom-generator: `registry` sources are now converted to a
+  plain OCI image reference and validated through the same
+  `security/ssrf.py::parse_image_reference` grammar and
+  allow-list/blocklist/DNS-rebind check as `docker-image`/`oci-image`
+  sources (one shared path for all three), rejecting userinfo, query
+  strings, and fragments in the URL. `git-repository` host extraction
+  now goes through the hardened `security/ssrf.py::extract_host`
+  parser instead of a bespoke regex, and a password embedded in a git
+  URL (`https://user:pass@host/...`) is rejected as a credential leak.
 
 ### Added
 

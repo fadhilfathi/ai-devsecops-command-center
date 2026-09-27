@@ -33,7 +33,11 @@ from sbom_generator.metrics import SourceType as MetricsSourceType
 from sbom_generator.config import Settings
 from sbom_generator.models.request import GenerateRequest, SourceType
 from sbom_generator.models.response import GenerateResponse
-from sbom_generator.security.ssrf import assert_safe_target, parse_image_reference
+from sbom_generator.security.ssrf import (
+    assert_safe_target,
+    parse_image_reference,
+    registry_url_to_image_ref,
+)
 from sbom_generator.syft import SyftRunner, SyftResult
 
 logger = logging.getLogger("sbom_generator.agent")
@@ -417,13 +421,19 @@ class SBOMGeneratorAgent:
         target = request.source.value
 
         if kind == SourceType.REGISTRY:
-            # The model layer already required an http(s) URL for
-            # registry sources; extract the host the same way it does.
-            from urllib.parse import urlparse
+            # Same conversion + grammar the model layer already ran in
+            # ``request.validate_source()``; re-derive the host here so
+            # docker-image/oci-image/registry all share one allow-list
+            # check below.
+            try:
+                _ref, host = registry_url_to_image_ref(target)
+            except ValueError as exc:
+                from sbom_generator.errors import SsrfBlockedError
 
-            host = urlparse(target).hostname
-            if host is None:
-                return
+                raise SsrfBlockedError(
+                    f"SSRF defense: invalid registry reference ({exc})",
+                    details={"value": target},
+                ) from exc
             target = host
             allowlist = ssrf.registry_host_allowlist
         elif kind != SourceType.GIT_REPOSITORY:

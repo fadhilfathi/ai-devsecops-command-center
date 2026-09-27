@@ -92,6 +92,82 @@ def test_registry_requires_http():
         req.validate_source()
 
 
+def test_registry_accepts_host_and_repository():
+    """S9-5: a registry URL is converted to a plain image ref and shares
+    the docker/oci grammar + allow/blocklist path."""
+    req = GenerateRequest(
+        source=SourceRef(type="registry", value="https://ghcr.io/org/app:1.0")
+    )
+    req.validate_source()  # no raise
+
+
+def test_registry_rejects_private_host():
+    req = GenerateRequest(
+        source=SourceRef(type="registry", value="https://10.0.0.1:5000/x")
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_registry_rejects_userinfo():
+    req = GenerateRequest(
+        source=SourceRef(type="registry", value="https://u:p@ghcr.io/x")
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_registry_rejects_query_string():
+    req = GenerateRequest(
+        source=SourceRef(type="registry", value="https://ghcr.io/x?y=1")
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_git_scp_style_private_ip_rejected():
+    """S9-5: scp-style git host extraction now goes through the shared
+    ``extract_host`` parser."""
+    req = GenerateRequest(
+        source=SourceRef(type="git-repository", value="git@10.0.0.1:o/r.git")
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_git_ssh_ipv6_loopback_rejected():
+    req = GenerateRequest(
+        source=SourceRef(
+            type="git-repository", value="ssh://git@[::1]:22/o/r"
+        )
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_git_https_credentials_rejected():
+    """S9-5: a password embedded in a git HTTPS URL is a secret that
+    would end up in request payloads/logs — reject it outright."""
+    req = GenerateRequest(
+        source=SourceRef(
+            type="git-repository", value="https://user:pass@github.com/o/r"
+        )
+    )
+    with pytest.raises(ValidationError):
+        req.validate_source()
+
+
+def test_git_ssh_bare_username_still_allowed():
+    """A bare ``git@host`` username (no password) is the standard SSH
+    service account, not a credential — must not be rejected."""
+    req = GenerateRequest(
+        source=SourceRef(
+            type="git-repository", value="ssh://git@github.com/o/r"
+        )
+    )
+    req.validate_source()  # no raise
+
+
 def test_oci_image_accepted():
     req = GenerateRequest(
         source=SourceRef(type="oci-image", value="ghcr.io/aionrs/api:v1.0.0")

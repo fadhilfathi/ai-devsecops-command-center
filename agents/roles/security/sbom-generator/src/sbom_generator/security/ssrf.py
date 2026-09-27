@@ -322,6 +322,45 @@ def parse_image_reference(value: str) -> Tuple[Optional[str], str]:
     return host, remainder
 
 
+def registry_url_to_image_ref(url: str) -> Tuple[str, str]:
+    """Convert a ``registry`` source's ``http(s)://host/repo`` URL into a
+    plain OCI image reference and return ``(ref, host)``.
+
+    A ``registry`` source is a registry host + repository (+ tag/digest),
+    not an arbitrary URL — so this rejects userinfo (credentials),
+    IPv6-literal hosts (deliberately unsupported; fails closed),
+    query strings, and fragments, then feeds the remaining
+    ``host[:port]/path[:tag|@digest]`` through :func:`parse_image_reference`,
+    the SAME grammar the docker/oci sources use. This is what lets the
+    docker-image, oci-image, and registry source types share one
+    allow-list/blocklist/DNS-rebind check (previously ``registry:<URL>``
+    was passed straight to Syft, which parsed it as an image literally
+    named ``https`` — a broken double-scheme).
+    """
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("registry source requires an http(s) URL")
+    if parsed.username or parsed.password:
+        raise ValueError("registry URL must not contain credentials (userinfo)")
+    if parsed.query:
+        raise ValueError("registry URL must not contain a query string")
+    if parsed.fragment:
+        raise ValueError("registry URL must not contain a fragment")
+    if not parsed.hostname:
+        raise ValueError("registry URL is missing a host")
+    host_port = parsed.hostname
+    if parsed.port is not None:
+        host_port = f"{host_port}:{parsed.port}"
+    path = parsed.path.strip("/")
+    if not path:
+        raise ValueError("registry URL must include a repository path")
+    ref = f"{host_port}/{path}"
+    host, _remainder = parse_image_reference(ref)
+    if host is None:
+        raise ValueError(f"invalid registry reference: {ref!r}")
+    return ref, host
+
+
 # ---------------------------------------------------------------------------
 # Allowlist helpers
 # ---------------------------------------------------------------------------
@@ -498,5 +537,6 @@ __all__ = [
     "host_matches_allowlist",
     "is_private_ip",
     "parse_image_reference",
+    "registry_url_to_image_ref",
     "resolve_and_check",
 ]
