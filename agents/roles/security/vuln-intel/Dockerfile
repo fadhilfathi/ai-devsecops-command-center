@@ -47,6 +47,12 @@ COPY src ./src
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
+# The service writes its CVE store + audit log under VULN_INTEL_DATA_DIR
+# (default ./data, resolved against WORKDIR /app — owned by root). Give the
+# non-root runtime user its own writable data dir instead of loosening /app.
+RUN mkdir -p /var/lib/vuln-intel && chown -R app:app /var/lib/vuln-intel
+ENV VULN_INTEL_DATA_DIR=/var/lib/vuln-intel
+
 # Drop privileges
 USER app
 

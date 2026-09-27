@@ -101,7 +101,6 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         """Build a Settings instance from environment variables."""
-        workspace = os.environ.get("SBOM_WORKSPACE")
         return cls(
             syft_binary=os.environ.get("SYFT_BINARY", "syft"),
             bus_url=os.environ.get("BUS_URL", "nats://localhost:4222"),
@@ -110,7 +109,9 @@ class Settings:
             ),
             host=os.environ.get("HOST", "0.0.0.0"),
             port=int(os.environ.get("PORT", "5001")),
-            workspace_root=Path(workspace) if workspace else cls.workspace_root,
+            workspace_root=Path(
+                os.environ.get("SBOM_WORKSPACE", "/var/lib/aionrs/sbom-workspace")
+            ),
             request_timeout_seconds=int(
                 os.environ.get("REQUEST_TIMEOUT_SECONDS", "600")
             ),

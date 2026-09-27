@@ -21,6 +21,12 @@ COPY src ./src
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
+# The service writes its graph store under DEP_INTEL_DATA_DIR (default
+# ./data, resolved against WORKDIR /app — owned by root). Give the non-root
+# runtime user its own writable data dir instead of loosening /app.
+RUN mkdir -p /var/lib/dependency-intel && chown -R app:app /var/lib/dependency-intel
+ENV DEP_INTEL_DATA_DIR=/var/lib/dependency-intel
+
 USER app
 
 EXPOSE 5003

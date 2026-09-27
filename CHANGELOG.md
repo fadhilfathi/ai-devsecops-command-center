@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **S8-5**: Python agent images boot as non-root (writable data dirs,
+  sbom-generator settings reference).
 - **S8-3**: registered the sidebar's Infrastructure routes
   (`/infrastructure/*`) in `frontend/src/App.tsx` — they previously fell
   through to the 404 catch-all despite the page components and backend

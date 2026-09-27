@@ -109,3 +109,31 @@ async def test_stats_endpoint(app_client: AsyncClient) -> None:
     assert "total_records" in body
     assert "by_source" in body
     assert "severity_distribution" in body
+
+
+def test_create_app_writes_only_under_configured_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression for PermissionError: [Errno 13] 'data' at boot.
+
+    ``Service.__init__`` eagerly constructs ``FeedAuditLog``, which
+    ``mkdir``s its parent directory synchronously — this happens
+    inside ``create_app()``, before any lifespan/startup hook runs. If
+    ``data_dir`` is misconfigured (or resolves against an unwritable
+    WORKDIR) this raises ``PermissionError`` at app-construction time,
+    i.e. at import in a container running as non-root. Pointing the
+    audit/data dir at a tmp dir must succeed and must not create
+    anything outside it.
+    """
+    monkeypatch.setenv("VULN_INTEL_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("VULN_INTEL_AUTH_REQUIRED", "false")
+    from vuln_intel.config import reset_settings_cache
+
+    reset_settings_cache()
+    try:
+        app = create_app(Settings(data_dir=tmp_path))
+    finally:
+        reset_settings_cache()
+
+    assert app.state  # constructed without raising
+    written = list(tmp_path.rglob("*"))
+    for path in written:
+        assert str(path).startswith(str(tmp_path))

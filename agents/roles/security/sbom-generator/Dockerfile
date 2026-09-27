@@ -85,6 +85,10 @@ RUN useradd --system --uid 10000 --create-home --shell /usr/sbin/nologin sbomgen
     && mkdir -p /workspace /var/lib/syft /work /tmp \
     && chown -R sbomgen:sbomgen /workspace /var/lib/syft /work /tmp
 
+# SBOM_WORKSPACE defaults to /var/lib/aionrs/sbom-workspace (config.py), which
+# isn't created here — point it at the already-writable /workspace instead.
+ENV SBOM_WORKSPACE=/workspace
+
 USER sbomgen
 WORKDIR /workspace
 

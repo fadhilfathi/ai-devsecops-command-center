@@ -91,6 +91,24 @@ def client(fake_sbom, monkeypatch):
     return TestClient(app), fake_runner
 
 
+def test_create_app_default_settings_boots(monkeypatch):
+    """Regression: ``Settings.from_env()`` used to raise ``AttributeError:
+    type object 'Settings' has no attribute 'workspace_root'`` because
+    ``workspace_root`` is a ``default_factory`` field — accessing it on
+    the class (``cls.workspace_root``) rather than an instance fails.
+    ``create_app()`` with no explicit settings (the real uvicorn factory
+    entrypoint) must build and start the app without that env var set.
+    """
+    monkeypatch.delenv("SBOM_WORKSPACE", raising=False)
+    # Avoid a real NATS dial — Settings.from_env() defaults BUS_URL to
+    # nats://localhost:4222, which isn't running in the test env.
+    monkeypatch.setenv("BUS_URL", "memory://")
+    app = service_module.create_app()
+    with TestClient(app) as c:
+        r = c.get("/healthz")
+        assert r.status_code == 200
+
+
 def test_healthz_returns_ok(client):
     c, _ = client
     r = c.get("/healthz")
