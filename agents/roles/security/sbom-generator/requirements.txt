@@ -2,7 +2,7 @@
 # Kept in sync with pyproject.toml — pip will use the constraints file
 # in production, this is for Docker and direct installs.
 fastapi>=0.141.1
-uvicorn[standard]>=0.53.0
+uvicorn[standard]>=0.54.0
 pydantic>=2.13.5
 pydantic-settings>=2.15.0
 httpx>=0.28.1
