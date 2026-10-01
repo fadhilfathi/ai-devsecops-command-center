@@ -56,6 +56,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Stored integration credentials are no longer readable through the API.
+  `GET /v1/integrations`, `GET /v1/integrations/:id`, and the create and
+  enable responses returned each integration's `config` verbatim, so a
+  GitHub personal access token was handed to any authenticated user in
+  the tenant — which defeated the at-rest credential encryption for
+  anyone who could read it. Those responses now redact credential-shaped
+  keys (`token`, `pat`, `apiKey`, `password`, …) and leave non-secret
+  settings such as `owner` and `repo` intact.
+- Opening a remediation issue or pull request now requires the
+  `platform_admin` role. The route previously checked tenancy only, so
+  any authenticated member of a tenant — including a read-only analyst —
+  could write to the tenant's production repository.
+- A manifest hint can no longer break out of the code fence in an opened
+  issue. The hint is untrusted input (it originates from SBOM package
+  data) and was spliced between ``` fences, so a crafted value could
+  inject arbitrary rendered content and `@mentions` into a real issue.
+  Hints are now length-bounded, rejected if they contain a fence, and
+  rendered inside a four-backtick fence. `remediation.apply` also
+  forwards only the hint its own propose path generates for that package
+  and version.
+- A misconfigured `AICC_CREDENTIAL_KEYS` entry no longer reflects the
+  offending value in an error response. `parseKeyring` named the raw
+  entry in its message, which integration-service returned in a 500 body;
+  malformed entries are now identified by position, and decryption
+  failures surface as a clean 422.
+
 - Closed an SSRF oracle in `kubernetes-service`'s
   `POST /v1/kubernetes/test-connection`: it took an arbitrary caller-
   supplied `server` URL with no auth or SSRF check and echoed back
