@@ -29,6 +29,7 @@
 | [`sprint-9/README.md`](./sprint-9/README.md)                                                   | Sprint 9 workstream notes: sbom-generator SSRF test debt, real SBOM export, route-level code splitting, triage agent          | PlatformArchitect |
 | [`sprint-10/README.md`](./sprint-10/README.md)                                                 | Sprint 10 workstream notes: remediation agent proposals, SBOM component index, Dependabot catch-up, ponytail debt sweep       | PlatformArchitect |
 | [`sprint-11/README.md`](./sprint-11/README.md)                                                 | Sprint 11 workstream notes: cluster CRUD + SSRF guard, GitHub remediation apply, remediation UI, security-service persistence | PlatformArchitect |
+| [`sprint-12/README.md`](./sprint-12/README.md)                                                 | Sprint 12 workstream notes: applied branch protection, integration/compliance/auth Postgres persistence, persistence scope    | PlatformArchitect |
 
 ## Diagrams
 

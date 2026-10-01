@@ -14,6 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S12-1**: repository release readiness, applied rather than
+  documented. Branch protection on `main`: `Lint & Type-check` must pass
+  before anything merges, force-pushes and branch deletion are blocked,
+  and the rules apply to administrators. Only that one check is required —
+  the `Unit tests` matrix reports per-instance names (`Unit tests
+(frontend)`, …), so a bare `Unit tests` context would never match and
+  would silently bypass the gate. **GitHub private vulnerability reporting
+  is now enabled**; it was described in `SECURITY.md` but had never been
+  turned on. Enabling the check gate also means `main` no longer accepts
+  direct pushes, so work now lands via branch and pull request. PyJWT in
+  the `vuln-intel` agent moved `2.14.0 → 2.15.1` (the previous pin did not
+  cover CVE-2026-101918). The repo's auto-label config was migrated to the
+  schema required by `actions/labeler` v7 — it had been broken and was
+  never noticed, because no pull request existed to run it.
+
 - **S12**: Postgres persistence for `compliance-service` — `controls`
   and `evidence` tables with `buildPgControlRepository` /
   `buildPgEvidenceRepository` implementations mirroring the existing
