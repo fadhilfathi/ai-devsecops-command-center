@@ -459,5 +459,56 @@ Status: **complete** (2026-10-01). See
   delete+insert runs atomically via a new `withTransaction()` helper
   added to `@aicc/shared/db`.
 
-Release 1.0 readiness (branch protection, private vulnerability
-reporting, remaining in-memory-only services, PyJWT #69/#70) is Sprint 12.
+## Sprint 12 — Release readiness
+
+Status: **in progress** (2026-10-01). See
+[`docs/architecture/sprint-12/`](./docs/architecture/sprint-12/).
+
+- **S12-1** (done): repository release-readiness settings, applied
+  through the GitHub API rather than left as documentation. Branch
+  protection on `main`: `Lint & Type-check` required, force-push and
+  deletion blocked, admins included; PR review deliberately not required
+  (solo maintainer). Only the one non-matrix check is required — the
+  `Unit tests` matrix reports per-instance names
+  (`Unit tests (frontend)`, …) so a bare `Unit tests` context never
+  matches, and `Build` is gated behind its own dependencies rather than
+  a push-only guard. GitHub **private vulnerability reporting enabled**
+  (it was described in `SECURITY.md` but had never actually been turned
+  on). PyJWT `2.14.0 → 2.15.1` in `vuln-intel`: the 2.14.0 pin did not
+  cover CVE-2026-101918, and `pip-audit --local` is now clean of pyjwt
+  findings. `SECURITY.md`'s supported-version table was stale (claimed
+  `0.1.x`; the project is at `0.7.0`).
+- **S12-2** (done): Postgres persistence for `integration-service` —
+  `integrations` and `syncs` tables with `buildPgIntegrationRepository`
+  / `buildPgSyncRepository`, `config` and `metadata` as `jsonb`,
+  `describe.each` over both implementations. This is the state S11-2
+  depends on: a GitHub PAT and its audit trail now survive a restart.
+- **S12-3** (done): Postgres persistence for `compliance-service` —
+  `controls` and `evidence`. `addEvidence` stays idempotent via a
+  `jsonb @>` containment check rather than a read-modify-write.
+  `FrameworkRepository` deliberately stays in-memory: it returns a
+  module-level constant catalogue with no write path, so a table would
+  store a list nothing ever mutates.
+- **S12-4** (done): Postgres persistence for `auth-service` — a `users`
+  table with `UNIQUE` email and the seeded platform-admin row, so
+  `dev-login` keeps working against a fresh database. No password column
+  or hashing was added: the platform still has no credential store, and
+  that is a separate feature.
+
+### Deliberately not converted to Postgres
+
+The Sprint 11 note said "remaining in-memory-only services". Reading each
+one first showed most of that list is state that _should not_ be
+persistent, and a table would be the wrong tool:
+
+- `agent-service` — the task queue is an in-flight work buffer
+  (`Map<UUID, AgentTask>` plus an ordering array), not a source of truth.
+- `inventory`, `topology`, `cost-intelligence`, `k8s-health`,
+  `runtime-security`, `reporting` — derived from Kubernetes API servers,
+  Prometheus, or other services. Recomputing them is the point; a stale
+  row would be worse than no row.
+
+Release 1.0 readiness beyond this sprint: real credential-based
+authentication (auth-service still has only password-less `dev-login`),
+and tenant scoping on `UserRepository` (`list`/`findById`/`findByEmail`/
+`setActive` take no `tenantId` in both implementations).
