@@ -16,7 +16,11 @@ import {
 import { loadEnv } from './config.js';
 import { buildAuthRoutes } from './routes/auth.js';
 import { buildHealthRoutes } from './routes/health.js';
-import { buildPgUserRepository, buildUserRepository, type UserRepository } from './services/user.repository.js';
+import {
+  buildPgUserRepository,
+  buildUserRepository,
+  type UserRepository,
+} from './services/user.repository.js';
 import { buildTokenService } from './services/token.service.js';
 import { createPool, migrate } from '@aicc/shared/db';
 import { MIGRATIONS } from './db/migrations.js';

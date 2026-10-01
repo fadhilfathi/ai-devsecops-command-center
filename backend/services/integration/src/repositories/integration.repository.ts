@@ -76,6 +76,7 @@ export function buildIntegrationRepository(): IntegrationRepository {
     },
   };
 }
+
 interface IntegrationRow {
   id: UUID;
   tenant_id: UUID;

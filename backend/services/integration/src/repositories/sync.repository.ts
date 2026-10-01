@@ -56,6 +56,7 @@ export function buildSyncRepository(): SyncRepository {
     },
   };
 }
+
 interface SyncRow {
   id: UUID;
   tenant_id: UUID;

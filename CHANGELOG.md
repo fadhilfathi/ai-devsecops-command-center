@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S12**: Postgres persistence for `compliance-service` — `controls`
+  and `evidence` tables with `buildPgControlRepository` /
+  `buildPgEvidenceRepository` implementations mirroring the existing
+  in-memory repositories (tenant scoping in SQL, optional `framework` /
+  `controlId` list filters, `updateStatus` / `addEvidence` using
+  `RETURNING *` and returning `undefined` for a foreign tenant).
+  `Control.evidenceRefs` is stored as `jsonb`; `addEvidence` appends
+  atomically and is idempotent. No `frameworks` table: the
+  `FrameworkRepository` serves a fixed reference catalogue with no
+  per-tenant or mutable state, so there is nothing to persist.
+  `DATABASE_URL` (already present in `.env.example`) now switches
+  compliance-service onto Postgres at startup; unset stays in-memory.
+
 - **S12**: Postgres persistence for `integration-service` — `integrations`
   and `syncs` tables with `buildPgIntegrationRepository` /
   `buildPgSyncRepository` implementations mirroring the existing

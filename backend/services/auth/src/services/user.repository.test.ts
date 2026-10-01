@@ -123,7 +123,6 @@ describe('postgres schema constraints', () => {
 });
 
 describe('postgres dev-login against a fresh database', () => {
-
   it('issues a token for the seeded platform admin', async () => {
     const db = await newPglite();
     const server = await buildServer({ users: buildPgUserRepository(db) });

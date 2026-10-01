@@ -254,7 +254,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (err) {
     console.warn(`AionUi: ${path} -> request failed`, err);
     recordFailure(path);
-    throw new Error('Request failed — is the backend running?');
+    throw new Error('Request failed — is the backend running?', { cause: err });
   }
   if (res.status === 401) {
     sessionExpired();

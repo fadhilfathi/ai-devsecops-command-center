@@ -14,22 +14,27 @@ a PR: `main` rejects direct pushes, because a required check cannot have
 run on a commit that is not yet pushed. That is the intended effect, not
 an obstacle to work around.
 
-- [x] **Require status checks to pass before merging** — **`Lint &
-    Type-check` only.** This was narrowed from an initial
-      `Lint & Type-check` + `Build`, for a reason worth recording: - `Unit tests` is a **matrix** job. Its check names are reported
-      per instance (`Unit tests (backend/services/auth)`,
-      `Unit tests (frontend)`, …), so requiring the bare string
-      `Unit tests` never matches and requiring all ~20 instances is
-      brittle — adding a workspace to the matrix would silently
-      bypass the gate. - `Build` _does_ run on PRs. It appeared to skip only because it
-      `needs: [lint, test-unit, test-python]` and its dependencies had
-      not finished; a skipped-dependency cascade is not an `if:
-      push` guard.
-      `Lint & Type-check` is the one gate that both runs on every PR and
-      has a stable name. It runs `pnpm lint`, `pnpm typecheck`, and
-      `pnpm format:check`, so formatting, lint, and type errors all
-      block. Test failures are still visible on the PR and block via
-      review, but are not a hard gate.
+- [x] **Require status checks to pass before merging** — **`Lint & Type-check` only.**
+
+  This was narrowed from an initial `Lint & Type-check` + `Build`, for a
+  reason worth recording:
+
+  - `Unit tests` is a **matrix** job. Its check names are reported per
+    instance (`Unit tests (backend/services/auth)`,
+    `Unit tests (frontend)`, …), so requiring the bare string
+    `Unit tests` never matches, and requiring all ~20 instances is
+    brittle — adding a workspace to the matrix would silently bypass the
+    gate.
+  - `Build` _does_ run on PRs. It appeared to skip only because it
+    `needs: [lint, test-unit, test-python]` and its dependencies had not
+    finished; a skipped-dependency cascade is not an `if: push` guard.
+
+  `Lint & Type-check` is the one gate that both runs on every PR and has a
+  stable name. It runs `pnpm lint`, `pnpm typecheck`, and
+  `pnpm format:check`, so formatting, lint, and type errors all block.
+  Test failures remain visible on the PR and block via review, but are
+  not a hard gate.
+
 - [x] **Note:** enabling this gate means `main` no longer accepts direct
       pushes. Work lands on a branch and merges through a PR — which is
       the point, and was the outcome when Sprint 12 turned this on (see
