@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
   # HTTP & API
   "fastapi==0.141.1",
-  "uvicorn[standard]==0.53.0",
+  "uvicorn[standard]==0.54.0",
   "pydantic==2.13.5",
   "pydantic-settings==2.15.0",
   "httpx==0.28.1",
@@ -40,11 +40,11 @@ dependencies = [
   "python-dateutil==2.9.0.post0",
   # Observability — SREEngineer-conformant
   "prometheus-client==0.26.0",
-  "opentelemetry-api==1.44.0",
-  "opentelemetry-sdk==1.44.0",
-  "opentelemetry-exporter-otlp==1.44.0",
-  "opentelemetry-instrumentation-fastapi==0.65b0",
-  "opentelemetry-instrumentation-httpx==0.65b0",
+  "opentelemetry-api==1.45.0",
+  "opentelemetry-sdk==1.45.0",
+  "opentelemetry-exporter-otlp==1.45.0",
+  "opentelemetry-instrumentation-fastapi==0.66b0",
+  "opentelemetry-instrumentation-httpx==0.66b0",
   # Auth — JWT validation against auth-service
   "PyJWT[crypto]==2.15.1",
   # Caching / rate limit tracking
