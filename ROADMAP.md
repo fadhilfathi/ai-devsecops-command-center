@@ -461,7 +461,7 @@ Status: **complete** (2026-10-01). See
 
 ## Sprint 12 — Release readiness
 
-Status: **in progress** (2026-10-01). See
+Status: **complete** (2026-10-01). See
 [`docs/architecture/sprint-12/`](./docs/architecture/sprint-12/).
 
 - **S12-1** (done): repository release-readiness settings, applied
