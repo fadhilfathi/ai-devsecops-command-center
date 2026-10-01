@@ -67,6 +67,33 @@ async function runMigrations(db: Queryable, migrations: Migration[]): Promise<vo
   }
 }
 
+/**
+ * Runs `fn` against a single connection inside a `BEGIN`/`COMMIT` block —
+ * same single-connection pinning as `migrate()` (a `pg.Pool` hands out a
+ * different connection per `query()`, so multi-statement atomicity needs
+ * one checked-out client; PGlite is single-connection already).
+ */
+export async function withTransaction<T>(
+  target: Queryable | pg.Pool,
+  fn: (db: Queryable) => Promise<T>,
+): Promise<T> {
+  const client = target instanceof pg.Pool ? await target.connect() : undefined;
+  const db: Queryable = client ?? (target as Queryable);
+  try {
+    await db.query('BEGIN');
+    try {
+      const result = await fn(db);
+      await db.query('COMMIT');
+      return result;
+    } catch (err) {
+      await db.query('ROLLBACK');
+      throw err;
+    }
+  } finally {
+    client?.release();
+  }
+}
+
 function splitStatements(sql: string): string[] {
   return sql
     .split(';')

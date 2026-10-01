@@ -414,7 +414,7 @@ Status: not started.
   either. Add a route (or a tab on `Vulnerabilities.tsx`) showing
   per-finding triage rationale/priority and remediation proposals with
   their risk level and `manifestHint`.
-- **S11-4**: Postgres persistence for `security-service`. Of the 13
+- **S11-4** (done): Postgres persistence for `security-service`. Of the 13
   backend services, only `kubernetes-service` (`cluster.repository.ts`)
   and `incident-service` (`incident.repository.ts`, `runbook.repository.ts`,
   `chain.repository.ts`) have a `buildPg*Repository` — auth, agent,
@@ -423,11 +423,14 @@ Status: not started.
   only. security-service is the highest-value next target: S10-2 already
   noted its SBOM component index has no Postgres backing, so both the
   index and the underlying asset/scan/finding/SBOM repositories are lost
-  on every restart. Add `buildPgSecurityRepository` (assets, scans,
-  findings, SBOMs + the S10-2 component/edge index) following the
-  interface + in-memory-default + `Queryable`/`migrate()` pattern the
-  other two services use, tested with `describe.each` against
-  `@electric-sql/pglite`.
+  on every restart. Added `buildPgAssetRepository`,
+  `buildPgScanRepository`, `buildPgFindingRepository`, and
+  `buildPgSbomRepository` (including the S10-2 component/edge index),
+  following the interface + in-memory-default + `Queryable`/`migrate()`
+  pattern the other two services use, tested with `describe.each`
+  against `@electric-sql/pglite`. `SbomRepository.replaceComponents`'
+  delete+insert runs atomically via a new `withTransaction()` helper
+  added to `@aicc/shared/db`.
 
 Release 1.0 readiness (branch protection, private vulnerability
 reporting, remaining in-memory-only services, PyJWT #69/#70) is Sprint 12.

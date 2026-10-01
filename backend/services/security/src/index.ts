@@ -33,6 +33,8 @@ import {
   type Logger,
 } from '@aicc/shared';
 
+import { createPool, migrate } from '@aicc/shared/db';
+
 import { loadEnv } from './config.js';
 import { buildHealthRoutes } from './routes/health.js';
 import { buildAssetRoutes } from './routes/assets.js';
@@ -46,10 +48,14 @@ import { buildDashboardRoute } from './routes/dashboard.js';
 import { buildVulnerabilityRoutes } from './routes/vulnerabilities.js';
 import { buildSecurityAnalyticsRoutes } from './routes/security-analytics.js';
 
-import { buildAssetRepository } from './repositories/asset.repository.js';
-import { buildScanRepository } from './repositories/scan.repository.js';
-import { buildFindingRepository } from './repositories/finding.repository.js';
-import { buildSbomRepository } from './repositories/sbom.repository.js';
+import { buildAssetRepository, buildPgAssetRepository } from './repositories/asset.repository.js';
+import { buildScanRepository, buildPgScanRepository } from './repositories/scan.repository.js';
+import {
+  buildFindingRepository,
+  buildPgFindingRepository,
+} from './repositories/finding.repository.js';
+import { buildSbomRepository, buildPgSbomRepository } from './repositories/sbom.repository.js';
+import { MIGRATIONS } from './db/migrations.js';
 import { InMemoryEventLog } from './services/event-log.js';
 import { seedDemoData } from './seed.js';
 import { registerHttpMetrics } from '@aicc/observability';
@@ -77,10 +83,15 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
-  const assets = buildAssetRepository();
-  const scans = buildScanRepository();
-  const findings = buildFindingRepository();
-  const sboms = buildSbomRepository();
+  const db = env.DATABASE_URL ? createPool(env.DATABASE_URL) : undefined;
+  if (db) {
+    await migrate(db, MIGRATIONS);
+  }
+
+  const assets = db ? buildPgAssetRepository(db) : buildAssetRepository();
+  const scans = db ? buildPgScanRepository(db) : buildScanRepository();
+  const findings = db ? buildPgFindingRepository(db) : buildFindingRepository();
+  const sboms = db ? buildPgSbomRepository(db) : buildSbomRepository();
   const eventLog = new InMemoryEventLog(bus);
 
   if (cfg.demoSeed) {
@@ -206,6 +217,7 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
     logger,
     cfg,
     bus,
+    db,
     sbomPipelineUrl: env.SBOM_PIPELINE_URL,
     vulnIntelUrl: env.VULN_INTEL_URL,
     dependencyIntelUrl: env.DEPENDENCY_INTEL_URL,
@@ -265,6 +277,11 @@ export async function buildServer(deps?: Partial<SecurityServiceDeps>): Promise<
   // Reference unused to keep tree-shake honest
   void z;
 
+  if (db) {
+    server.addHook('onClose', async () => {
+      await db.end();
+    });
+  }
   server.addHook('onClose', async () => {
     await bus.close();
   });

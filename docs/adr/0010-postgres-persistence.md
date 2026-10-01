@@ -52,6 +52,22 @@ milestone.
   chains, not a source of truth — only the resulting `IncidentChain`s
   and `CorrelationEdge`s (already handled by `ChainRepository`) need
   durability.
+- **S11-4**: `security-service`'s `AssetRepository`, `ScanRepository`,
+  `FindingRepository`, and `SbomRepository` (including the S10-2
+  component/edge index) got the same treatment. `SbomRepository.
+replaceComponents` needs multi-statement atomicity (delete + bulk
+  insert across two tables), so `@aicc/shared/db` gained
+  `withTransaction(target, fn)` — same single-connection pinning as
+  `migrate()` (`pg.Pool` hands a fresh connection to every `query()`
+  call, so the whole `BEGIN`/`COMMIT` needs one checked-out client;
+  PGlite is single-connection already and runs `fn` directly).
+
+## Note (S11-4)
+
+`ScanRepository.updateStatus(id, status)` has no `tenantId` parameter
+on the in-memory interface (a pre-existing gap, not introduced here);
+the Pg implementation mirrors that signature exactly rather than
+fixing it out-of-band, so it is likewise not tenant-scoped.
 
 ## Consequences
 

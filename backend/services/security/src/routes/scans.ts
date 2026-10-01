@@ -72,7 +72,7 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
 
     // Sprint 1: synchronously mark as succeeded with empty findings.
     // Sprint 2 will dispatch to a worker running Trivy/Grype.
-    await scans.updateStatus(scan.id, 'succeeded');
+    await scans.updateStatus(scan.id, scan.tenantId, 'succeeded');
     await bus.publish({
       type: EventTypes.SCAN_COMPLETED,
       version: 1,
@@ -104,7 +104,7 @@ export const buildScanRoutes: FastifyPluginAsync<Deps> = async (server: FastifyI
         data: { findingId: f.id, scanId: scan.id, severity: f.severity, cveId: f.cveId },
       });
     }
-    await scans.updateStatus(scan.id, 'succeeded');
+    await scans.updateStatus(scan.id, scan.tenantId, 'succeeded');
     await bus.publish({
       type: EventTypes.SCAN_COMPLETED,
       version: 1,

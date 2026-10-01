@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S11-4**: Postgres persistence for `security-service` — `assets`,
+  `scans`, `findings`, `sboms`, `sbom_components`, `sbom_edges` tables
+  with `buildPg<X>Repository` implementations mirroring the existing
+  in-memory repositories (tenant scoping, filters, ordering). `DATABASE_URL`
+  (already set in `docker-compose.yml`) now switches security-service
+  onto Postgres at startup, with a `/readyz` DB check; unset stays
+  in-memory (tests, `pnpm dev`). `SbomRepository.replaceComponents`
+  runs the delete+insert as one transaction via a new
+  `withTransaction()` helper in `@aicc/shared/db`.
 - **S11-1**: `kubernetes-service` cluster management —
   `POST /v1/kubernetes/clusters`, `PATCH /v1/kubernetes/clusters/:id`,
   `DELETE /v1/kubernetes/clusters/:id`. Mutating routes require the

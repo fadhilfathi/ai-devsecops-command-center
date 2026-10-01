@@ -1,10 +1,12 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { EventBus, Logger } from '@aicc/shared';
+import type { Queryable } from '@aicc/shared/db';
 
 interface Deps {
   logger: Logger;
   cfg: { name: string; version: string };
   bus?: EventBus;
+  db?: Queryable;
   // S8-5: the three Python agent URLs, checked as part of /readyz so a
   // misconfigured/down agent fleet is visible without calling each proxy
   // route. Health paths are liveness-only (no outbound network calls of
@@ -27,7 +29,7 @@ export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (
   server: FastifyInstance,
   opts,
 ) => {
-  const { logger, cfg, bus, sbomPipelineUrl, vulnIntelUrl, dependencyIntelUrl } = opts;
+  const { logger, cfg, bus, db, sbomPipelineUrl, vulnIntelUrl, dependencyIntelUrl } = opts;
   const startedAt = new Date();
 
   server.get('/healthz', async () => ({ status: 'ok' }));
@@ -37,6 +39,15 @@ export const buildHealthRoutes: FastifyPluginAsync<Deps> = async (
         await bus.ping();
       } catch (err) {
         logger.error({ err }, 'readyz: event bus check failed');
+        return reply.code(503).send({ status: 'not_ready' });
+      }
+    }
+
+    if (db) {
+      try {
+        await db.query('SELECT 1');
+      } catch (err) {
+        logger.error({ err }, 'readyz: postgres check failed');
         return reply.code(503).send({ status: 'not_ready' });
       }
     }
