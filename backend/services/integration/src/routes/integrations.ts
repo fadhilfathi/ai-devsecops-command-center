@@ -1,11 +1,13 @@
-import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { z } from 'zod';
 import {
   AppError,
   EcosystemSchema,
   EventTypes,
   NotFoundError,
+  ValidationError,
   type EventBus,
+  type Integration,
   type Logger,
   type UUID,
 } from '@aicc/shared';
@@ -32,6 +34,43 @@ function requireTenant(tenantId: string): UUID {
   return tenantId as UUID;
 }
 
+/**
+ * Role gate for `POST /v1/integrations/:integrationId/remediation` — the
+ * only route here with a write side effect on an external system. Mirrors
+ * security-service's `requireRole` (not imported: no cross-service imports).
+ * `userRole` is undefined only on the `AUTH_DEV_BYPASS` header path (a
+ * verified token always carries a required `role` claim and a missing token
+ * is 401 otherwise); such requests are let through because dev bypass is
+ * dev/test-only and its caller can already forge any tenant — a role gate
+ * there would only lock out the e2e smoke.
+ */
+const requirePlatformAdmin: preHandlerHookHandler = async (req) => {
+  if (req.userRole === undefined) return;
+  if (req.userRole !== 'platform_admin') {
+    throw new AppError(
+      'FORBIDDEN',
+      `Requires one of [platform_admin]; got '${req.userRole}'`,
+      { statusCode: 403, details: { allowed: ['platform_admin'], got: req.userRole } },
+    );
+  }
+};
+
+/**
+ * Credential disclosure guard. `config` is free-form and accepts any key, so
+ * it may hold live credentials (a GitHub PAT under `config.token`/`config.pat`
+ * since S11-2) — returning it verbatim defeats the at-rest encryption against
+ * any read-capable tenant user. Every route response MUST pass through here.
+ * Pure and exported for unit tests. `owner`/`repo` are not secrets and the
+ * frontend needs them; only sensitive-looking keys are masked.
+ */
+const SENSITIVE_KEY = /token|secret|pat|password|api[-_]?key|credential/i;
+
+export function redactIntegration(i: Integration): Integration {
+  const config: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(i.config)) config[k] = SENSITIVE_KEY.test(k) ? '***' : v;
+  return { ...i, config };
+}
+
 const CreateIntegrationSchema = z.object({
   provider: z.enum(['github', 'gitlab', 'bitbucket', 'jira', 'slack']),
   name: z.string().min(1).max(200),
@@ -42,26 +81,36 @@ const CreateIntegrationSchema = z.object({
 const RemediationRequestSchema = z.object({
   proposal: z.object({
     package: z.object({
-      name: z.string().min(1),
+      name: z.string().min(1).max(200),
       // Single source of truth in @aicc/shared (same enum the agent-side
       // remediation module uses) — see `EcosystemSchema` in
       // backend/packages/shared/src/types/domain.ts.
       ecosystem: EcosystemSchema,
     }),
-    from: z.string().min(1),
-    to: z.string().min(1),
+    from: z.string().min(1).max(200),
+    to: z.string().min(1).max(200),
     bump: z.enum(['none', 'patch', 'minor', 'major', 'unknown']),
-    resolves: z.array(z.string()),
+    resolves: z.array(z.string().max(200)),
     risk: z.enum(['low', 'medium', 'high']),
-    manifestHint: z.string(),
+    // Every interpolated field is bounded, and `manifestHint` may not carry a
+    // code fence: it is spliced into a real GitHub issue body, so a ``` run
+    // would break out and inject arbitrary rendered markdown/@mentions into
+    // the tenant's production repository. The renderer additionally fences it
+    // with four backticks as belt and braces.
+    manifestHint: z
+      .string()
+      .max(2000)
+      .refine((s) => !s.includes('```'), {
+        message: 'manifestHint must not contain ``` (code fence)',
+      }),
     status: z.enum(['ok', 'manual_review']),
   }),
   context: z
     .object({
-      findingId: z.string().optional(),
-      cveId: z.string().optional(),
-      assetId: z.string().optional(),
-      repo: z.string().optional(),
+      findingId: z.string().max(200).optional(),
+      cveId: z.string().max(200).optional(),
+      assetId: z.string().max(200).optional(),
+      repo: z.string().max(200).optional(),
     })
     .optional(),
   dryRun: z.boolean().optional(),
@@ -107,6 +156,11 @@ export function selectRemediationTarget(
   return { kind: 'issue', repo };
 }
 
+/** No interpolated value may carry a backtick — one would end its code span. */
+function codeSpan(s: string): string {
+  return s.replace(/`/g, '');
+}
+
 /**
  * Deterministic markdown body for the issue/PR — same proposal in,
  * same text out. No LLM.
@@ -118,27 +172,29 @@ export function renderRemediationBody(
   const lines: string[] = [
     '## Remediation proposal',
     '',
-    `- **Package**: \`${proposal.package.name}\` (${proposal.package.ecosystem})`,
-    `- **Update**: \`${proposal.from}\` -> \`${proposal.to}\``,
+    `- **Package**: \`${codeSpan(proposal.package.name)}\` (${proposal.package.ecosystem})`,
+    `- **Update**: \`${codeSpan(proposal.from)}\` -> \`${codeSpan(proposal.to)}\``,
     `- **Bump**: \`${proposal.bump}\``,
     `- **Risk**: \`${proposal.risk}\``,
     `- **Resolves**: ${
       proposal.resolves.length > 0
-        ? proposal.resolves.map((r) => `\`${r}\``).join(', ')
+        ? proposal.resolves.map((r) => `\`${codeSpan(r)}\``).join(', ')
         : 'n/a'
     }`,
     '',
     '### Manifest change',
     '',
-    '```',
+    // Four backticks: the schema already rejects ``` in `manifestHint`, but
+    // even a leaked one cannot terminate a four-backtick fence.
+    '````',
     proposal.manifestHint,
-    '```',
+    '````',
   ];
   const contextLines: string[] = [];
-  if (context?.findingId) contextLines.push(`- **Finding**: \`${context.findingId}\``);
-  if (context?.cveId) contextLines.push(`- **CVE**: \`${context.cveId}\``);
-  if (context?.assetId) contextLines.push(`- **Asset**: \`${context.assetId}\``);
-  if (context?.repo) contextLines.push(`- **Repo**: \`${context.repo}\``);
+  if (context?.findingId) contextLines.push(`- **Finding**: \`${codeSpan(context.findingId)}\``);
+  if (context?.cveId) contextLines.push(`- **CVE**: \`${codeSpan(context.cveId)}\``);
+  if (context?.assetId) contextLines.push(`- **Asset**: \`${codeSpan(context.assetId)}\``);
+  if (context?.repo) contextLines.push(`- **Repo**: \`${codeSpan(context.repo)}\``);
   if (contextLines.length > 0) {
     lines.push('', '### Context', ...contextLines);
   }
@@ -159,7 +215,15 @@ function resolveToken(raw: unknown): string | undefined {
   if (typeof raw !== 'string' || raw.trim() === '') return undefined;
   const keys = process.env.AICC_CREDENTIAL_KEYS;
   if (!keys) return raw;
-  return decryptSecret(parseKeyring(keys), raw, { allowPlaintext: true });
+  try {
+    return decryptSecret(parseKeyring(keys), raw, { allowPlaintext: true });
+  } catch {
+    // A crypto misconfiguration must surface as a clean 422, never as a 500
+    // reflecting internal error text.
+    throw new AppError('VALIDATION_ERROR', 'integration credential could not be decrypted', {
+      statusCode: 422,
+    });
+  }
 }
 
 export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
@@ -175,7 +239,7 @@ export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
   server.get('/v1/integrations', async (req) => {
     const tenantId = requireTenant(req.tenantId);
     const items = await integrations.list(tenantId);
-    return { items, total: items.length };
+    return { items: items.map(redactIntegration), total: items.length };
   });
 
   server.post('/v1/integrations', async (req, reply) => {
@@ -186,14 +250,14 @@ export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
       return { code: 'VALIDATION_ERROR', message: `unknown provider: ${body.provider}` };
     }
     const integration = await integrations.create({ ...body, tenantId });
-    return reply.code(201).send({ integration });
+    return reply.code(201).send({ integration: redactIntegration(integration) });
   });
 
   server.get<{ Params: { id: string } }>('/v1/integrations/:id', async (req) => {
     const tenantId = requireTenant(req.tenantId);
     const i = await integrations.findById(req.params.id, tenantId);
     if (!i) throw new NotFoundError('Integration', req.params.id);
-    return { integration: i };
+    return { integration: redactIntegration(i) };
   });
 
   server.patch<{ Params: { id: string } }>('/v1/integrations/:id/enabled', async (req) => {
@@ -201,7 +265,7 @@ export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
     const body = z.object({ enabled: z.boolean() }).parse(req.body);
     const updated = await integrations.setEnabled(req.params.id, tenantId, body.enabled);
     if (!updated) throw new NotFoundError('Integration', req.params.id);
-    return { integration: updated };
+    return { integration: redactIntegration(updated) };
   });
 
   server.delete<{ Params: { id: string } }>('/v1/integrations/:id', async (req, reply) => {
@@ -213,9 +277,20 @@ export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
 
   server.post<{ Params: { integrationId: string } }>(
     '/v1/integrations/:integrationId/remediation',
+    { preHandler: requirePlatformAdmin },
     async (req) => {
       const tenantId = requireTenant(req.tenantId);
-      const input = RemediationRequestSchema.parse(req.body);
+      // safeParse → 400: a bare ZodError has no statusCode and would surface
+      // as a 500 instead of the 4xx a bad request deserves.
+      const parsed = RemediationRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError(
+          `invalid remediation request: ${parsed.error.issues
+            .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+            .join('; ')}`,
+        );
+      }
+      const input = parsed.data;
       const integration = await integrations.findById(req.params.integrationId, tenantId);
       // Missing, foreign-tenant, and disabled integrations are all 404.
       if (!integration || !integration.enabled) {
@@ -284,7 +359,9 @@ export const buildIntegrationRoutes: FastifyPluginAsync<Deps> = async (
         logger.warn(
           {
             status: err instanceof GithubApiError ? err.status : undefined,
-            url: `${process.env.GITHUB_API_URL ?? 'https://api.github.com'}/repos/${owner}/${repo}`,
+            // Percent-escape exactly like GithubClient does — raw config
+            // strings with newlines would forge structured log lines.
+            url: `${process.env.GITHUB_API_URL ?? 'https://api.github.com'}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
           },
           'github remediation request failed',
         );

@@ -409,5 +409,18 @@ export async function applyRemediation(
         'proposal needs manual_review approval before it can be applied — remediation.apply only accepts proposals with status ok',
     };
   }
+  // The task payload is caller-controlled: a hand-edited manifestHint would
+  // otherwise reach the GitHub issue body verbatim. Require the hint to be
+  // exactly what the propose path generates for this package and version.
+  const { ecosystem, name } = input.proposal.package;
+  if (input.proposal.manifestHint !== manifestHint(ecosystem, name, input.proposal.to)) {
+    return {
+      applied: false,
+      integrationId,
+      kind: null,
+      message:
+        'proposal manifestHint does not match the hint remediation.propose generates for its package and version — remediation.apply only forwards generated hints',
+    };
+  }
   return deps.callIntegration(input);
 }

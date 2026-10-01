@@ -21,6 +21,17 @@ export interface Keyring {
   keys: Map<string, Buffer>;
 }
 
+// These error messages can surface in HTTP responses, and a misconfigured
+// entry can carry raw key material where a key id is expected (a key pasted
+// without its `keyId:` prefix, or the two halves swapped). Only name ids
+// that are plainly identifiers; anything else is referenced by position.
+const SAFE_KEY_ID = /^[A-Za-z0-9._~-]{1,32}$/;
+
+function entryRef(keyId: string, position?: number): string {
+  if (SAFE_KEY_ID.test(keyId)) return `key "${keyId}"`;
+  return position === undefined ? 'key <redacted>' : `entry #${position}`;
+}
+
 /**
  * Parses `keyId:base64key[,keyId:base64key...]` (the `AICC_CREDENTIAL_KEYS`
  * env var format). The first entry is the active key; the rest are kept
@@ -36,15 +47,17 @@ export function parseKeyring(value: string): Keyring {
   }
   const keys = new Map<string, Buffer>();
   let activeKeyId: string | undefined;
-  for (const entry of entries) {
+  for (const [i, entry] of entries.entries()) {
     const idx = entry.indexOf(':');
     if (idx < 0) {
-      throw new CryptoConfigError(`malformed keyring entry: ${entry}`);
+      // No `keyId:` prefix: the whole entry may be pasted key material,
+      // so identify it by position, never by value.
+      throw new CryptoConfigError(`malformed keyring entry #${i + 1}: expected "keyId:base64key"`);
     }
     const keyId = entry.slice(0, idx);
     const key = Buffer.from(entry.slice(idx + 1), 'base64');
     if (key.length !== KEY_BYTES) {
-      throw new CryptoConfigError(`key "${keyId}" must decode to ${KEY_BYTES} bytes`);
+      throw new CryptoConfigError(`${entryRef(keyId, i + 1)} must decode to ${KEY_BYTES} bytes`);
     }
     keys.set(keyId, key);
     if (activeKeyId === undefined) activeKeyId = keyId;
@@ -98,7 +111,7 @@ export function decryptSecret(
   }
   const [, keyId, ivB64, tagB64, ctB64] = parts;
   const key = keyring.keys.get(keyId!);
-  if (!key) throw new DecryptError(`unknown key id "${keyId}"`);
+  if (!key) throw new DecryptError(`unknown ${entryRef(keyId!)}`);
   let iv: Buffer, tag: Buffer, ct: Buffer;
   try {
     iv = Buffer.from(ivB64!, 'base64');

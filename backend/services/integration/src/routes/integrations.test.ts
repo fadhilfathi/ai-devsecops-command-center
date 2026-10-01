@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { EcosystemSchema } from '@aicc/shared';
+import { AUTH_DEV_DEFAULT_SECRET, EcosystemSchema, signAccessToken } from '@aicc/shared';
 import { buildServer } from '../index.js';
 import {
   renderRemediationBody,
@@ -65,7 +65,9 @@ describe('renderRemediationBody', () => {
 
   test('puts the manifestHint in a fenced code block', () => {
     const body = renderRemediationBody(proposal, context);
-    expect(body).toContain('```\n"left-pad": "^1.3.0"\n```');
+    // Four backticks: the renderer's actual fence, which a ``` run inside
+    // the hint cannot terminate.
+    expect(body).toContain('````\n"left-pad": "^1.3.0"\n````');
     expect(body).toContain('- **Update**: `1.0.0` -> `1.3.0`');
     expect(body).toContain('`CVE-2023-1234`, `GHSA-abcd-efgh`');
   });
@@ -76,6 +78,15 @@ describe('renderRemediationBody', () => {
     expect(withContext).toContain('- **Finding**: `finding-1`');
     expect(withContext).toContain('- **Repo**: `acme/widgets#feature-x`');
     expect(renderRemediationBody(proposal)).not.toContain('### Context');
+  });
+
+  test('a backtick in package.name cannot break its code span', () => {
+    const body = renderRemediationBody({
+      ...proposal,
+      package: { ...proposal.package, name: 'evil`pkg' },
+    });
+    expect(body).toContain('- **Package**: `evilpkg` (npm)');
+    expect(body).not.toContain('evil`pkg');
   });
 });
 
@@ -276,7 +287,7 @@ test('a clean proposal without a #branch opens an issue', async () => {
     expect(url).toContain('/repos/acme/widgets/issues');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer ghp_test');
     expect(String(JSON.parse(String(init.body)).body)).toContain(
-      '```\n"left-pad": "^1.3.0"\n```',
+      '````\n"left-pad": "^1.3.0"\n````',
     );
   });
 });
@@ -359,4 +370,229 @@ test('a context.repo with a foreign repo and no #branch is 422 too — nothing i
 // literals in frontend/src/types/index.ts.
 test('the shared ecosystem enum matches the remediation wire contract', () => {
   expect(EcosystemSchema.options).toEqual(['npm', 'pypi', 'maven', 'go', 'cargo', 'nuget']);
+});
+
+// The remediation route is the only one here with a write side effect on an
+// external system, so it requires platform_admin. A verified token always
+// carries a role claim, so a real tenant member (e.g. security_analyst) is
+// rejected before anything reaches GitHub.
+test('a security_analyst token is 403 on remediation and never reaches GitHub; platform_admin still gets through', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  const stub = stubFetch(
+    () =>
+      new Response(
+        JSON.stringify({ html_url: 'https://github.com/acme/widgets/issues/7', number: 7 }),
+        { status: 201 },
+      ),
+  );
+  restored.push(stub.restore);
+  const tokenOpts = { secret: AUTH_DEV_DEFAULT_SECRET, issuer: 'aicc', audience: 'aicc-api' };
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      token: 'ghp_test',
+    });
+
+    const analyst = signAccessToken(
+      { sub: 'user-analyst', role: 'security_analyst', tenantId: 'tenant-a' },
+      tokenOpts,
+    );
+    const denied = await server.inject({
+      method: 'POST',
+      url: `/v1/integrations/${id}/remediation`,
+      headers: { authorization: `Bearer ${analyst}` },
+      payload: { proposal: proposalPayload },
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().message).toMatch(/platform_admin/);
+
+    const admin = signAccessToken(
+      { sub: 'user-admin', role: 'platform_admin', tenantId: 'tenant-a' },
+      tokenOpts,
+    );
+    const allowed = await server.inject({
+      method: 'POST',
+      url: `/v1/integrations/${id}/remediation`,
+      headers: { authorization: `Bearer ${admin}` },
+      payload: { proposal: proposalPayload, dryRun: true },
+    });
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.json()).toMatchObject({ opened: false, dryRun: true });
+
+    // The analyst's real (non-dry-run) request must not have opened anything.
+    expect(stub.calls).toHaveLength(0);
+  });
+});
+
+// ---- credential redaction: a stored PAT must never be readable back ----
+// Each response shape (list, create, single-get, enabled-patch) goes through
+// redactIntegration at its own call site; a test per shape so reverting any
+// one call site is caught.
+
+test('config.token is redacted in the list response and the secret never appears in the body', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      token: 'ghp_supersecret',
+    });
+    const res = await server.inject({
+      method: 'GET',
+      url: '/v1/integrations',
+      headers: { 'x-tenant-id': 'tenant-a' },
+    });
+    expect(res.statusCode).toBe(200);
+    const item = res.json().items.find((i: { id: string }) => i.id === id);
+    expect(item.config.token).toBe('***');
+    expect(item.config.owner).toBe('acme');
+    expect(item.config.repo).toBe('widgets');
+    expect(res.body).not.toContain('ghp_supersecret');
+  });
+});
+
+test('config.token is redacted in the single-integration response', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      token: 'ghp_supersecret',
+    });
+    const res = await server.inject({
+      method: 'GET',
+      url: `/v1/integrations/${id}`,
+      headers: { 'x-tenant-id': 'tenant-a' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().integration.config.token).toBe('***');
+    expect(res.json().integration.config.owner).toBe('acme');
+    expect(res.json().integration.config.repo).toBe('widgets');
+    expect(res.body).not.toContain('ghp_supersecret');
+  });
+});
+
+test('config.token is redacted in the 201 create response', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  await withServer(async (server) => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/integrations',
+      headers: { 'x-tenant-id': 'tenant-a' },
+      payload: {
+        provider: 'github',
+        name: 'github integration',
+        config: { owner: 'acme', repo: 'widgets', token: 'ghp_supersecret' },
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().integration.config.token).toBe('***');
+    expect(res.json().integration.config.owner).toBe('acme');
+    expect(res.json().integration.config.repo).toBe('widgets');
+    expect(res.body).not.toContain('ghp_supersecret');
+  });
+});
+
+test('config.token is redacted in the enabled-patch response', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      token: 'ghp_supersecret',
+    });
+    const res = await server.inject({
+      method: 'PATCH',
+      url: `/v1/integrations/${id}/enabled`,
+      headers: { 'x-tenant-id': 'tenant-a' },
+      payload: { enabled: false },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().integration.config.token).toBe('***');
+    expect(res.json().integration.config.owner).toBe('acme');
+    expect(res.json().integration.config.repo).toBe('widgets');
+    expect(res.body).not.toContain('ghp_supersecret');
+  });
+});
+
+test('config.pat and api-key-style keys are redacted case-insensitively, not just token', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      pat: 'ghp_alt_secret',
+      apiKey: 'key_camel_secret',
+      api_key: 'key_snake_secret',
+      APIKEY: 'key_upper_secret',
+    });
+    const res = await server.inject({
+      method: 'GET',
+      url: `/v1/integrations/${id}`,
+      headers: { 'x-tenant-id': 'tenant-a' },
+    });
+    expect(res.statusCode).toBe(200);
+    const config = res.json().integration.config as Record<string, unknown>;
+    expect(config.pat).toBe('***');
+    expect(config.apiKey).toBe('***');
+    expect(config.api_key).toBe('***');
+    expect(config.APIKEY).toBe('***');
+    expect(config.owner).toBe('acme');
+    expect(config.repo).toBe('widgets');
+    for (const secret of [
+      'ghp_alt_secret',
+      'key_camel_secret',
+      'key_snake_secret',
+      'key_upper_secret',
+    ]) {
+      expect(res.body).not.toContain(secret);
+    }
+  });
+});
+
+// ---- issue-body injection: manifestHint cannot break out of the fence ----
+// `manifestHint` is spliced into a real GitHub issue body; a ``` run would
+// end the fence and inject arbitrary markdown into the tenant's repository.
+
+test('a manifestHint containing a code fence is 400 and never reaches GitHub', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  const stub = stubFetch(() => {
+    throw new Error('fetch must not be called for a fenced manifestHint');
+  });
+  restored.push(stub.restore);
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      token: 'ghp_test',
+    });
+    const res = await postRemediation(server, id, 'tenant-a', {
+      proposal: { ...proposalPayload, manifestHint: '```\n@everyone injected\n```' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/manifestHint/);
+    expect(stub.calls).toHaveLength(0);
+  });
+});
+
+test('a manifestHint longer than 2000 characters is 400 and never reaches GitHub', async () => {
+  trackEnv('AICC_CREDENTIAL_KEYS', undefined);
+  const stub = stubFetch(() => {
+    throw new Error('fetch must not be called for an oversized manifestHint');
+  });
+  restored.push(stub.restore);
+  await withServer(async (server) => {
+    const id = await createIntegration(server, 'tenant-a', 'github', {
+      owner: 'acme',
+      repo: 'widgets',
+      token: 'ghp_test',
+    });
+    const res = await postRemediation(server, id, 'tenant-a', {
+      proposal: { ...proposalPayload, manifestHint: 'x'.repeat(2001) },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/manifestHint/);
+    expect(stub.calls).toHaveLength(0);
+  });
 });
