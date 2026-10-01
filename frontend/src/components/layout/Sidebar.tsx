@@ -14,6 +14,7 @@ import {
   Network,
   Activity,
   DollarSign,
+  Wrench,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/assets', label: 'Assets', Icon: Server },
   { to: '/incidents', label: 'Incidents', Icon: ShieldAlert },
   { to: '/vulnerabilities', label: 'Vulnerabilities', Icon: Bug },
+  { to: '/remediation', label: 'Remediation', Icon: Wrench },
   { to: '/sbom', label: 'SBOM', Icon: FileCode2 },
   { to: '/compliance', label: 'Compliance', Icon: ClipboardCheck },
   { to: '/integrations', label: 'Integrations', Icon: Plug },

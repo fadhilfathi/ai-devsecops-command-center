@@ -23,6 +23,9 @@ const Incidents = lazy(() =>
 const Vulnerabilities = lazy(() =>
   import('./routes/Vulnerabilities').then((m) => ({ default: m.Vulnerabilities })),
 );
+const Remediation = lazy(() =>
+  import('./routes/Remediation').then((m) => ({ default: m.Remediation })),
+);
 const SBOM = lazy(() => import('./routes/SBOM').then((m) => ({ default: m.SBOM })));
 const Compliance = lazy(() =>
   import('./routes/Compliance').then((m) => ({ default: m.CompliancePage })),
@@ -154,6 +157,7 @@ export default function App() {
             <Route path="incidents" element={<Incidents />} />
             <Route path="vulnerabilities" element={<Vulnerabilities />} />
             <Route path="vulnerabilities/timeline" element={<Vulnerabilities />} />
+            <Route path="remediation" element={<Remediation />} />
             <Route path="sbom" element={<SBOM />} />
             <Route path="sbom/:sbom_id" element={<SBOM />} />
             <Route path="compliance" element={<Compliance />} />

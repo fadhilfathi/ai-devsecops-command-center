@@ -9,6 +9,10 @@
 
 import { useSyncExternalStore } from 'react';
 import type {
+  AgentFinding,
+  AgentTaskEnvelope,
+  ApplyInput,
+  ApplyResult,
   Asset,
   ComplianceControl,
   EventStreamEntry,
@@ -16,11 +20,16 @@ import type {
   Incident,
   Integration,
   Kpi,
+  RemediationEcosystem,
+  RemediationFinding,
+  RemediationResult,
   RiskHeatmap,
   SbomDocument,
   SecurityScore,
   SbomComponentEnhanced,
   Severity,
+  TriageFinding,
+  TriageResult,
   VulnTimelinePoint,
   VulnTimelineRange,
   Vulnerability,
@@ -43,6 +52,7 @@ import type {
   TopologyGraph,
 } from '@/types/infrastructure';
 import {
+  mockApplyResult,
   mockAssets,
   mockCompliance,
   mockEvents,
@@ -50,10 +60,12 @@ import {
   mockIncidents,
   mockIntegrations,
   mockKpis,
+  mockRemediationResult,
   mockRiskHeatmap,
   mockSbomDocument,
   mockSbomFull,
   mockSecurityScore,
+  mockTriageResult,
   mockVulnTimeline,
   mockVulnerabilities,
 } from './mock';
@@ -165,6 +177,132 @@ async function getRaw<Raw, T>(
 
 function get<T>(path: string, fallback: T, opts: { mockOnly?: boolean } = {}): Promise<T> {
   return getRaw<T, T>(path, fallback, (raw) => raw, opts);
+}
+
+// ---- Agent triage / remediation tasks (S11-3) ----------------------------
+
+/**
+ * Derive a package ecosystem from a package name.
+ *
+ * The frontend `Vulnerability` wire type carries no ecosystem field (the
+ * SBOM types do), but both agent-service task inputs require one — so we
+ * derive a best-effort guess from the name:
+ *   - `@scope/name`        → npm (scoped npm packages)
+ *   - slash-separated path → go (module path, e.g. github.com/org/repo)
+ *   - `group:artifact`     → maven coordinates
+ *   - PascalCase           → nuget (Newtonsoft.Json, Microsoft.Extensions.*)
+ *   - contains `.` or `_`  → pypi (PEP 503 distribution names)
+ *   - anything else        → npm — bare npm, cargo and (some) pypi names are
+ *                            indistinguishable, so fall back to the largest
+ *                            ecosystem in the estate.
+ */
+export function deriveEcosystem(packageName: string): RemediationEcosystem {
+  const name = packageName.trim();
+  if (name.startsWith('@')) return 'npm';
+  if (name.includes('/')) return 'go';
+  if (name.includes(':')) return 'maven';
+  if (/^[A-Z]/.test(name)) return 'nuget';
+  if (/[._]/.test(name)) return 'pypi';
+  return 'npm';
+}
+
+/**
+ * Map a frontend `Vulnerability` onto the agent-service finding input
+ * shared by `triage.findings` and `remediation.propose` (`AgentFinding`).
+ * One helper for both call sites so the wire mapping lives in exactly one
+ * place.
+ *
+ * Backend scoring fields derivable from `Vulnerability`: `cvss` (carried
+ * through) and `fixAvailable` (a fix exists iff `fixedIn` is set — the
+ * triage heuristic penalizes `fixAvailable: false`, so leaving it unset
+ * would silently score unfixable findings as fixable). `kev`, `epss`,
+ * `assetCriticality` and `exposure` are genuinely NOT derivable from
+ * `Vulnerability` and stay unset — do not invent derivations for them.
+ */
+export function toAgentFinding(v: Vulnerability): AgentFinding {
+  return {
+    id: v.id,
+    cveId: v.cve,
+    package: { name: v.package, ecosystem: deriveEcosystem(v.package), version: v.version },
+    fixedVersions: v.fixedIn ? [v.fixedIn] : [],
+    fixAvailable: Boolean(v.fixedIn),
+    cvss: v.cvss,
+    // The frontend `Severity` spells info-level `info`; the agent spells it
+    // `informational`.
+    severity: v.severity === 'info' ? 'informational' : v.severity,
+  };
+}
+
+/** Strict JSON request shared by the agent-task POST and its poll GET:
+ * same auth headers and 401 `sessionExpired()` / `recordFailure()`
+ * behaviour as `getRaw`, but it throws on failure instead of substituting
+ * a fallback. */
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  // A previous request already 401'd — don't keep hammering the backend
+  // with the stale x-tenant-id fallback.
+  if (isAuthRequired()) {
+    throw new Error('Log in to run agent tasks.');
+  }
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    ...(token ? { authorization: `Bearer ${token}` } : { 'x-tenant-id': TENANT_ID }),
+  };
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, { ...init, credentials: 'include', headers });
+  } catch (err) {
+    console.warn(`AionUi: ${path} -> request failed`, err);
+    recordFailure(path);
+    throw new Error('Request failed — is the backend running?');
+  }
+  if (res.status === 401) {
+    sessionExpired();
+  }
+  if (!res.ok) {
+    console.warn(`AionUi: ${path} -> HTTP ${res.status}`);
+    recordFailure(path);
+    throw new Error(`Request failed (HTTP ${res.status}).`);
+  }
+  return (await res.json()) as T;
+}
+
+const TASK_POLL_INTERVAL_MS = 500;
+const TASK_POLL_MAX = 20;
+
+/**
+ * POST helper (sibling of `get`/`getRaw`) for agent tasks — same
+ * mock-switch (fixture + 80ms delay), 401 `sessionExpired()` and
+ * `recordFailure()` behaviour. Submits `kind` to POST /agents/tasks, polls
+ * GET /agents/tasks/:id (500ms × ≤20 — never hangs past the cap) until the
+ * task settles, and returns its `result`. In mock mode the fixture is
+ * returned without touching the network. Throws on live failure: a task
+ * run must surface its error, never resolve to sample data.
+ */
+async function postAgentTask<R>(
+  kind: string,
+  payload: Record<string, unknown>,
+  mock: R,
+): Promise<R> {
+  if (USE_MOCKS) {
+    await new Promise((r) => setTimeout(r, 80));
+    return mock;
+  }
+  const created = await requestJson<AgentTaskEnvelope>('/agents/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ kind, payload }),
+  });
+  for (let poll = 0; poll < TASK_POLL_MAX; poll++) {
+    await new Promise((r) => setTimeout(r, TASK_POLL_INTERVAL_MS));
+    const { task } = await requestJson<AgentTaskEnvelope>(
+      `/agents/tasks/${encodeURIComponent(created.task.id)}`,
+    );
+    if (task.status === 'completed') return task.result as R;
+    if (task.status === 'failed' || task.status === 'cancelled') {
+      throw new Error(task.error ?? `Agent task ${kind} ${task.status}.`);
+    }
+  }
+  throw new Error(`Agent task ${kind} timed out after ${TASK_POLL_MAX} polls.`);
 }
 
 // ---- SBOM export download (S9-2) ------------------------------------------
@@ -324,6 +462,20 @@ export const api = {
       mockVulnerabilities,
       (raw) => raw.items,
     ),
+
+  // ---- Sprint 11 — Triage & remediation (S11-3) --------------------------
+  // Feed the rows of `vulnerabilities()` through `toAgentFinding` first.
+  /** Score findings with the agent (`triage.findings` task). */
+  triageFindings: (findings: TriageFinding[]): Promise<TriageResult> =>
+    postAgentTask<TriageResult>('triage.findings', { findings }, mockTriageResult),
+
+  /** Generate dependency-bump proposals (`remediation.propose` task). */
+  remediationProposals: (findings: RemediationFinding[]): Promise<RemediationResult> =>
+    postAgentTask<RemediationResult>('remediation.propose', { findings }, mockRemediationResult),
+
+  /** Apply a proposal via integration-service (`remediation.apply` task). */
+  applyRemediation: (input: ApplyInput): Promise<ApplyResult> =>
+    postAgentTask<ApplyResult>('remediation.apply', { ...input }, mockApplyResult),
 
   // ---- Incidents ---------------------------------------------------------
   incidents: () => get<Incident[]>('/incidents', mockIncidents),

@@ -208,3 +208,124 @@ export type GraphData = {
   nodes: GraphNode[];
   edges: GraphEdge[];
 };
+
+// -------------------------------------------------------------------------
+// Sprint 11 — Agent triage / remediation (S11-3)
+//
+// Mirrors backend/services/agent/src/agents/{triage,remediation}.ts and the
+// /v1/agents/tasks envelope EXACTLY — no frontend-only reshaping. Where the
+// backend names collide with existing frontend names they get a `Triage`/
+// `Remediation` prefix (`Decision` → `TriageDecision`, `Risk` →
+// `RemediationRisk`, `Ecosystem` → `RemediationEcosystem`, ...).
+// -------------------------------------------------------------------------
+
+/** `triage.findings` input finding (agent-service `Finding`). */
+export type TriageFinding = {
+  id?: string;
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'informational';
+  cveId?: string;
+  kev?: boolean;
+  epss?: number;
+  cvss?: number;
+  fixAvailable?: boolean;
+  assetCriticality?: 'critical' | 'high' | 'medium' | 'low';
+  exposure?: 'internet' | 'internal';
+};
+
+export type TriageDecision = 'open_incident' | 'create_ticket' | 'log_only';
+export type TriagePriority = 'P1' | 'P2' | 'P3' | 'P4';
+
+export interface PerFindingScore {
+  id?: string;
+  score: number;
+  priority: TriagePriority;
+}
+
+export interface TriageResult {
+  decision: TriageDecision;
+  priority: TriagePriority;
+  rationale: string[];
+  perFinding: PerFindingScore[];
+  counts: { total: number; critical: number; high: number };
+  engine: 'heuristic' | 'llm';
+  triagedAt: string;
+}
+
+/** `remediation.propose` input finding (agent-service `RemediationFinding`). */
+export type RemediationEcosystem = 'npm' | 'pypi' | 'maven' | 'go' | 'cargo' | 'nuget';
+
+export type RemediationFinding = {
+  id?: string;
+  cveId?: string;
+  package: { name: string; ecosystem: RemediationEcosystem; version: string };
+  fixedVersions?: string[];
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'informational';
+};
+
+export type Bump = 'none' | 'patch' | 'minor' | 'major' | 'unknown';
+export type RemediationRisk = 'low' | 'medium' | 'high';
+
+export interface RemediationProposal {
+  package: { name: string; ecosystem: RemediationEcosystem };
+  from: string;
+  to: string;
+  bump: Bump;
+  resolves: string[];
+  risk: RemediationRisk;
+  manifestHint: string;
+  status: 'ok' | 'manual_review';
+}
+
+export interface RemediationUnresolved {
+  package: { name: string; ecosystem: RemediationEcosystem };
+  reason: string;
+}
+
+export interface RemediationResult {
+  proposals: RemediationProposal[];
+  unresolved: RemediationUnresolved[];
+  engine: 'heuristic';
+  generatedAt: string;
+}
+
+/** `remediation.apply` input (agent-service `ApplyInput`). */
+export type ApplyInput = {
+  integrationId: string;
+  proposal: RemediationProposal;
+  context?: { findingId?: string; cveId?: string; assetId?: string; repo?: string };
+  dryRun?: boolean;
+};
+
+export interface ApplyResult {
+  applied: boolean;
+  integrationId: string;
+  kind: 'issue' | 'pull_request' | null;
+  url?: string;
+  number?: number;
+  message: string;
+}
+
+/** One finding shape accepted by BOTH agent-service task inputs
+ * (`triage.findings` and `remediation.propose`) — produced by
+ * `toAgentFinding` in lib/api.ts. */
+export type AgentFinding = TriageFinding & RemediationFinding;
+
+/** POST /v1/agents/tasks 202 / GET /v1/agents/tasks/:id task envelope. */
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface AgentTask {
+  id: string;
+  kind: string;
+  tenantId: string;
+  status: TaskStatus;
+  input: Record<string, unknown>;
+  result?: unknown;
+  error?: string;
+  createdAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface AgentTaskEnvelope {
+  task: AgentTask;
+}

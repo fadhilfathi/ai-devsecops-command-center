@@ -11,6 +11,7 @@
  */
 
 import type {
+  ApplyResult,
   Asset,
   ComplianceControl,
   EventStreamEntry,
@@ -18,11 +19,13 @@ import type {
   Incident,
   Integration,
   Kpi,
+  RemediationResult,
   RiskHeatmap,
   RiskHeatmapCell,
   SbomComponentEnhanced,
   SbomDocument,
   SecurityScore,
+  TriageResult,
   VulnTimelinePoint,
   VulnTimelineRange,
   Vulnerability,
@@ -831,6 +834,98 @@ function buildGraphData(sbomId: string): GraphData {
 }
 
 export const mockGraphData = (sbomId: string): GraphData => buildGraphData(sbomId);
+
+// -------------------------------------------------------------------------
+// Sprint 11 — Triage / remediation mocks (S11-3)
+// -------------------------------------------------------------------------
+
+/** Heuristic triage of `mockVulnerabilities` (2 critical, 2 high of 7). */
+export const mockTriageResult: TriageResult = {
+  decision: 'open_incident',
+  priority: 'P1',
+  rationale: [
+    'CVE-2024-3094 (xz-utils supply-chain backdoor) is a critical, known-exploited compromise of a build dependency.',
+    'CVE-2024-21626 (runc container escape) is critical on internet-exposed workloads (ast-003).',
+    '5 of 7 findings have a published fix — start with the two criticals.',
+  ],
+  perFinding: [
+    { id: 'vuln-501', score: 95, priority: 'P1' },
+    { id: 'vuln-502', score: 88, priority: 'P1' },
+    { id: 'vuln-503', score: 66, priority: 'P2' },
+    { id: 'vuln-506', score: 62, priority: 'P2' },
+    { id: 'vuln-504', score: 41, priority: 'P3' },
+    { id: 'vuln-505', score: 38, priority: 'P3' },
+    { id: 'vuln-507', score: 22, priority: 'P4' },
+  ],
+  counts: { total: 7, critical: 2, high: 2 },
+  engine: 'heuristic',
+  triagedAt: ago(2),
+};
+
+/** Dependency-bump proposals across npm / pypi / go; one major bump needs
+ * manual review, one internal package has no published fix. */
+export const mockRemediationResult: RemediationResult = {
+  proposals: [
+    {
+      package: { name: 'lodash', ecosystem: 'npm' },
+      from: '4.17.20',
+      to: '4.17.21',
+      bump: 'patch',
+      resolves: ['CVE-2021-23337'],
+      risk: 'low',
+      manifestHint: 'npm install lodash@4.17.21',
+      status: 'ok',
+    },
+    {
+      package: { name: 'axios', ecosystem: 'npm' },
+      from: '1.6.0',
+      to: '1.7.4',
+      bump: 'minor',
+      resolves: ['CVE-2024-39338'],
+      risk: 'medium',
+      manifestHint: 'npm install axios@1.7.4',
+      status: 'ok',
+    },
+    {
+      package: { name: 'github.com/gin-gonic/gin', ecosystem: 'go' },
+      from: '1.9.0',
+      to: '1.9.1',
+      bump: 'patch',
+      resolves: ['CVE-2023-26125'],
+      risk: 'low',
+      manifestHint: 'go get github.com/gin-gonic/gin@v1.9.1',
+      status: 'ok',
+    },
+    {
+      package: { name: 'cryptography', ecosystem: 'pypi' },
+      from: '41.0.6',
+      to: '42.0.4',
+      bump: 'major',
+      resolves: ['CVE-2023-49083', 'CVE-2024-26130'],
+      risk: 'high',
+      manifestHint: 'pip install cryptography==42.0.4',
+      status: 'manual_review',
+    },
+  ],
+  unresolved: [
+    {
+      package: { name: 'internal-payments-sdk', ecosystem: 'npm' },
+      reason: 'internal package — no published fix; rotate the leaked credential and cut a release',
+    },
+  ],
+  engine: 'heuristic',
+  generatedAt: ago(1),
+};
+
+/** `remediation.apply` success — GitHub issue/PR opened via integration-service. */
+export const mockApplyResult: ApplyResult = {
+  applied: true,
+  integrationId: 'int-1',
+  kind: 'pull_request',
+  url: 'https://github.com/acme-org/payments-api/pull/482',
+  number: 482,
+  message: 'Opened pull request #482 on acme-org/payments-api.',
+};
 
 // Quiet "unused" warnings on `now` and `ago` while keeping them available
 // for future mock expansion.
