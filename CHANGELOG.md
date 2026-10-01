@@ -34,6 +34,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loopback rejected unless `AICC_K8S_ALLOW_PRIVATE_API=true`. `DELETE`
   and credential rotation evict the cluster's cached `LiveProvider`
   client via a new `LiveProvider.evict()` / `ProviderRegistry.evictLive()`.
+- **S11-2**: remediation proposals can be applied straight to GitHub.
+  `remediation.apply` opens an issue — or, for a clean proposal targeting
+  an explicitly named branch, a pull request — in the repository
+  configured on a GitHub integration, describing the dependency bump and
+  the findings it resolves. A dry-run mode reports what would be opened
+  without opening anything. Each integration carries its own personal
+  access token (stored with the integration, decrypted at use with the
+  platform credential keyring), and GitHub Enterprise Server is supported
+  by pointing the GitHub API base URL at the server. Failures never
+  expose GitHub's error details to the caller — a generic upstream error
+  is returned instead — and every apply attempt leaves an integration
+  sync record for audit.
+- **S11-3**: new **Remediation** screen (`/remediation`) turning findings
+  into fixes. The Triage tab shows each finding's priority decision with
+  its rationale; the Proposals tab lists the suggested dependency bumps
+  with their risk level and the manifest change to make; the Apply tab
+  submits one proposal to the GitHub integration (dry run by default).
+  The three views are linkable (`?view=triage`, `?view=proposals`,
+  `?view=apply`).
 
 ### Security
 

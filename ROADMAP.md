@@ -384,7 +384,8 @@ Deliberate corners cut, each with a named ceiling and an upgrade trigger:
 
 ## Sprint 11 — Cluster delete, remediation follow-through, remediation UI, security persistence
 
-Status: not started.
+Status: **complete** (2026-10-01). See
+[`docs/architecture/sprint-11/`](./docs/architecture/sprint-11/).
 
 - **S11-1** (done): cluster CRUD in `kubernetes-service`. Added
   `POST /v1/kubernetes/clusters`, `PATCH /v1/kubernetes/clusters/:id`,
@@ -398,22 +399,48 @@ Status: not started.
   metadata addresses (169.254.0.0/16, `fd00:ec2::254`) always rejected,
   RFC1918/unique-local private ranges allowed by default, loopback
   rejected unless `AICC_K8S_ALLOW_PRIVATE_API=true`.
-- **S11-2**: `remediation.apply` via `integration-service`'s GitHub
-  provider. `providers/registry.ts`'s `GithubProvider` today only verifies
-  inbound webhook signatures and records a sync row (`handleEvent`) — it
-  has no outbound GitHub API client. Add one (a user-supplied personal
-  access token per integration, already the shape `integrations` rows
-  store credentials in; zero-cost — no GitHub App, no paid tier) that can
-  open an issue or PR with a `RemediationAgent` proposal's `manifestHint`.
-  Wire `agent-service`'s `applyRemediation()` to call it instead of
-  returning `applied: false` unconditionally.
-- **S11-3**: frontend triage/remediation results screen.
-  `frontend/src/routes/` has no page for `TriageAgent`'s heuristic output
-  or `RemediationAgent`'s proposals (S9-4/S10-1 shipped backend-only) —
-  the closest existing screen, `Vulnerabilities.tsx`, doesn't surface
-  either. Add a route (or a tab on `Vulnerabilities.tsx`) showing
-  per-finding triage rationale/priority and remediation proposals with
-  their risk level and `manifestHint`.
+- **S11-2** (done): `remediation.apply` now opens a real GitHub issue or
+  pull request instead of returning `applied: false`. `agent-service`'s
+  `applyRemediation()` gates the call first — a missing `integrationId`,
+  or a proposal whose `status` isn't `ok` (`manual_review` needs human
+  approval), short-circuits to `applied: false` without a network call —
+  then hands off via the new `createIntegrationClient`
+  (`backend/services/agent/src/clients/integration.client.ts`, a
+  short-lived internal token per call). integration-service gains
+  `POST /v1/integrations/:integrationId/remediation` backed by the new
+  `GithubClient` (`src/providers/github.client.ts`): bearer auth with the
+  user-supplied PAT on the integration's `config` (`token`/`pat`,
+  decrypted at use via the ADR-0016 keyring), `GITHUB_API_URL`
+  overridable for GHES — no GitHub App, no paid tier. Issue vs PR is
+  `selectRemediationTarget`: a pull request only for an `ok` proposal
+  whose `context.repo` names an explicit `owner/repo#branch`, everything
+  else an issue; `dryRun` reports the target with zero outbound calls.
+  Everything is tenant-scoped — unknown, disabled, and foreign-tenant
+  integrations are all 404 — with a fixed status contract (404 / 409
+  non-github integration / 422 github config missing `owner`, `repo`, or
+  a token / 502 GitHub failure), and GitHub's response body never reaches
+  the caller: a failure carries only the logged upstream status and maps
+  to a generic 502. Each attempt records a `github.remediation` sync row
+  and publishes `integration.sync.completed`. See
+  [ADR 0021](./docs/adr/0021-outbound-github-remediation.md).
+- **S11-3** (done): triage/remediation screen at `/remediation`
+  (`frontend/src/routes/Remediation.tsx`, lazy route + sidebar entry)
+  with Triage / Proposals / Apply tabs, URL-addressable via
+  `?view=triage|proposals|apply`. The run action maps the current
+  vulnerability rows through `toAgentFinding` and runs the
+  `triage.findings` + `remediation.propose` agent tasks; the Apply tab
+  submits `remediation.apply` for one proposal (integration picker, dry
+  run on by default). New agent-service wire types in
+  `frontend/src/types/index.ts` mirror the `/v1/agents/tasks` envelope
+  exactly, and `postAgentTask` (`src/lib/api.ts`) submits then polls a
+  task (500 ms × ≤20 — bounded; throws on failure or timeout, never
+  hangs, never substitutes mock data on a live failure).
+  `deriveEcosystem()` covers the one gap in the `Vulnerability` wire
+  type (it carries no ecosystem): inferred from the package name —
+  scoped name → npm, slash path → go, `group:artifact` → maven,
+  PascalCase → nuget, `.`/`_` → pypi, else npm — while the scoring
+  fields that aren't derivable (KEV, EPSS, exposure, asset criticality)
+  stay unset instead of being invented.
 - **S11-4** (done): Postgres persistence for `security-service`. Of the 13
   backend services, only `kubernetes-service` (`cluster.repository.ts`)
   and `incident-service` (`incident.repository.ts`, `runbook.repository.ts`,
