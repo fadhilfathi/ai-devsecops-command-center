@@ -146,3 +146,16 @@ export interface Integration extends BaseEntity, TenantScoped {
   enabled: boolean;
   lastSyncAt?: string;
 }
+
+/**
+ * Remediation package ecosystems — the `ecosystem` wire enum shared by
+ * agent-service (`src/agents/remediation.ts`) and integration-service
+ * (`src/routes/integrations.ts`, `RemediationRequestSchema`). Single
+ * source of truth: both used to carry their own `z.enum` copy that could
+ * silently drift apart.
+ *
+ * Mirrored as string literals by `RemediationEcosystem` in
+ * `frontend/src/types/index.ts`; a change here must ripple there too.
+ */
+export const EcosystemSchema = z.enum(['npm', 'pypi', 'maven', 'go', 'cargo', 'nuget']);
+export type Ecosystem = z.infer<typeof EcosystemSchema>;

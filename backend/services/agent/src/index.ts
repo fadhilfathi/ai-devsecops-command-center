@@ -22,6 +22,8 @@ import {
 import { buildHealthRoutes } from './routes/health.js';
 import { buildAgentRoutes } from './routes/agent.js';
 import { buildAgentRegistry } from './agents/registry.js';
+import type { ApplyResult } from './agents/remediation.js';
+import { createIntegrationClient } from './clients/integration.client.js';
 import { buildTaskQueue } from './services/task-queue.js';
 
 const SERVICE_NAME = 'agent-service';
@@ -30,6 +32,8 @@ const SERVICE_VERSION = '0.1.0';
 export interface AgentServiceDeps {
   bus: EventBus;
   logger: Logger;
+  /** Injectable for tests — defaults to the real integration-service client. */
+  applyIntegration: (tenantId: string, body: unknown) => Promise<ApplyResult>;
 }
 
 export async function buildServer(deps?: Partial<AgentServiceDeps>): Promise<FastifyInstance> {
@@ -38,7 +42,8 @@ export async function buildServer(deps?: Partial<AgentServiceDeps>): Promise<Fas
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
   const queue = buildTaskQueue();
-  const registry = buildAgentRegistry({ bus, queue, logger });
+  const applyIntegration = deps?.applyIntegration ?? createIntegrationClient(cfg, logger);
+  const registry = buildAgentRegistry({ bus, queue, logger, applyIntegration });
 
   const server = Fastify({
     loggerInstance: logger,

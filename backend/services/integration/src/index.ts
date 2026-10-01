@@ -72,7 +72,7 @@ export async function buildServer(
   server.addHook('onRequest', buildAuthHook({ ...cfg.auth, logger }));
 
   await server.register(buildHealthRoutes, { logger, cfg, providers, bus });
-  await server.register(buildIntegrationRoutes, { logger, integrations, providers });
+  await server.register(buildIntegrationRoutes, { logger, integrations, providers, syncs, bus });
   await server.register(buildWebhookRoutes, { logger, providers, integrations, syncs, bus });
 
   server.setErrorHandler<FastifyError>((err, _req, reply) => {

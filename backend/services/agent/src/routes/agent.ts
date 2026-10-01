@@ -37,7 +37,7 @@ export const buildAgentRoutes: FastifyPluginAsync<Deps> = async (server: Fastify
     // Fire-and-forget dispatch; in Sprint 2 this will be a worker loop.
     setImmediate(() => {
       void registry
-        .dispatch(task, { bus, queue, logger })
+        .dispatch(task)
         .catch((err) => logger.error({ err, taskId: task.id }, 'dispatch failed'));
     });
     // Publish request event for observability.

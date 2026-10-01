@@ -13,12 +13,19 @@ import type { EventBus, Logger } from '@aicc/shared';
 import { EventTypes } from '@aicc/shared';
 import type { TaskQueue, AgentTask } from '../services/task-queue.js';
 import { triage } from './triage.js';
-import { proposeRemediation, applyRemediation } from './remediation.js';
+import {
+  proposeRemediation,
+  applyRemediation,
+  ApplyInputSchema,
+  type ApplyResult,
+} from './remediation.js';
 
 export interface AgentContext {
   bus: EventBus;
   queue: TaskQueue;
   logger: Logger;
+  /** Server-to-server caller for `remediation.apply` (integration-service). */
+  applyIntegration: (tenantId: string, body: unknown) => Promise<ApplyResult>;
 }
 
 export interface Agent {
@@ -31,7 +38,7 @@ export interface Agent {
 
 export interface AgentRegistry {
   agents(): Agent[];
-  dispatch(task: AgentTask, ctx: AgentContext): Promise<AgentTask>;
+  dispatch(task: AgentTask): Promise<AgentTask>;
 }
 
 class TriageAgent implements Agent {
@@ -60,7 +67,11 @@ class RemediationAgent implements Agent {
   async run(task: AgentTask, ctx: AgentContext): Promise<Record<string, unknown>> {
     ctx.logger.info({ taskId: task.id, kind: task.kind }, 'remediation agent running');
     if (task.kind === 'remediation.apply') {
-      return { ...applyRemediation() };
+      const input = ApplyInputSchema.parse(task.input);
+      const result = await applyRemediation(input, {
+        callIntegration: (body) => ctx.applyIntegration(task.tenantId, body),
+      });
+      return { ...result };
     }
     return { ...proposeRemediation(task.input) };
   }
@@ -89,7 +100,7 @@ export function buildAgentRegistry(ctx: AgentContext): AgentRegistry {
     agents() {
       return agents;
     },
-    async dispatch(task, dispatchCtx) {
+    async dispatch(task) {
       const agent = agents.find((a) => a.canHandle(task.kind));
       if (!agent) {
         const failed = await ctx.queue.fail(task.id, `no agent registered for kind=${task.kind}`);
@@ -104,7 +115,7 @@ export function buildAgentRegistry(ctx: AgentContext): AgentRegistry {
         return failed!;
       }
       try {
-        const result = await agent.run(task, dispatchCtx);
+        const result = await agent.run(task, ctx);
         const done = await ctx.queue.complete(task.id, result);
         await ctx.bus.publish({
           type: EventTypes.AGENT_TASK_COMPLETED,

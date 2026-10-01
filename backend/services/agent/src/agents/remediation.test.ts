@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { proposeRemediation, applyRemediation, type RemediationFinding } from './remediation.js';
+import { proposeRemediation, applyRemediation, type Proposal, type RemediationFinding } from './remediation.js';
 
 function pkg(name: string, ecosystem: RemediationFinding['package']['ecosystem'], version: string) {
   return { name, ecosystem, version };
@@ -181,10 +181,89 @@ test('manifestHint is ecosystem-specific and never an executable action taken by
   expect(result.proposals[0].manifestHint).toBe('pip install flask==1.1');
 });
 
-test('applyRemediation never fakes success', () => {
-  const result = applyRemediation();
+function okProposal(): Proposal {
+  return {
+    package: { name: 'lodash', ecosystem: 'npm' },
+    from: '4.17.20',
+    to: '4.17.21',
+    bump: 'patch',
+    resolves: ['CVE-2021-23337'],
+    risk: 'low',
+    manifestHint: 'npm install lodash@4.17.21',
+    status: 'ok',
+  };
+}
+
+test('applyRemediation rejects manual_review proposals without calling the integration service', async () => {
+  let calls = 0;
+  const result = await applyRemediation(
+    { integrationId: 'int-1', proposal: { ...okProposal(), status: 'manual_review' } },
+    {
+      callIntegration: async () => {
+        calls += 1;
+        return { applied: true, integrationId: 'int-1', kind: 'issue', message: 'opened' };
+      },
+    },
+  );
   expect(result.applied).toBe(false);
-  expect(result.message).toMatch(/not implemented/i);
+  expect(result.kind).toBeNull();
+  expect(result.message).toMatch(/manual_review/);
+  expect(calls).toBe(0);
+});
+
+test('applyRemediation requires an integrationId and never calls the integration service without one', async () => {
+  let calls = 0;
+  const result = await applyRemediation(
+    { integrationId: '', proposal: okProposal() },
+    {
+      callIntegration: async () => {
+        calls += 1;
+        return { applied: true, integrationId: 'int-1', kind: 'issue', message: 'opened' };
+      },
+    },
+  );
+  expect(result.applied).toBe(false);
+  expect(result.kind).toBeNull();
+  expect(result.message).toMatch(/integrationId is required/);
+  expect(calls).toBe(0);
+});
+
+test('applyRemediation passes the integration-service result through unchanged', async () => {
+  const downstream = {
+    applied: true,
+    integrationId: 'int-1',
+    kind: 'pull_request' as const,
+    url: 'https://github.com/acme/widgets/pull/42',
+    number: 42,
+    message: 'pull request opened',
+  };
+  const result = await applyRemediation(
+    { integrationId: 'int-1', proposal: okProposal(), context: { cveId: 'CVE-2021-23337' } },
+    {
+      callIntegration: async (body) => {
+        expect(body).toMatchObject({
+          integrationId: 'int-1',
+          proposal: { to: '4.17.21', status: 'ok' },
+          context: { cveId: 'CVE-2021-23337' },
+        });
+        return downstream;
+      },
+    },
+  );
+  expect(result).toEqual(downstream);
+});
+
+test('applyRemediation propagates integration-service errors', async () => {
+  await expect(
+    applyRemediation(
+      { integrationId: 'int-1', proposal: okProposal() },
+      {
+        callIntegration: async () => {
+          throw new Error('integration-service remediation request failed: 502');
+        },
+      },
+    ),
+  ).rejects.toThrow(/502/);
 });
 
 test('a fix only on a lower release line leaves the package unresolved', () => {

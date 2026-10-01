@@ -9,9 +9,7 @@
  * not a command that gets run).
  */
 import { z } from 'zod';
-
-export const EcosystemSchema = z.enum(['npm', 'pypi', 'maven', 'go', 'cargo', 'nuget']);
-export type Ecosystem = z.infer<typeof EcosystemSchema>;
+import { EcosystemSchema, type Ecosystem } from '@aicc/shared';
 
 export const PackageRefSchema = z.object({
   name: z.string().min(1).max(200),
@@ -337,15 +335,79 @@ function dedupe(items: string[]): string[] {
   return Array.from(new Set(items));
 }
 
+// ---------------------------------------------------------------------------
+// Applying a proposal
+// ---------------------------------------------------------------------------
+
+export const ApplyProposalSchema = z.object({
+  package: z.object({ name: z.string().min(1).max(200), ecosystem: EcosystemSchema }),
+  from: z.string().min(1).max(100),
+  to: z.string().min(1).max(100),
+  bump: z.enum(['none', 'patch', 'minor', 'major', 'unknown']),
+  resolves: z.array(z.string().max(128)).max(50),
+  risk: z.enum(['low', 'medium', 'high']),
+  manifestHint: z.string().max(2000),
+  status: z.enum(['ok', 'manual_review']),
+});
+
+export const ApplyContextSchema = z.object({
+  findingId: z.string().max(128).optional(),
+  cveId: z.string().max(32).optional(),
+  assetId: z.string().max(128).optional(),
+  repo: z.string().max(200).optional(),
+});
+
+export const ApplyInputSchema = z.object({
+  integrationId: z.string().max(200).optional().default(''),
+  proposal: ApplyProposalSchema,
+  context: ApplyContextSchema.optional(),
+  dryRun: z.boolean().optional(),
+});
+
+export interface ApplyInput {
+  integrationId: string;
+  proposal: Proposal;
+  context?: { findingId?: string; cveId?: string; assetId?: string; repo?: string };
+  dryRun?: boolean;
+}
+
 export interface ApplyResult {
-  applied: false;
+  applied: boolean;
+  integrationId: string;
+  kind: 'issue' | 'pull_request' | null;
+  url?: string;
+  number?: number;
   message: string;
 }
 
-/** `remediation.apply` is not implemented — proposals are suggestions only. */
-export function applyRemediation(): ApplyResult {
-  return {
-    applied: false,
-    message: 'remediation.apply is not implemented — remediation-agent only produces proposals',
-  };
+/**
+ * `remediation.apply` — hands a proposal to the integration service, which
+ * opens the GitHub issue/PR. The policy gates live here; the HTTP hop is
+ * injected (`deps.callIntegration`) so this stays unit-testable offline.
+ * Errors from the integration service propagate to the caller (the task
+ * fails loudly rather than pretending nothing happened).
+ */
+export async function applyRemediation(
+  input: ApplyInput,
+  deps: { callIntegration: (body: unknown) => Promise<ApplyResult> },
+): Promise<ApplyResult> {
+  const integrationId = input.integrationId ?? '';
+  if (!integrationId) {
+    return {
+      applied: false,
+      integrationId: '',
+      kind: null,
+      message: 'integrationId is required to apply a remediation proposal',
+    };
+  }
+  if (input.proposal.status !== 'ok') {
+    return {
+      applied: false,
+      integrationId,
+      kind: null,
+      message:
+        'proposal needs manual_review approval before it can be applied — remediation.apply only accepts proposals with status ok',
+    };
+  }
+  return deps.callIntegration(input);
 }

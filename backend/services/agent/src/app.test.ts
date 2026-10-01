@@ -170,19 +170,49 @@ test('POST /v1/agents/tasks with a remediation.propose task returns a bump propo
   }
 });
 
-test('POST /v1/agents/tasks with a remediation.apply task reports not implemented', async () => {
+test('POST /v1/agents/tasks with a remediation.apply task opens via the integration service', async () => {
   const prev = process.env.AUTH_DEV_BYPASS;
   process.env.AUTH_DEV_BYPASS = 'true';
+  const calls: Array<{ tenantId: string; body: unknown }> = [];
   try {
-    const server = await buildServer();
+    const server = await buildServer({
+      applyIntegration: async (tenantId, body) => {
+        calls.push({ tenantId, body });
+        return {
+          applied: true,
+          integrationId: 'int-1',
+          kind: 'issue',
+          url: 'https://github.com/acme/widgets/issues/7',
+          number: 7,
+          message: 'issue opened',
+        };
+      },
+    });
     const res = await server.inject({
       method: 'POST',
       url: '/v1/agents/tasks',
       headers: { 'x-tenant-id': 'tenant-a' },
-      payload: { kind: 'remediation.apply', payload: {} },
+      payload: {
+        kind: 'remediation.apply',
+        payload: {
+          integrationId: 'int-1',
+          proposal: {
+            package: { name: 'lodash', ecosystem: 'npm' },
+            from: '4.17.20',
+            to: '4.17.21',
+            bump: 'patch',
+            resolves: ['CVE-2021-23337'],
+            risk: 'low',
+            manifestHint: 'npm install lodash@4.17.21',
+            status: 'ok',
+          },
+        },
+      },
     });
+    expect(res.statusCode).toBe(202);
     const taskId = res.json().task.id as string;
 
+    // Dispatch runs via setImmediate; poll until it completes.
     let task = res.json().task;
     for (let i = 0; i < 20 && task.status === 'pending'; i++) {
       await new Promise((r) => setImmediate(r));
@@ -190,8 +220,10 @@ test('POST /v1/agents/tasks with a remediation.apply task reports not implemente
       task = poll.json().task;
     }
     expect(task.status).toBe('completed');
-    expect(task.result.applied).toBe(false);
-    expect(task.result.message).toMatch(/not implemented/i);
+    expect(task.result.applied).toBe(true);
+    expect(task.result.url).toBe('https://github.com/acme/widgets/issues/7');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.tenantId).toBe('tenant-a');
     await server.close();
   } finally {
     if (prev === undefined) delete process.env.AUTH_DEV_BYPASS;

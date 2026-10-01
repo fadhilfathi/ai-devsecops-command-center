@@ -103,6 +103,7 @@ services:
       PORT: 3002
       EVENT_BUS_DRIVER: redis
       REDIS_URL: redis://redis:6379
+      INTEGRATION_SERVICE_URL: http://integration-service:3006
     ports:
       - '3002:3002'
     depends_on:
@@ -262,6 +263,7 @@ services:
       DATABASE_URL: postgres://aicc:aicc@postgres:5432/aicc_integration
       EVENT_BUS_DRIVER: redis
       REDIS_URL: redis://redis:6379
+      GITHUB_API_URL: https://api.github.com
       AICC_DEMO_SEED: 'true'
     ports:
       - '3006:3006'
