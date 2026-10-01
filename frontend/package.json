@@ -13,7 +13,7 @@
     "gen:nginx": "node scripts/gen-nginx.mjs"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.51.0",
+    "@tanstack/react-query": "^5.103.2",
     "axios": "^1.7.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

@@ -480,8 +480,8 @@ importers:
   frontend:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.51.0
-        version: 5.103.1(react@19.3.0)
+        specifier: ^5.103.2
+        version: 5.103.2(react@19.3.0)
       axios:
         specifier: ^1.7.4
         version: 1.20.0
@@ -1793,11 +1793,11 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
-  '@tanstack/query-core@5.103.1':
-    resolution: {integrity: sha512-rms8HqTGp6zA00dM+cUQ2eBcgzNJefuu5CAMB37i/6MiGT1zulPOytCFu2a0qjLqVR2n1jENPj9woqFQNuCzWA==}
+  '@tanstack/query-core@5.103.2':
+    resolution: {integrity: sha512-I8DkFXls5jXLqtm8+QpOhEmG07hIblhSZFzafg9wHsMSEvMzULy9hK17wU1T/ahfhMbtITJhbxutwwCoihkR7A==}
 
-  '@tanstack/react-query@5.103.1':
-    resolution: {integrity: sha512-rmAPPApNEK17VXRJhtE1rja53n23VV5w30C0saCgJhhX+EpdUnVqMGV/s5nnzV43X75KTHKzuoiuxSzGTBIkag==}
+  '@tanstack/react-query@5.103.2':
+    resolution: {integrity: sha512-B+fWiYZBc+0uUD5zDZAeLw9dKj7XEsdnuu6zRZ+no6LNKpeE3P3bJ+N6HINjcIlWR6fW3vUoTneEaGa2V6ehqw==}
     peerDependencies:
       react: ^18 || ^19
 
@@ -5417,11 +5417,11 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 7.3.6(@types/node@24.13.6)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)(yaml@2.9.1)
 
-  '@tanstack/query-core@5.103.1': {}
+  '@tanstack/query-core@5.103.2': {}
 
-  '@tanstack/react-query@5.103.1(react@19.3.0)':
+  '@tanstack/react-query@5.103.2(react@19.3.0)':
     dependencies:
-      '@tanstack/query-core': 5.103.1
+      '@tanstack/query-core': 5.103.2
       react: 19.3.0
 
   '@types/aws-lambda@8.10.163': {}
@@ -5751,7 +5751,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(@vitest/coverage-v8@4.1.11)(vite@7.3.6(@types/node@22.20.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(@vitest/coverage-v8@4.1.11)(vite@7.3.6(@types/node@24.13.6)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/expect@4.1.11':
     dependencies:
