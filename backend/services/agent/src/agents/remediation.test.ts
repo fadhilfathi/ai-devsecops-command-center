@@ -1,5 +1,10 @@
 import { test, expect } from 'vitest';
-import { proposeRemediation, applyRemediation, type Proposal, type RemediationFinding } from './remediation.js';
+import {
+  proposeRemediation,
+  applyRemediation,
+  type Proposal,
+  type RemediationFinding,
+} from './remediation.js';
 
 function pkg(name: string, ecosystem: RemediationFinding['package']['ecosystem'], version: string) {
   return { name, ecosystem, version };

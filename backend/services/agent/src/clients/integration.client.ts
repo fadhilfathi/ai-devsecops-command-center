@@ -27,7 +27,10 @@ export function createIntegrationClient(
   logger: Logger,
 ): (tenantId: string, body: unknown) => Promise<ApplyResult> {
   // Default matches `defaultPort('integration-service')` in @aicc/shared.
-  const baseUrl = (process.env.INTEGRATION_SERVICE_URL ?? 'http://127.0.0.1:3006').replace(/\/+$/, '');
+  const baseUrl = (process.env.INTEGRATION_SERVICE_URL ?? 'http://127.0.0.1:3006').replace(
+    /\/+$/,
+    '',
+  );
 
   return async (tenantId: string, body: unknown): Promise<ApplyResult> => {
     const { integrationId, ...payload } = body as Record<string, unknown> & {

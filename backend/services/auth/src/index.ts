@@ -16,7 +16,10 @@ import {
 import { loadEnv } from './config.js';
 import { buildAuthRoutes } from './routes/auth.js';
 import { buildHealthRoutes } from './routes/health.js';
-import { buildUserRepository } from './services/user.repository.js';
+import { buildPgUserRepository, buildUserRepository, type UserRepository } from './services/user.repository.js';
+import { buildTokenService } from './services/token.service.js';
+import { createPool, migrate } from '@aicc/shared/db';
+import { MIGRATIONS } from './db/migrations.js';
 import { buildTokenService } from './services/token.service.js';
 
 const SERVICE_NAME = 'auth-service';
@@ -24,7 +27,7 @@ const SERVICE_VERSION = '0.1.0';
 
 export interface AuthServiceDeps {
   bus: EventBus;
-  users: ReturnType<typeof buildUserRepository>;
+  users: UserRepository;
   tokens: ReturnType<typeof buildTokenService>;
 }
 
@@ -35,6 +38,13 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
 
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
   const users = deps?.users ?? buildUserRepository();
+
+  const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
+  if (db) {
+    await migrate(db, MIGRATIONS);
+  }
+
+  const users = deps?.users ?? (db ? buildPgUserRepository(db) : buildUserRepository());
   const tokens =
     deps?.tokens ??
     buildTokenService({
