@@ -20,7 +20,6 @@ import { buildPgUserRepository, buildUserRepository, type UserRepository } from 
 import { buildTokenService } from './services/token.service.js';
 import { createPool, migrate } from '@aicc/shared/db';
 import { MIGRATIONS } from './db/migrations.js';
-import { buildTokenService } from './services/token.service.js';
 
 const SERVICE_NAME = 'auth-service';
 const SERVICE_VERSION = '0.1.0';
@@ -37,7 +36,6 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
   const logger = createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
 
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
-  const users = deps?.users ?? buildUserRepository();
 
   const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
   if (db) {
@@ -102,6 +100,11 @@ export async function buildServer(deps?: Partial<AuthServiceDeps>): Promise<Fast
     });
   });
 
+  if (db) {
+    server.addHook('onClose', async () => {
+      await db.end();
+    });
+  }
   server.addHook('onClose', async () => {
     await bus.close();
   });

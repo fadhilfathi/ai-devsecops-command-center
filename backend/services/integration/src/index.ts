@@ -19,12 +19,18 @@ import {
   type EventBus,
   type Logger,
 } from '@aicc/shared';
+import { createPool, migrate } from '@aicc/shared/db';
+
 import { buildHealthRoutes } from './routes/health.js';
 import { buildIntegrationRoutes } from './routes/integrations.js';
 import { buildWebhookRoutes } from './routes/webhooks.js';
-import { buildIntegrationRepository } from './repositories/integration.repository.js';
+import {
+  buildIntegrationRepository,
+  buildPgIntegrationRepository,
+} from './repositories/integration.repository.js';
 import { seedDemoData } from './seed.js';
-import { buildSyncRepository } from './repositories/sync.repository.js';
+import { buildSyncRepository, buildPgSyncRepository } from './repositories/sync.repository.js';
+import { MIGRATIONS } from './db/migrations.js';
 import { buildProviderRegistry } from './providers/registry.js';
 
 const SERVICE_NAME = 'integration-service';
@@ -42,9 +48,13 @@ export async function buildServer(
   const logger =
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
+  const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
+  if (db) {
+    await migrate(db, MIGRATIONS);
+  }
 
-  const integrations = buildIntegrationRepository();
-  const syncs = buildSyncRepository();
+  const integrations = db ? buildPgIntegrationRepository(db) : buildIntegrationRepository();
+  const syncs = db ? buildPgSyncRepository(db) : buildSyncRepository();
   const providers = buildProviderRegistry({ bus, logger, syncs });
 
   if (cfg.demoSeed) {
@@ -84,6 +94,11 @@ export async function buildServer(
     });
   });
 
+  if (db) {
+    server.addHook('onClose', async () => {
+      await db.end();
+    });
+  }
   server.addHook('onClose', async () => {
     await bus.close();
   });

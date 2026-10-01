@@ -14,6 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **S12**: Postgres persistence for `integration-service` — `integrations`
+  and `syncs` tables with `buildPgIntegrationRepository` /
+  `buildPgSyncRepository` implementations mirroring the existing
+  in-memory repositories (tenant scoping, optional `integrationId` /
+  `status` sync filters, `finish()` returning `undefined` on unknown id).
+  `Integration.config` and `SyncRecord.metadata` are stored as `jsonb`.
+  `DATABASE_URL` (already present in `.env.example`) now switches
+  integration-service onto Postgres at startup; unset stays in-memory.
+
+- **S12**: Postgres persistence for `auth-service` — a `users` table
+  (`email` UNIQUE, indexed `tenant_id`) with a `buildPgUserRepository`
+  mirroring the in-memory repository. `DATABASE_URL` now switches
+  auth-service onto Postgres at startup; unset stays in-memory. The
+  platform-admin seed row (`admin@aicc.local`) is written by the
+  migration, so a freshly migrated database still serves
+  `POST /v1/auth/dev-login` — the only login path until real
+  credential auth exists. No password field or credential store is
+  introduced.
+
 - **S11-4**: Postgres persistence for `security-service` — `assets`,
   `scans`, `findings`, `sboms`, `sbom_components`, `sbom_edges` tables
   with `buildPg<X>Repository` implementations mirroring the existing

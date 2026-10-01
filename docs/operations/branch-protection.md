@@ -4,23 +4,41 @@ These settings **are applied** to `main` (see the verification commands at
 the bottom). They were added in Sprint 12; before that they existed only
 as a manual checklist.
 
-The workflow is still a solo maintainer pushing directly to `main`, so
-mandatory pull-request review is deliberately NOT required. What is
-enforced: CI must pass, and neither force-push nor branch deletion is
-possible — including for administrators.
+Enforced today: `Lint & Type-check` must pass before anything lands on
+`main`, and neither force-push nor branch deletion is possible —
+including for administrators.
 
-- [x] **Require status checks to pass before merging** — the `ci` jobs
-      `Lint & Type-check` and `Build`. `Docker build` is NOT required: it
-      only runs on push to `main`, never on PRs, so requiring it would
-      deadlock the branch. Note the per-service `Unit tests (...)`
-      matrix jobs are not in the required set either; `Build` compiles
-      every workspace, so a type error still blocks.
+Mandatory pull-request review is deliberately NOT required (solo
+maintainer). But note this gate still means work arrives via a branch and
+a PR: `main` rejects direct pushes, because a required check cannot have
+run on a commit that is not yet pushed. That is the intended effect, not
+an obstacle to work around.
+
+- [x] **Require status checks to pass before merging** — **`Lint &
+    Type-check` only.** This was narrowed from an initial
+      `Lint & Type-check` + `Build`, for a reason worth recording: - `Unit tests` is a **matrix** job. Its check names are reported
+      per instance (`Unit tests (backend/services/auth)`,
+      `Unit tests (frontend)`, …), so requiring the bare string
+      `Unit tests` never matches and requiring all ~20 instances is
+      brittle — adding a workspace to the matrix would silently
+      bypass the gate. - `Build` _does_ run on PRs. It appeared to skip only because it
+      `needs: [lint, test-unit, test-python]` and its dependencies had
+      not finished; a skipped-dependency cascade is not an `if:
+      push` guard.
+      `Lint & Type-check` is the one gate that both runs on every PR and
+      has a stable name. It runs `pnpm lint`, `pnpm typecheck`, and
+      `pnpm format:check`, so formatting, lint, and type errors all
+      block. Test failures are still visible on the PR and block via
+      review, but are not a hard gate.
+- [x] **Note:** enabling this gate means `main` no longer accepts direct
+      pushes. Work lands on a branch and merges through a PR — which is
+      the point, and was the outcome when Sprint 12 turned this on (see
+      PR #86).
 - [ ] **Require branches to be up to date before merging** — not set
-      (`strict: false`). Deliberate: it adds churn for a solo
-      maintainer pushing straight to `main`.
-- [ ] **Do not require pull request reviews** — deliberately unset. The
-      documented workflow pushes directly to `main`. Revisit if a second
-      maintainer joins.
+      (`strict: false`). Deliberate: it forces a rebase-and-retry loop
+      on every merge for a solo maintainer.
+- [ ] **Do not require pull request reviews** — deliberately unset, so a
+      PR can still be self-merged. Revisit if a second maintainer joins.
 - [x] **Block force pushes** — `allow_force_pushes: false`.
 - [x] **Block branch deletion** — `allow_deletions: false`.
 - [ ] **Require signed commits** — not enabled. Turn on
