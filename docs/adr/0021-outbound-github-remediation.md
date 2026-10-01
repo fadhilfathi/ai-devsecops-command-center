@@ -39,7 +39,7 @@ issue or PR in the tenant's repo" writes.
   tenant's `integrations` row, `config.token`/`config.pat`. At use time
   `resolveToken` (`routes/integrations.ts`) runs it through
   `@aicc/shared/crypto`'s `decryptSecret(parseKeyring(AICC_CREDENTIAL_KEYS),
-  raw, { allowPlaintext: true })` — the same AES-256-GCM envelope
+raw, { allowPlaintext: true })` — the same AES-256-GCM envelope
   ciphertext format (`v1.<keyId>.<iv>.<tag>.<ct>`, key id as AAD) and
   keyring/rotation procedure as the cluster credentials in
   [ADR 0016](./0016-credential-encryption-at-rest.md). A stored value
@@ -102,7 +102,7 @@ issue or PR in the tenant's repo" writes.
   tenant (`requireTenant`) — the same gate as the other integration
   routes. The agent-service → integration-service hop
   (`createIntegrationClient`, `backend/services/agent/src/
-  clients/integration.client.ts`) mints a 60-second HS256 internal
+clients/integration.client.ts`) mints a 60-second HS256 internal
   token per call (`sub: 'system:agent-service'`,
   `role: 'platform_admin'`) and sends `x-tenant-id` — the same pattern
   as cost-intelligence/topology's inventory calls — and never surfaces

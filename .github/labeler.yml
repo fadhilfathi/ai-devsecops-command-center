@@ -1,74 +1,79 @@
 # Auto-label rules
 # https://github.com/actions/labeler
+#
+# Schema: labeler v5+ (required by actions/labeler v6/v7). Each label maps
+# to an `any:`/`all:` list of changed-file globs. The previous file used the
+# flat v2 form (`label: - glob`), which v7 rejects outright:
+#   "found unexpected type for label 'frontend' (should be array of config
+#    options)"
+# That went unnoticed only because the repo had never opened a pull
+# request, so the workflow had never run on a PR.
 
 frontend:
-  - frontend/**/*
-  - '**/*.tsx'
-  - '**/*.css'
-  - '**/*.scss'
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**'
 
 backend:
-  - backend/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**'
 
 agent:
-  - agents/**/*
-  - backend/services/agent/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'agents/**'
+      - any-glob-to-any-file: 'backend/services/agent/**'
 
 security:
-  - backend/services/auth/**/*
-  - backend/services/security/**/*
-  - docs/security/**/*
-  - '**/*.pem'
-  - '**/*.key'
+  - changed-files:
+      - any-glob-to-any-file: 'backend/services/auth/**'
+      - any-glob-to-any-file: 'backend/services/security/**'
+      - any-glob-to-any-file: 'backend/services/runtime-security/**'
+      - any-glob-to-any-file: 'docs/compliance/**'
+      - any-glob-to-any-file: '**/*.pem'
+      - any-glob-to-any-file: '**/*.key'
 
 compliance:
-  - backend/services/compliance/**/*
-  - docs/compliance/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'backend/services/compliance/**'
 
 incidents:
-  - backend/services/incident/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'backend/services/incident/**'
 
 integrations:
-  - backend/services/integration/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'backend/services/integration/**'
 
 infra:
-  - infra/**/*
-  - .github/workflows/**
-  - docker-compose.yml
-  - Makefile
-  - Dockerfile
+  - changed-files:
+      - any-glob-to-any-file: 'infra/**'
+      - any-glob-to-any-file: 'docker-compose.yml'
+      - any-glob-to-any-file: 'Makefile'
+      - any-glob-to-any-file: 'Dockerfile'
 
 docs:
-  - docs/**/*
-  - '**/*.md'
-  - '**/*.mdx'
+  - changed-files:
+      - any-glob-to-any-file: 'docs/**'
+      - any-glob-to-any-file: '**/*.md'
 
 dependencies:
-  - package.json
-  - pnpm-lock.yaml
-  - '**/package.json'
+  - changed-files:
+      - any-glob-to-any-file: 'pnpm-lock.yaml'
+      - any-glob-to-any-file: '**/package.json'
+      - any-glob-to-any-file: '**/pyproject.toml'
 
 ci:
-  - .github/workflows/**
-  - .github/dependabot.yml
-
-ci-skip:
-  - .github/PULL_REQUEST_TEMPLATE.md
-  - .github/ISSUE_TEMPLATE/**
-
-breaking-change:
-  - any:
-      - '**/BREAKING.md'
-      - '**/MIGRATION.md'
+  - changed-files:
+      - any-glob-to-any-file: '.github/workflows/**'
+      - any-glob-to-any-file: '.github/dependabot.yml'
+      - any-glob-to-any-file: '.github/labeler.yml'
 
 tests:
-  - '**/*.test.ts'
-  - '**/*.test.tsx'
-  - '**/*.spec.ts'
-  - '**/*.spec.tsx'
-  - tests/**
+  - changed-files:
+      - any-glob-to-any-file: '**/*.test.ts'
+      - any-glob-to-any-file: '**/*.test.tsx'
+      - any-glob-to-any-file: 'tests/**'
 
-chore:
-  - '**/.gitignore'
-  - '**/.editorconfig'
-  - '**/.nvmrc'
+breaking-change:
+  - changed-files:
+      - any-glob-to-any-file: '**/BREAKING.md'
+      - any-glob-to-any-file: '**/MIGRATION.md'

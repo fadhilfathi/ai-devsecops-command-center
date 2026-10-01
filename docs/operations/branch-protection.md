@@ -1,27 +1,63 @@
-# Branch protection — recommended settings for `main`
+# Branch protection — applied settings for `main`
 
-These settings are **not currently applied**. This is a checklist for
-the maintainer to apply manually under
-**Settings → Branches → Branch protection rules → `main`**. Nothing
-in CI enforces or verifies this document.
+These settings **are applied** to `main` (see the verification commands at
+the bottom). They were added in Sprint 12; before that they existed only
+as a manual checklist.
 
-The current workflow is a solo maintainer pushing directly to `main`
-(no mandatory PR review). The checklist below hardens the branch
-without blocking that workflow.
+Enforced today: `Lint & Type-check` must pass before anything lands on
+`main`, and neither force-push nor branch deletion is possible —
+including for administrators.
 
-- [ ] **Require status checks to pass before merging** — select the
-      `ci` jobs: `Lint & Type-check`, `Unit tests`, `Build`. Do not
-      require `Docker build` (only runs on push to `main`, not PRs).
-- [ ] **Require branches to be up to date before merging** — optional;
-      skip if it creates too much churn for a solo maintainer.
-- [ ] **Do not require pull request reviews** — leave unchecked; the
-      documented workflow pushes directly to `main`. Revisit if a
-      second maintainer joins.
-- [ ] **Block force pushes** — enable "Do not allow force pushes".
-- [ ] **Block branch deletion** — enable "Do not allow deletions".
-- [ ] **Require signed commits** — optional, enable if the maintainer
-      sets up commit signing locally; not currently enforced.
-- [ ] **Include administrators** — enable so the rules apply even to
-      the repo owner, preventing accidental force-push/deletion.
+Mandatory pull-request review is deliberately NOT required (solo
+maintainer). But note this gate still means work arrives via a branch and
+a PR: `main` rejects direct pushes, because a required check cannot have
+run on a commit that is not yet pushed. That is the intended effect, not
+an obstacle to work around.
 
-Apply at: `https://github.com/fadhilfathi/ai-devsecops-command-center/settings/branches`
+- [x] **Require status checks to pass before merging** — **`Lint & Type-check` only.**
+
+  This was narrowed from an initial `Lint & Type-check` + `Build`, for a
+  reason worth recording:
+
+  - `Unit tests` is a **matrix** job. Its check names are reported per
+    instance (`Unit tests (backend/services/auth)`,
+    `Unit tests (frontend)`, …), so requiring the bare string
+    `Unit tests` never matches, and requiring all ~20 instances is
+    brittle — adding a workspace to the matrix would silently bypass the
+    gate.
+  - `Build` _does_ run on PRs. It appeared to skip only because it
+    `needs: [lint, test-unit, test-python]` and its dependencies had not
+    finished; a skipped-dependency cascade is not an `if: push` guard.
+
+  `Lint & Type-check` is the one gate that both runs on every PR and has a
+  stable name. It runs `pnpm lint`, `pnpm typecheck`, and
+  `pnpm format:check`, so formatting, lint, and type errors all block.
+  Test failures remain visible on the PR and block via review, but are
+  not a hard gate.
+
+- [x] **Note:** enabling this gate means `main` no longer accepts direct
+      pushes. Work lands on a branch and merges through a PR — which is
+      the point, and was the outcome when Sprint 12 turned this on (see
+      PR #86).
+- [ ] **Require branches to be up to date before merging** — not set
+      (`strict: false`). Deliberate: it forces a rebase-and-retry loop
+      on every merge for a solo maintainer.
+- [ ] **Do not require pull request reviews** — deliberately unset, so a
+      PR can still be self-merged. Revisit if a second maintainer joins.
+- [x] **Block force pushes** — `allow_force_pushes: false`.
+- [x] **Block branch deletion** — `allow_deletions: false`.
+- [ ] **Require signed commits** — not enabled. Turn on
+      `required_signatures` once the maintainer configures local commit
+      signing.
+- [x] **Include administrators** — `enforce_admins: true`, so the rules
+      bind the repo owner too and prevent accidental force-push/deletion.
+
+## Verify
+
+    gh api repos/fadhilfathi/ai-devsecops-command-center/branches/main/protection \
+
+    gh api repos/fadhilfathi/ai-devsecops-command-center/private-vulnerability-reporting
+
+## Apply at
+
+`https://github.com/fadhilfathi/ai-devsecops-command-center/settings/branches`

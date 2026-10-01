@@ -17,15 +17,23 @@ import {
   type EventBus,
   type Logger,
 } from '@aicc/shared';
+import { createPool, migrate } from '@aicc/shared/db';
 import { buildHealthRoutes } from './routes/health.js';
 import { buildControlRoutes } from './routes/controls.js';
 import { buildEvidenceRoutes } from './routes/evidence.js';
 import { buildFrameworkRoutes } from './routes/frameworks.js';
 import { buildPoamRoutes } from './routes/poam.js';
 import { buildPoamRepository, PoamService } from './poam/index.js';
-import { buildControlRepository } from './repositories/control.repository.js';
 import { buildFrameworkRepository } from './repositories/framework.repository.js';
-import { buildEvidenceRepository } from './repositories/evidence.repository.js';
+import {
+  buildControlRepository,
+  buildPgControlRepository,
+} from './repositories/control.repository.js';
+import {
+  buildEvidenceRepository,
+  buildPgEvidenceRepository,
+} from './repositories/evidence.repository.js';
+import { MIGRATIONS } from './db/migrations.js';
 import { MappingEngine } from './control-mapper/index.js';
 import mappingRules from './control-mapper/mapping-rules.json' with { type: 'json' };
 import { InMemoryBlobStore } from './evidence/blob-store.memory.js';
@@ -49,10 +57,16 @@ export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promis
     deps?.logger ?? createLogger({ service: cfg.name, version: cfg.version, level: cfg.logLevel });
   const bus = deps?.bus ?? createEventBus({ ...cfg.eventBus, serviceName: SERVICE_NAME, logger });
 
-  const controls = buildControlRepository();
   const frameworks = buildFrameworkRepository();
-  const evidenceRepo = buildEvidenceRepository();
   const poamRepo = buildPoamRepository();
+
+  const db = cfg.databaseUrl ? createPool(cfg.databaseUrl) : undefined;
+  if (db) {
+    await migrate(db, MIGRATIONS);
+  }
+
+  const controls = db ? buildPgControlRepository(db) : buildControlRepository();
+  const evidenceRepo = db ? buildPgEvidenceRepository(db) : buildEvidenceRepository();
   const poamService = new PoamService({ repo: poamRepo, bus });
 
   if (cfg.demoSeed) {
@@ -122,6 +136,12 @@ export async function buildServer(deps?: Partial<ComplianceServiceDeps>): Promis
       message: err.message ?? 'Internal Server Error',
     });
   });
+
+  if (db) {
+    server.addHook('onClose', async () => {
+      await db.end();
+    });
+  }
 
   server.addHook('onClose', async () => {
     await bus.close();

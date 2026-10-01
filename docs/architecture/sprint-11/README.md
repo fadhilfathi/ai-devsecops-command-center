@@ -40,7 +40,7 @@ to open a real issue or PR:
 - `agent-service`'s `applyRemediation()` keeps the policy gates and
   injects the HTTP hop (`deps.callIntegration`, wired to the new
   `createIntegrationClient` in `backend/services/agent/src/
-  clients/integration.client.ts`, which mints a 60s internal token per
+clients/integration.client.ts`, which mints a 60s internal token per
   call). A missing `integrationId`, or a proposal with `status !== 'ok'`
   (`manual_review` needs human approval), returns `applied: false`
   without any network call; integration-service errors propagate so the

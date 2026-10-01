@@ -497,11 +497,7 @@ function ApplyTab({
           </label>
 
           <label className="flex items-center gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={dryRun}
-              onChange={(e) => setDryRun(e.target.checked)}
-            />
+            <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
             Dry run — render what would open, open nothing
           </label>
 

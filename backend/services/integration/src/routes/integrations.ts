@@ -47,11 +47,10 @@ function requireTenant(tenantId: string): UUID {
 const requirePlatformAdmin: preHandlerHookHandler = async (req) => {
   if (req.userRole === undefined) return;
   if (req.userRole !== 'platform_admin') {
-    throw new AppError(
-      'FORBIDDEN',
-      `Requires one of [platform_admin]; got '${req.userRole}'`,
-      { statusCode: 403, details: { allowed: ['platform_admin'], got: req.userRole } },
-    );
+    throw new AppError('FORBIDDEN', `Requires one of [platform_admin]; got '${req.userRole}'`, {
+      statusCode: 403,
+      details: { allowed: ['platform_admin'], got: req.userRole },
+    });
   }
 };
 

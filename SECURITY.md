@@ -17,15 +17,20 @@ patches.
 | Release line | Status             | Security updates |
 | ------------ | ------------------ | ---------------- |
 | `main`       | Active development | Yes              |
-| `0.1.x`      | Supported          | Yes              |
-| `0.0.x`      | EOL (pre-alpha)    | No               |
+| `0.7.x`      | Supported          | Yes              |
+| `0.6.x`      | Supported          | Yes              |
+| `< 0.6`      | EOL (pre-alpha)    | No               |
 
 ## Reporting a vulnerability
 
 **Preferred:** GitHub private vulnerability reporting — go to the
 [`Security` tab → `Report a vulnerability`](../../security/advisories/new)
 on this repository. This is free, keeps the report private until a
-fix ships, and notifies the maintainer directly.
+fix ships, and notifies the maintainer directly. **Enabled on this
+repository since Sprint 12** (verify with
+`gh api repos/fadhilfathi/ai-devsecops-command-center/private-vulnerability-reporting`).
+If the tab is ever missing, email is not offered as a fallback — open a
+private advisory through that URL directly.
 
 **Do NOT:**
 
