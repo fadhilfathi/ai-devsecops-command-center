@@ -21,7 +21,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@types/pdfkit": "^0.17.6",
+    "@types/pdfkit": "^0.17.7",
     "tsx": "^4.7.0"
   }
 }
