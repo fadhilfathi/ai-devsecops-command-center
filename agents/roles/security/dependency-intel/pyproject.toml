@@ -39,7 +39,7 @@ dependencies = [
   "python-dateutil==2.9.0.post0",
   "networkx==3.6.1",
   "prometheus-client==0.26.0",
-  "opentelemetry-api==1.44.0",
+  "opentelemetry-api==1.45.1",
   "opentelemetry-sdk==1.44.0",
   "opentelemetry-exporter-otlp==1.44.0",
   "opentelemetry-instrumentation-fastapi==0.65b0",
